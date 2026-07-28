@@ -28,4 +28,14 @@ export class AuthService {
 
     return { accessToken };
   }
+
+  async verifyAccessToken(
+    token: string,
+  ): Promise<{ sub: string; email: string }> {
+    try {
+      return await this.jwt.verifyAsync<{ sub: string; email: string }>(token);
+    } catch {
+      throw new UnauthorizedException('Geçersiz veya süresi dolmuş token.');
+    }
+  }
 }

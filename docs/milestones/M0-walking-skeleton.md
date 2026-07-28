@@ -142,3 +142,59 @@
 ### Doğrulama
 - Lokalde: `npm run lint && npm run typecheck && npm test && npm run build` (her iki workspace) + `npm run build --workspace=apps/web && npm run test:e2e --workspace=apps/web`.
 - Push edilip GitHub Actions'ta hem mevcut `test` job'ının hem yeni `test-web` job'ının yeşil geçtiği doğrulanacak (varsayılmayacak).
+
+---
+
+## Plan notları — WebSocket round trip + e2e
+
+**Görev:** Mesaj gönderildiğinde WS ile ikinci bağlı istemciye gerçek zamanlı ulaşır, Postgres'e persist edilir; reload sonrası geçmiş REST'ten yüklenir. Kritik akışı kapsayan 1 e2e test (testing.md).
+
+**Kullanıcı onaylı kararlar:**
+- **WS kütüphanesi:** Socket.IO (`@nestjs/websockets` + `@nestjs/platform-socket.io` + `socket.io-client`).
+- **Geçmiş mesaj yükleme:** Yeni bir `GET /rooms/:name/messages` REST endpoint'i, baştan cursor-pagination'a uygun tasarlanır (id cursor + `createdAt desc, id desc` compound order — UUID id'ler sıralı olmadığı için tek başına cursor yetmez). M0'da sadece son 50 mesaj kullanılıyor ama "daha eskileri yükle" için `nextCursor` hazır.
+- **E2E test tipi:** Tam-yığın Playwright — iki browser context, gerçek Next.js + gerçek API/WS/DB. Yeni, ayrı bir CI job'ı (`test-fullstack-e2e`) gerektiriyor; mevcut hızlı `test-web` job'ı (statik smoke test, DB'siz) aynen kalıyor.
+
+**Bu görevde ayrıca ele alınan (önceki görevden devreden) karar:** Dev-login görevinde ertelenmişti — "token'ın API/WS'de doğrulanması WS round-trip görevinde ele alınacak." Şimdi: REST için `JwtAuthGuard`, WS bağlantısı için `handshake.auth.token` doğrulaması, ikisi de `AuthService.verifyAccessToken()` üzerinden aynı mantığı kullanıyor (tekrar yok).
+
+**Kullanıcı ek talebi 1 — token saklama yeri (bilinçli seçim):** Access token **bellek-içi** (React state) saklanır — `localStorage`/`sessionStorage` KULLANILMAZ. Gerekçe: ADR-0002'nin nihai hedefi httpOnly cookie (JS erişemez); bellek-içi bu hedefe uyumlu bir ara adım — disk'e hiçbir şey yazılmıyor, XSS'in aktif oturum dışında toplayabileceği kalıcı bir token olmuyor (THREAT-MODEL satır 4). Bedel: reload'da token kaybolur, ama tasarım zaten her mount'ta dev-login'i yeniden çağırıyor — davranış değişmiyor. M1'de gerçek auth'a geçilince bu, cookie-tabanlı akışa temiz bir şekilde taşınabilir (localStorage'dan taşımak gibi "önce temizle" adımı gerekmez).
+
+**Kullanıcı ek talebi 2 — `genel` senkron sorunu gerçekten çözülüyor mu:** İlk taslakta HAYIR — `GET /rooms/:name/messages` frontend'in yine `ROOM_NAME` sabitini hardcode etmesini gerektiriyordu, sadece uyuşmazlığın sonucu (sessiz kozmetik hata → gürültülü 404) değişiyordu, kök neden kalıyordu. Düzeltme: küçük bir **`GET /rooms`** keşif endpoint'i eklenir (`RoomsService.listRooms()`, sadece `prisma.room.findMany({select:{id,name}})`). Frontend artık oda adını hiç hardcode etmez — mount'ta önce `GET /rooms` çağırır, dönen (M0'da tek) odanın `name`'ini hem başlıkta göstermek hem sonraki `GET /rooms/:name/messages` çağrısında kullanmak için saklar. Tek gerçek kaynak backend seed'i olur — **STATE.md'deki tuzak notu bu görevle birlikte tamamen kaldırılacak.**
+
+**Kapsam dışı (bilinçli):** class-validator/DTO framework'ü — tek alan (`content`, string, 1-2000 karakter) için manuel kontrol yeterli, yeni bağımlılık gerekmiyor. Markdown/sanitizasyon — M0 düz metin gösteriyor (React varsayılan escape yeterli, THREAT-MODEL'in sanitizasyon gereksinimi markdown render'ı gelince devreye girecek). Socket.IO "join/leave" UI'ı, çoklu oda — tek sabit oda, `client.join(room.id)` sadece ileride kırılmasın diye.
+
+### Dosyalar ve sıra
+
+**Backend:**
+1. `apps/api/package.json` — `@nestjs/websockets`, `@nestjs/platform-socket.io` (deps); `socket.io-client` (devDependency, gateway testi için).
+2. `apps/api/.env` / `.env.example` — `WEB_ORIGIN=http://localhost:3000` (CORS).
+3. `apps/api/src/services/auth.service.ts` — `verifyAccessToken(token): Promise<{sub,email}>` eklenir (jwt.verifyAsync sarmalayıp `UnauthorizedException` fırlatır); hem guard hem gateway bunu kullanır.
+4. `apps/api/src/api/jwt-auth.guard.ts` (yeni) — `Authorization: Bearer` header'ını doğrular, `request.user`'a yazar.
+5. `apps/api/src/services/rooms.service.ts` (yeni) — `listRooms(): Promise<{id,name}[]>`, sadece `prisma.room.findMany({select:{id,name}})` (keşif endpoint'i, kullanıcı ek talebi 2).
+6. `apps/api/src/api/rooms.controller.ts` (yeni) — `GET /rooms`, `@UseGuards(JwtAuthGuard)`.
+7. `apps/api/src/services/messages.service.ts` (yeni) — `sendMessage(userId, content)`: DEV_ROOM_NAME'e göre odayı bulur, `Message` oluşturur. `getRecentMessages(cursor?, limit=50)`: cursor-pagination'lı sorgu, `{messages, nextCursor}` döner. `MAX_MESSAGE_LENGTH` adlandırılmış sabit.
+8. `apps/api/src/api/messages.controller.ts` (yeni) — `GET /rooms/:name/messages`, `@UseGuards(JwtAuthGuard)`, query: `cursor?`, `limit?`.
+9. `apps/api/src/api/messages.gateway.ts` (yeni) — `@WebSocketGateway({cors:{origin: WEB_ORIGIN}})`. `handleConnection`: `handshake.auth.token` doğrulanır, geçersizse `disconnect(true)`; geçerliyse odaya `join`. `@SubscribeMessage('message:send')`: içerik doğrulanır (boş/çok uzun ise sessizce yok sayılır), `messagesService.sendMessage` çağrılır, sonuç `server.to(room.id).emit('message:new', ...)` ile yayınlanır.
+10. `apps/api/src/main.ts` — `app.enableCors({ origin: process.env.WEB_ORIGIN })`.
+11. `apps/api/src/app.module.ts` — yeni controller/gateway/service providers'a eklenir.
+
+**Frontend:**
+12. `apps/web/package.json` — `socket.io-client` dependency.
+13. `apps/web/.gitignore` — `.env*` kuralına `!.env.example` istisnası eklenir (apps/api'deki gibi, şu an eksik).
+14. `apps/web/.env.local` (yeni, gitignored) + `.env.example` (yeni, commit edilir) — `NEXT_PUBLIC_API_URL=http://localhost:3001`.
+15. `apps/web/app/page.tsx` — `"use client"`; mount'ta: dev-login → token (React state, bellek-içi); `GET /rooms` (Bearer token) → tek odayı al, `name`'i state'e yaz (başlıkta ve sonraki çağrılarda kullanılır — hardcode YOK); `GET /rooms/:name/messages` → geçmiş; `socket.io-client` ile bağlan (`auth:{token}`) → `message:new` dinle; input/form artık işlevsel (disabled kalkar), submit'te `message:send` emit eder.
+16. `docs/STATE.md` — Tuzaklar'daki "genel" senkron notu **tamamen kaldırılır** (kök neden çözüldü — bkz. kullanıcı ek talebi 2).
+
+**CI:**
+17. `apps/web/playwright.config.ts` — `webServer` dizi olur: (a) `apps/web` için `next start` @3000, (b) `npm --prefix ../api run start:prod` ile `apps/api` @3001 (`url: http://localhost:3001/health`).
+18. `.github/workflows/ci.yml` — yeni `test-fullstack-e2e` job'ı: postgres service → `db:generate`+`db:migrate:deploy`+`db:seed` (api) → `build --workspace=apps/api` → `build --workspace=apps/web` (env: `NEXT_PUBLIC_API_URL=http://localhost:3001` — build-time inline edildiği için şart) → playwright install chromium → `test:e2e --workspace=apps/web`. Mevcut `test-web` job'ı değişmeden kalır.
+
+### Testler
+- **`apps/api/src/services/messages.service.spec.ts`** (birim) — Prisma mock'lanır: `sendMessage` doğru `roomId`/`authorId` ile create çağırıyor mu; `getRecentMessages` cursor/limit'i doğru `findMany` argümanlarına çeviriyor mu, `nextCursor` doğru hesaplanıyor mu.
+- **`apps/api/test/messages.e2e-spec.ts`** (entegrasyon, REST) — gerçek DB: birkaç mesaj seed edilir, `GET /rooms/genel/messages` (geçerli token) doğru sırada/limit'te döner; token yoksa 401.
+- **`apps/api/test/messages-gateway.e2e-spec.ts`** (entegrasyon, WS) — gerçek Nest app `listen(0)`, `socket.io-client` ile: geçersiz token → disconnect; geçerli token + iki bağlı client → biri `message:send` emit eder, ikisi de `message:new` alır, DB'de satır doğrulanır.
+- **`apps/web/e2e/message-round-trip.spec.ts`** (Playwright, kritik akış — testing.md'nin "1 e2e"si) — iki browser context: birinde gönder, diğerinde gerçek zamanlı görün; ikinci context reload edilir, mesaj hâlâ görünür (persisted).
+- Mevcut `apps/web/e2e/single-room.spec.ts` değişmeden kalır (API çalışmasa da sayfa çökmemeli — fetch/socket hataları yutulur, boş liste gösterilir).
+
+### Doğrulama
+- Lokalde tüm workspace'lerde lint/typecheck/test/build yeşil; `apps/web`'de hem mevcut smoke test hem yeni round-trip testi Docker Postgres + gerçek api/web build'i ile lokalde çalıştırılıp doğrulanacak.
+- Push sonrası GitHub Actions'ta `test`, `test-web`, `test-fullstack-e2e` job'larının hepsi yeşil olduğu doğrulanacak (varsayılmayacak).
