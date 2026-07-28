@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-cursor-blink: 1000ms;
+  --motion-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-terminal-blink: steps(2, jump-none);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+@keyframes cursor-blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.terminal-cursor {
+  animation: cursor-blink var(--motion-duration-cursor-blink)
+    var(--motion-ease-terminal-blink) infinite;
+}

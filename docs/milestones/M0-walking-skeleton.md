@@ -102,3 +102,43 @@
 ### Doğrulama
 - `npm run lint && npm run typecheck && npm test && npm run build` — hepsi yeşil olmalı.
 - CI değişikliği push edilip GitHub Actions'ta gerçekten yeşil geçtiği doğrulanacak (DB görevinde olduğu gibi varsayılmayacak).
+
+---
+
+## Plan notları — Seeded oda + terminal-tarzı tek-oda ekranı
+
+**Görev:** Sabit bir `Room` seed edilir; `apps/web` (Next.js, henüz yok) ile terminal estetikli tek-oda ekranı eklenir.
+
+**Kullanıcı onaylı kararlar:**
+- **Kapsam:** Sadece statik kabuk — oda adı + boş mesaj listesi + işlevsiz (disabled) input. API/WS bağlantısı bu göreve dahil değil, "WebSocket round trip" görevinde eklenecek. `GET /rooms` gibi yeni bir backend endpoint'i bu görevde YOK.
+- **Styling:** Tailwind CSS (yeni bağımlılık).
+- **Test:** Playwright şimdi kurulur, bir smoke test yazılır ("sayfa yükleniyor, oda adı görünüyor").
+- **Yeni bağımlılık:** Kök `package.json`'a `concurrently` eklenir — `npm run dev`'in CLAUDE.md'de belgelenen "API + web" davranışını gerçekten sağlaması için.
+
+**Yeni bağımlılıklar (tümü onaylı):** `next`, `react`, `react-dom` (apps/web dependencies); `typescript`, `@types/react`, `@types/node`, `@types/react-dom`, `eslint`, `eslint-config-next`, `tailwindcss`, `@tailwindcss/postcss`, `@playwright/test` (apps/web devDependencies); `concurrently` (kök devDependency).
+
+**Bilinen kısıt (kullanıcıya not):** Oda adı (`genel`) hem backend seed'inde (`DEV_ROOM_NAME` sabiti) hem de Next.js sayfasında ayrı ayrı hardcode edilecek — apps/web ile apps/api arasında paylaşılan bir paket olmadığı için şu an otomatik senkron yok, elle tutarlı tutulmalı. İleride bu ekran API'ye bağlanınca (WS görevi) bu sabit gerçek veriyle değişecek, sorun kendiliğinden ortadan kalkacak.
+
+### Dosyalar ve sıra
+
+**Backend (küçük ek):**
+1. **`apps/api/src/db/dev-seed.constants.ts`** — `DEV_ROOM_NAME = 'genel'` eklenir.
+2. **`apps/api/src/db/seed.ts`** — `prisma.room.upsert({ where: { name: DEV_ROOM_NAME }, update: {}, create: { name: DEV_ROOM_NAME } })` eklenir (idempotent, User upsert'iyle aynı desende).
+
+**Frontend (yeni `apps/web`):**
+3. Next.js resmi scaffolder'ı ile iskelet kurulur (`create-next-app`: TypeScript, ESLint, Tailwind, App Router, no src-dir) — config dosyalarının (tsconfig, eslint flat config, next-env.d.ts, postcss) elle yazıp versiyon uyumsuzluğu riski almak yerine resmi araçtan üretilmesi tercih edildi.
+4. **`apps/web/app/globals.css`** — Tailwind import'u + terminal tema (koyu arka plan, monospace font, minimal renk).
+5. **`apps/web/app/layout.tsx`** — kök layout, `lang="tr"`, `font-mono`, başlık "KOQEP".
+6. **`apps/web/app/page.tsx`** — tek-oda ekranı: oda adı başlığı (`genel`), boş mesaj listesi + "henüz mesaj yok" durumu, disabled input + disabled gönder butonu.
+7. **`apps/web/package.json`** — `dev`/`build`/`start`/`lint` (create-next-app'ten gelir) + elle eklenecek `typecheck` (`tsc --noEmit`) ve `test:e2e` (`playwright test`).
+8. **`apps/web/playwright.config.ts`** — `testDir: './e2e'`, `webServer: { command: 'npm run start', url: 'http://localhost:3000' }` (yani lokalde de önce `npm run build` gerekir — CI'daki build-sonra-test sırasıyla tutarlı).
+9. **`apps/web/e2e/single-room.spec.ts`** — smoke test: sayfa açılır, oda adı (`genel`) görünür, mesaj input'u DOM'da var.
+
+**Kök/CI:**
+10. **`package.json`** (kök) — `concurrently` eklenir; `dev` script'i API+web'i paralel başlatacak şekilde güncellenir; `lint`/`typecheck`/`test`/`build` script'leri `--workspaces --if-present` ile fan-out yapacak şekilde güncellenir (yerel kullanım kolaylığı — CI adımları zaten `--workspace=` ile hedefli, etkilenmez).
+11. **`.github/workflows/ci.yml`** — mevcut `test` job'ındaki `npm test` / `npm run build` adımları `--workspace=apps/api` ile açıkça hedeflenir (kök script'ler artık fan-out yapacağı için, bu job'ın yanlışlıkla web'i de build/test etmesini önlemek amacıyla). Ayrıca **yeni, ayrı bir `test-web` job'ı** eklenir: `npm ci` → `lint --workspace=apps/web` → `typecheck --workspace=apps/web` → `npx playwright install --with-deps chromium` → `build --workspace=apps/web` → `test:e2e --workspace=apps/web`.
+12. **`.gitignore`** (kök) — `.next/`, `apps/web/playwright-report/`, `apps/web/test-results/` eklenir.
+
+### Doğrulama
+- Lokalde: `npm run lint && npm run typecheck && npm test && npm run build` (her iki workspace) + `npm run build --workspace=apps/web && npm run test:e2e --workspace=apps/web`.
+- Push edilip GitHub Actions'ta hem mevcut `test` job'ının hem yeni `test-web` job'ının yeşil geçtiği doğrulanacak (varsayılmayacak).
