@@ -17,11 +17,17 @@ export default defineConfig({
       command: "npm --prefix ../api run start:prod",
       url: "http://localhost:3001/health",
       reuseExistingServer: !process.env.CI,
+      // PORT'u burada acikca sabitliyoruz: job-seviyesi bir PORT env'i
+      // (CI'da oldugu gibi) hem bu komuta hem asagidaki `next start`'a
+      // ayni anda sizip port catismasina yol acabilir (next start da
+      // process.env.PORT'u onceliklendirir).
+      env: { PORT: "3001" },
     },
     {
       command: "npm run start",
       url: "http://localhost:3000",
       reuseExistingServer: !process.env.CI,
+      env: { PORT: "3000" },
     },
   ],
 });
