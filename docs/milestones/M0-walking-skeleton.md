@@ -13,23 +13,23 @@
 - Reputation/XP, moderation, rate limiting.
 
 ## Acceptance criteria
-- [ ] CI is green: lint + typecheck + test.
-- [ ] A seeded dev-login endpoint issues a working access token (no real invite flow yet).
-- [ ] A message sent by one client appears via WebSocket in a second connected client in real time.
-- [ ] The message is persisted in Postgres and survives a reload.
-- [ ] One end-to-end test covers: send → receive over WS → persisted in DB.
+- [x] CI is green: lint + typecheck + test.
+- [x] A seeded dev-login endpoint issues a working access token (no real invite flow yet).
+- [x] A message sent by one client appears via WebSocket in a second connected client in real time.
+- [x] The message is persisted in Postgres and survives a reload.
+- [x] One end-to-end test covers: send → receive over WS → persisted in DB.
 - [ ] The app is deployed to a public staging URL.
-- [ ] `docs/STATE.md` is current.
+- [x] `docs/STATE.md` is current.
 
 ## Tasks
-- [ ] Pick the deploy target *before* writing app code (a managed platform with git-push deploy — Fly.io/Render/Railway — not self-managed containers, per ADR-0003).
-- [ ] Repo skeleton: NestJS + Next.js monolith per `docs/ARCHITECTURE.md`.
-- [ ] CI pipeline (lint, typecheck, test).
-- [ ] DB connection + first migration: minimal `User`, `Room`, `Message` tables per `docs/DATA-MODEL.md`.
-- [ ] One seeded dev-login endpoint.
-- [ ] One seeded room + one screen: terminal-style single-room view.
-- [ ] WebSocket send/receive round trip, persisted to DB.
-- [ ] One end-to-end test.
+- [x] Pick the deploy target *before* writing app code (a managed platform with git-push deploy — Fly.io/Render/Railway — not self-managed containers, per ADR-0003).
+- [x] Repo skeleton: NestJS + Next.js monolith per `docs/ARCHITECTURE.md`.
+- [x] CI pipeline (lint, typecheck, test).
+- [x] DB connection + first migration: minimal `User`, `Room`, `Message` tables per `docs/DATA-MODEL.md`.
+- [x] One seeded dev-login endpoint.
+- [x] One seeded room + one screen: terminal-style single-room view.
+- [x] WebSocket send/receive round trip, persisted to DB.
+- [x] One end-to-end test.
 - [ ] Deploy to staging.
 
 ## Risks
