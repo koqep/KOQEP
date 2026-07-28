@@ -26,6 +26,7 @@
 - [ ] Password reset flow with the THREAT-MODEL row-11 controls.
 - [ ] Block-user feature.
 - [ ] Tests for each flow.
+- [ ] Remove M0's seeded dev-login endpoint (`AuthController`, `POST /auth/dev-login`) and the `ENABLE_DEV_LOGIN` env-gate around it entirely — it issues a token with zero credentials and was only ever env-gated (`ENABLE_DEV_LOGIN=true` in staging) as an M0 stopgap, not a real access control.
 
 ## Risks
 - TOTP recovery UX is the top solo-support-burden risk identified in Phase 1 — mitigation: the founder personally runs the recovery-code flow start to finish before any real invite goes out.

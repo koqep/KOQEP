@@ -17,3 +17,7 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
+      # M0 staging demo icin gerekli (seed dev-login) - M1'de gercek auth
+      # gelince bu satir tamamen kaldirilmali (bkz. M1-auth-invites.md).
+      - key: ENABLE_DEV_LOGIN
+        value: 'true'
