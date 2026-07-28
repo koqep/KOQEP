@@ -1,0 +1,27 @@
+{
+  "_comment": "Hook'lar Claude'un kararına bakmaksızın çalışır. Komutları kendi stack'inle değiştir.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npm run lint:fix --silent || true" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "npm run typecheck --silent" }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git push:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}
