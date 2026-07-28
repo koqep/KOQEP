@@ -7,23 +7,28 @@
 **Aktif milestone:** M0 — Walking Skeleton (`docs/milestones/M0-walking-skeleton.md`)
 
 ## Şu an ne çalışıyor
-- Henüz kod yok. `docs/REVIEW-BRIEF.md`'nin Phase 0-7'si tamamlandı ve onaylandı: PRD, mimari, veri modeli, tehdit modeli, güvenlik kuralları, 7 milestone (M0-M6), repo harness.
+- M0'ın kod tarafı bitti ve `main`'de: CI (3 job — api birim/e2e, web lint/typecheck/smoke, tam-yığın Playwright e2e), Postgres+Prisma (`User`/`Room`/`Message`), seeded dev-login (JWT), seeded oda + terminal-tarzı Next.js ekranı, Socket.IO WS round-trip (gönder → gerçek-zamanlı-al → persist → reload'da kalıcı).
+- Render'da apps/api için sadece bir "hello world" (`/health`) deploy edilmiş durumda — şu anki gerçek uygulama (DB'li, WS'li) HENÜZ canlıya deploy edilmedi.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M0 walking skeleton — henüz başlanmadı.
-- **Dokunulan dosyalar:** yok (sadece `docs/` ve `.claude/` scaffolding).
-- **Yarım kalan:** yok.
-- **Sonraki adım:** `docs/milestones/M0-walking-skeleton.md`'deki görev listesiyle başla. İlk iş: deploy hedefini seç ve kod yazmadan önce oraya bir "hello world" deploy et (M0'ın en büyük riski budur).
+- **Görev:** Yok — oturum kapatılıyor.
+- **Yarım kalan:** M0'ın tek kalan maddesi: "Deploy to staging" — Render'da gerçek Postgres, migration+seed, gerçek `JWT_SECRET`/`WEB_ORIGIN`, `apps/web`'in ayrı deploy'u.
+- **Sonraki adım:** Deploy görevine başla — kod tarafındaki tüm M0 kabul kriterleri karşılandı, sadece canlıya alma kaldı.
 
 ## Bilinen sorunlar / teknik borç
-- Henüz yok — kod yok.
+- `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
+- Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
 
 ## Yakın zamanda alınan kararlar
-- 2026-07-28 — Ürün/mimari/veri/güvenlik/milestone kararlarının tamamı → `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/decisions/ADR-0002..0006`, `docs/DATA-MODEL.md`, `docs/THREAT-MODEL.md`, `docs/milestones/M0..M6`.
-- 2026-07-28 — Kapasite kontrolü: M0-M6 gerçekçi tahmini 254-392 saat, bütçe 360 saat (30s/hafta × 12 hafta) — kenarda/üzerinde. M6'nın hukuki kontrol hariç kısmı 4. aya kaydırılabilir.
+- 2026-07-28 — WS transport: Socket.IO, native ws değil — bkz. `docs/decisions/ADR-0007`.
+- 2026-07-28 — Access token bellek-içi (React state) saklanıyor, localStorage/sessionStorage YOK — ADR-0002'nin httpOnly cookie hedefine uyumlu ara adım.
+- 2026-07-28 — Oda keşfi `GET /rooms` ile yapılıyor; frontend oda adını hardcode etmiyor.
 
 ## Tuzaklar (Claude buraya düşmesin)
-- `docs/BACKLOG.md` boş bir şablon DEĞİL — zaten dolu ve detaylı. Kapsam tartışılırken mutlaka oku. İçinde henüz PRD/ADR/THREAT-MODEL'e işlenmemiş 4 madde var: A8 veri dışa aktarma (KVKK gereksinimi, şu an eksik), B5 `/now` platform nabzı, B15 davetçi hesap verebilirliği, D5 ayrıcalıklı-işlem TOTP nüansı. Bunlara değinen bir görev gelirse, ilgili dokümanı güncellemeden önce kullanıcıya sor.
-- M0'ın en büyük riski ilk kez production deploy/WS yönetmek — deploy hedefi kod yazmadan ÖNCE seçilip test edilmeli.
-- TOTP kurtarma akışı gerçek bir davetten önce şahsen test edilmeli (kurtarmasız TOTP = kilitlenme, en büyük solo destek yükü).
-- `ReputationEvent` sadece insert edilir, asla UPDATE edilmez. Mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
+- `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
+- TOTP kurtarma akışı gerçek bir davetten önce şahsen test edilmeli.
+- `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
+- "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula — bu oturumda bir kez iddia yanlış çıktı (merge fiilen olmamıştı).
+- CI'da job-seviyesi env değişkenleri (örn. `PORT`) o job'daki TÜM adım/alt süreçlere sızar (`next start` da `PORT`'u önceliklendirir) — aynı job'da birden fazla uygulama çalışıyorsa env'i komut bazında scope'la (Playwright `webServer.env` gibi).
+- `prisma migrate deploy` (CI/prod), `prisma migrate dev` (lokal) gibi otomatik `prisma generate` ÇALIŞTIRMAZ — CI'da ayrı bir `db:generate` adımı yoksa ESLint her Prisma çağrısını `any` görür.
+- `.env`/`.env.*` dosyaları proje ayarlarında `Read` için engelli (güvenlik) — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz, `cat`/`Read` deneme.
