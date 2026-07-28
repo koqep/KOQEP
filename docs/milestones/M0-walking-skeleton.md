@@ -18,7 +18,7 @@
 - [x] A message sent by one client appears via WebSocket in a second connected client in real time.
 - [x] The message is persisted in Postgres and survives a reload.
 - [x] One end-to-end test covers: send → receive over WS → persisted in DB.
-- [ ] The app is deployed to a public staging URL.
+- [x] The app is deployed to a public staging URL.
 - [x] `docs/STATE.md` is current.
 
 ## Tasks
@@ -30,7 +30,7 @@
 - [x] One seeded room + one screen: terminal-style single-room view.
 - [x] WebSocket send/receive round trip, persisted to DB.
 - [x] One end-to-end test.
-- [ ] Deploy to staging.
+- [x] Deploy to staging.
 
 ## Risks
 - First-time solo production deploy (flagged FATAL in `docs/review/CRITIQUE.md`) — mitigation: the deploy target is chosen and a "hello world" is deployed on it *before* any real app code is written, so deploy friction surfaces on day 1, not day 7.
