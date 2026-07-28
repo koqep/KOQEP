@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: koqep-api
+    runtime: node
+    plan: starter
+    rootDir: apps/api
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.11.0
