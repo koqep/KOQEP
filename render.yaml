@@ -4,7 +4,12 @@ services:
     runtime: node
     plan: starter
     rootDir: apps/api
-    buildCommand: npm install && npm run db:generate && npm run build
+    # buildCommand'da bilinclendirilmis olarak "prisma generate" YOK:
+    # apps/api/package.json'daki postinstall script'i her npm install'da
+    # otomatik calisiyor. Bu, buildCommand'dan tamamen bagimsiz calisir -
+    # panel elle yapilandirilmis ve render.yaml ile senkron olmasa bile
+    # ayni sonucu garanti eder (bkz. STATE.md tuzak notu).
+    buildCommand: npm install && npm run build
     preDeployCommand: npm run db:migrate:deploy && npm run db:seed
     startCommand: npm run start:prod
     healthCheckPath: /health
@@ -17,3 +22,7 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
+      # M0 staging demo icin gerekli (seed dev-login) - M1'de gercek auth
+      # gelince bu satir tamamen kaldirilmali (bkz. M1-auth-invites.md).
+      - key: ENABLE_DEV_LOGIN
+        value: 'true'

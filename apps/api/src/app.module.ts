@@ -13,6 +13,14 @@ import { PrismaModule } from './db/prisma.module';
 
 const ACCESS_TOKEN_TTL = '24h';
 
+// M0'ın seed'lenmiş dev-login'i kimlik doğrulaması istemiyor (M1'e kadar
+// bilinçli bir kapsam kararı). Staging/public bir URL'de bunu herkese açık
+// bırakmamak için route'un kendisi ENABLE_DEV_LOGIN=true değilse hiç
+// kaydolmuyor (404 döner, 401 değil - route'un var olduğunu bile
+// doğrulamaz). M1'de gerçek auth gelince bu satır ve AuthController
+// tamamen kaldırılacak (bkz. docs/milestones/M1-auth-invites.md).
+const isDevLoginEnabled = process.env.ENABLE_DEV_LOGIN === 'true';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -28,7 +36,7 @@ const ACCESS_TOKEN_TTL = '24h';
   ],
   controllers: [
     HealthController,
-    AuthController,
+    ...(isDevLoginEnabled ? [AuthController] : []),
     RoomsController,
     MessagesController,
   ],

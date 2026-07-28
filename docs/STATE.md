@@ -30,5 +30,6 @@
 - `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
 - "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula — bu oturumda bir kez iddia yanlış çıktı (merge fiilen olmamıştı).
 - CI'da job-seviyesi env değişkenleri (örn. `PORT`) o job'daki TÜM adım/alt süreçlere sızar (`next start` da `PORT`'u önceliklendirir) — aynı job'da birden fazla uygulama çalışıyorsa env'i komut bazında scope'la (Playwright `webServer.env` gibi).
-- `prisma migrate deploy` (CI/prod), `prisma migrate dev` (lokal) gibi otomatik `prisma generate` ÇALIŞTIRMAZ — CI'da ayrı bir `db:generate` adımı yoksa ESLint her Prisma çağrısını `any` görür.
+- Prisma client'ın üretilmesi (`prisma generate`) **tek kaynaktan**, `apps/api/package.json`'daki `postinstall` script'inden gelir — her `npm install`/`npm ci`'da (Render, CI, lokal fark etmez) otomatik çalışır. Bunu buildCommand veya tek bir CI adımına gömmeye ÇALIŞMA: `prisma migrate deploy` (CI/prod) `migrate dev` (lokal) gibi generate'i otomatik çalıştırmaz.
+- Render servisi (`koqep-api`) Blueprint'e bağlı DEĞİL, "New Web Service" ile elle kuruldu (Blueprint Postgres ücret istediği için) — `render.yaml`'daki değişiklikler canlı servise OTOMATİK yansımaz, Build/Pre-Deploy Command ve env değişkenleri dashboard'dan elle girilmeli/güncellenmeli.
 - `.env`/`.env.*` dosyaları proje ayarlarında `Read` için engelli (güvenlik) — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz, `cat`/`Read` deneme.
