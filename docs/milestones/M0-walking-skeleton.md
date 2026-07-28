@@ -34,3 +34,35 @@
 
 ## Risks
 - First-time solo production deploy (flagged FATAL in `docs/review/CRITIQUE.md`) — mitigation: the deploy target is chosen and a "hello world" is deployed on it *before* any real app code is written, so deploy friction surfaces on day 1, not day 7.
+
+## Plan notları
+
+**Görev:** DB bağlantısı + ilk migration — minimal `User`, `Room`, `Message` (Prisma), `docs/DATA-MODEL.md`'nin M0 alt kümesi.
+
+**Kapsam dışı (bilinçli):** `inviterId`, `region`, TOTP alanları (User) — Invite/TOTP milestone'ına kadar eklenmiyor (M0 out-of-scope listesiyle tutarlı). `lastMessageAt`/`lastViewedAt` (Room) — arşiv/silme zamanlayıcısı henüz yok, o milestone'da eklenecek. `MessageEdit`, `ReputationEvent`, `ReadCursor`, `Invite` tabloları — bu görevin parçası değil. Render'da gerçek bir Postgres kaynağı oluşturup `DATABASE_URL`'i canlıya bağlamak da bu görevin dışında — bu görev sadece kod/migration'ı hazırlar, canlı bağlantı ayrı bir adım olarak (deploy hedefi seçimi gibi) yapılacak.
+
+**Lokal DB:** Docker ile lokal Postgres (kullanıcı onayı alındı) — `docker-compose.yml` eklenecek.
+
+### Dosyalar ve sıra
+
+1. **`apps/api/package.json`** — `@prisma/client` (dependency), `prisma` (devDependency) eklenir. Script'ler: `db:generate`, `db:migrate` (`prisma migrate dev`), `db:migrate:deploy` (`prisma migrate deploy`, CI/prod için non-interactive).
+2. **`package.json`** (kök) — `db:migrate` script'i eklenir (`npm run db:migrate --workspace=apps/api`) — CLAUDE.md'nin Komutlar bölümünde zaten belgeli ama şu an kökte tanımlı değil.
+3. **`docker-compose.yml`** (kök, yeni) — lokal Postgres 16 servisi, sabit dev kullanıcı/şifre/db adı.
+4. **`apps/api/.env.example`** (yeni) — `DATABASE_URL` şablonu. `.env` zaten `.gitignore`'da.
+5. **`apps/api/src/db/schema.prisma`** (yeni) — datasource + generator + modeller:
+   - `enum RoomStatus { active archived deleted }` (ADR-0006 ile tutarlı, tek yönlü ilerleme)
+   - `User { id, email (unique), createdAt }`
+   - `Room { id, name (unique), status (default active), createdAt }`
+   - `Message { id, roomId → Room, authorId → User? (nullable, onDelete: SetNull — ADR-0005), content, createdAt }` + `@@index([roomId, createdAt])` (DATA-MODEL.md'nin büyüme stratejisiyle uyumlu)
+6. **Migration üretimi** — lokalde `docker compose up -d` + `npm run db:migrate --workspace=apps/api` çalıştırılır, üretilen `apps/api/src/db/migrations/<ts>_init/` commit edilir. Elle SQL yazılmaz.
+7. **`apps/api/src/db/prisma.service.ts`** (yeni) — `PrismaService extends PrismaClient`, `OnModuleInit`/`OnModuleDestroy` ile connect/disconnect.
+8. **`apps/api/src/db/prisma.module.ts`** (yeni) — `@Global()` modül, `PrismaService`'i export eder.
+9. **`apps/api/src/app.module.ts`** — `PrismaModule` import edilir.
+10. **`.github/workflows/ci.yml`** — `postgres:16-alpine` service container + `DATABASE_URL` env eklenir; `npm test`'ten önce `db:migrate:deploy` adımı eklenir (CI'da migration gerçekten uygulanıp test edilsin).
+
+### Testler
+- **`apps/api/src/db/prisma.service.spec.ts`** (yeni, entegrasyon) — gerçek Postgres'e bağlanır (Docker/CI), bir `Room` + o odaya bağlı bir `Message` oluşturur, geri okur ve içeriğin doğru persist edildiğini doğrular; ayrıca var olmayan bir `roomId` ile mesaj oluşturmanın FK ihlaliyle reddedildiğini doğrular. Test kendi verisini temizler (`afterAll`), paralel çalışabilir şekilde benzersiz isimler kullanır.
+
+### Notlar
+- Test dosyası konumu mevcut emsale göre (`apps/api/src/api/health.controller.spec.ts`) kaynakla aynı dizinde tutuluyor — CLAUDE.md dizin haritasındaki `apps/api/tests/` ile birebir örtüşmüyor ama slice 0'da kurulan gerçek konvansiyon bu; sapma fark edilsin diye burada not düşülüyor.
+- `docs/STATE.md` güncellemesi bu görevin parçası değil, `/wrap` ile yapılacak.
