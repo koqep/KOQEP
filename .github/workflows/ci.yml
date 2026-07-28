@@ -24,6 +24,7 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://koqep:koqep@localhost:5432/koqep_dev?schema=public
+      JWT_SECRET: ci-only-test-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,5 +35,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run db:migrate:deploy --workspace=apps/api
+      - run: npm run db:seed --workspace=apps/api
       - run: npm test
+      - run: npm run test:e2e --workspace=apps/api
       - run: npm run build

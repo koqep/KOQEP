@@ -66,3 +66,39 @@
 ### Notlar
 - Test dosyası konumu mevcut emsale göre (`apps/api/src/api/health.controller.spec.ts`) kaynakla aynı dizinde tutuluyor — CLAUDE.md dizin haritasındaki `apps/api/tests/` ile birebir örtüşmüyor ama slice 0'da kurulan gerçek konvansiyon bu; sapma fark edilsin diye burada not düşülüyor.
 - `docs/STATE.md` güncellemesi bu görevin parçası değil, `/wrap` ile yapılacak.
+
+---
+
+## Plan notları — Seeded dev-login endpoint
+
+**Görev:** Gerçek invite/TOTP akışı olmadan, sabit seed kullanıcı için çalışan bir access token üreten `POST /auth/dev-login` endpoint'i.
+
+**Kullanıcı onaylı kararlar:**
+- Yeni bağımlılıklar: `@nestjs/jwt` (JWT imzalama/doğrulama) ve `@nestjs/config` (env değişkeni yönetimi — Prisma'nın örtük `.env` yükleme yan etkisine güvenmek yerine resmi, açık bir çözüm; ileride eklenecek diğer env değişkenleri için de tek kaynak olacak).
+- Kapsam: sadece access token. Refresh token, rotation, revocation, parola/TOTP — ADR-0002'nin tam tasarımı, gerçek auth milestone'ına bırakılıyor (M0 out-of-scope listesiyle tutarlı; `THREAT-MODEL.md` satır 2'deki argon2id/TOTP/refresh-rotation gereksinimleri de o milestone'ın konusu).
+
+**Kapsam dışı (bilinçli):**
+- Oda seed'i ("one seeded room") — ayrı bir milestone görevi, bu işin parçası değil.
+- Token'ı doğrulayan bir Guard/middleware — bu görev sadece token *üretimini* kapsıyor; token'ın API/WS'de doğrulanması WS round-trip görevinde ele alınacak.
+- Render'da gerçek `JWT_SECRET` girilmesi — DB görevindeki `DATABASE_URL` paterniyle aynı: kod hazırlanır, canlıya bağlama ayrı adım.
+
+**Karar değişikliği (kullanıcı reddetti, düzeltildi):** İlk taslakta `@prisma/client`'ın `.env`'i otomatik yükleme yan etkisine güvenmek öneriliyordu — kullanıcı bunu kırılgan bulup reddetti ("açıklamak için yorum gerekiyorsa zaten kırılgandır"). Bunun yerine `@nestjs/config` eklenir: `ConfigModule.forRoot({ isGlobal: true })` ile `.env` açıkça yüklenir, `JwtModule.registerAsync({ imports: [ConfigModule], inject: [ConfigService], useFactory })` ile `JWT_SECRET` import sırasına bağımlı olmadan, DI üzerinden okunur.
+
+### Dosyalar ve sıra
+
+1. **`apps/api/package.json`** — `@nestjs/jwt` ve `@nestjs/config` dependency olarak eklenir. `db:seed` script'i eklenir (`ts-node src/db/seed.ts`).
+2. **`apps/api/.env.example`** ve **`apps/api/.env`** — `JWT_SECRET` eklenir (dev için rastgele bir değer).
+3. **`apps/api/src/db/dev-seed.constants.ts`** (yeni) — `DEV_USER_EMAIL` sabiti (seed script ve AuthService arasında paylaşılan tek kaynak, sihirli string yok).
+4. **`apps/api/src/db/seed.ts`** (yeni) — `DEV_USER_EMAIL` ile tek bir `User` upsert eder (idempotent, tekrar çalıştırılabilir).
+5. **`apps/api/src/services/auth.service.ts`** (yeni) — `issueDevLoginToken()`: seed kullanıcıyı `email`'e göre bulur, bulunamazsa `UnauthorizedException` (mesajda `db:seed` ipucu), bulunursa `{ sub: user.id, email: user.email }` payload'ıyla imzalı JWT döner.
+6. **`apps/api/src/api/auth.controller.ts`** (yeni) — `POST /auth/dev-login`, doğrudan `AuthService.issueDevLoginToken()`'a delegate eder (handler'da iş mantığı yok).
+7. **`apps/api/src/app.module.ts`** — `ConfigModule.forRoot({ isGlobal: true })` ve `JwtModule.registerAsync({ imports: [ConfigModule], inject: [ConfigService], useFactory: (config) => ({ secret: config.get('JWT_SECRET'), signOptions: { expiresIn: '24h' } }) })` imports'a, `AuthController` controllers'a, `AuthService` providers'a eklenir.
+8. **`.github/workflows/ci.yml`** — `JWT_SECRET` env değişkeni eklenir (sabit bir CI-only değer); `db:migrate:deploy` adımından sonra `db:seed` adımı eklenir (e2e/entegrasyon testlerinden önce seed kullanıcı var olsun).
+
+### Testler
+- **`apps/api/src/services/auth.service.spec.ts`** (yeni, birim) — `PrismaService` mock'lanır (dış sınır — DB), gerçek bir `JwtService` (test secret'lı) kullanılır. İki senaryo: kullanıcı bulunursa dönen token'ın payload'ında `sub` doğru; kullanıcı bulunamazsa `UnauthorizedException` fırlatılır.
+- **`apps/api/test/auth.e2e-spec.ts`** (yeni, entegrasyon) — gerçek Postgres + gerçek `AppModule` ile: `beforeAll`'da dev kullanıcıyı kendi upsert eder (harici `db:seed` adımına bağımlı olmadan, testler paralel/bağımsız çalışabilsin diye), `POST /auth/dev-login` çağırır, dönen `accessToken`'ın string olduğunu ve decode edildiğinde `sub`'ın seed kullanıcının id'siyle eştiğini doğrular.
+
+### Doğrulama
+- `npm run lint && npm run typecheck && npm test && npm run build` — hepsi yeşil olmalı.
+- CI değişikliği push edilip GitHub Actions'ta gerçekten yeşil geçtiği doğrulanacak (DB görevinde olduğu gibi varsayılmayacak).
