@@ -6,3 +6,6 @@ coverage/
 !.env.example
 *.log
 .DS_Store
+.next/
+apps/web/playwright-report/
+apps/web/test-results/
