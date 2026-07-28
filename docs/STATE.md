@@ -27,4 +27,3 @@
 - M0'ın en büyük riski ilk kez production deploy/WS yönetmek — deploy hedefi kod yazmadan ÖNCE seçilip test edilmeli.
 - TOTP kurtarma akışı gerçek bir davetten önce şahsen test edilmeli (kurtarmasız TOTP = kilitlenme, en büyük solo destek yükü).
 - `ReputationEvent` sadece insert edilir, asla UPDATE edilmez. Mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
-- Sabit oda adı (`genel` / `DEV_ROOM_NAME`) hem `apps/api/src/db/dev-seed.constants.ts`'de hem `apps/web`'in tek-oda ekranında ayrı ayrı hardcode — aralarında paylaşılan paket yok, elle senkron. "WebSocket round trip" görevinde ekran gerçek API verisine bağlanınca bu tutarsızlık riski kendiliğinden ortadan kalkar; o göreve kadar ikisini birden değiştirmeyi unutma.
