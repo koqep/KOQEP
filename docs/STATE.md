@@ -3,33 +3,34 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-07-28
-**Aktif milestone:** M0 — Walking Skeleton (`docs/milestones/M0-walking-skeleton.md`)
+**Son güncelleme:** 2026-07-29
+**Aktif milestone:** M1 — Real Auth: Invite Signup + Login (`docs/milestones/M1-auth-invites.md`)
 
 ## Şu an ne çalışıyor
-- M0'ın kod tarafı bitti ve `main`'de: CI (3 job — api birim/e2e, web lint/typecheck/smoke, tam-yığın Playwright e2e), Postgres+Prisma (`User`/`Room`/`Message`), seeded dev-login (JWT), seeded oda + terminal-tarzı Next.js ekranı, Socket.IO WS round-trip (gönder → gerçek-zamanlı-al → persist → reload'da kalıcı).
-- Render'da apps/api için sadece bir "hello world" (`/health`) deploy edilmiş durumda — şu anki gerçek uygulama (DB'li, WS'li) HENÜZ canlıya deploy edilmedi.
+- **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı: CI yeşil, seeded dev-login, WS round-trip (gönder → gerçek-zamanlı-al → persist), 1 e2e test, `apps/api` Render'da + `apps/web` Vercel'de canlı, production'da iki-sekme gerçek zamanlı demo doğrulandı (`/health` OK, DB bağlı).
+- Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres, Basic-256mb/5GB) + Prisma.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Yok — oturum kapatılıyor.
-- **Yarım kalan:** M0'ın tek kalan maddesi: "Deploy to staging" — Render'da gerçek Postgres, migration+seed, gerçek `JWT_SECRET`/`WEB_ORIGIN`, `apps/web`'in ayrı deploy'u.
-- **Sonraki adım:** Deploy görevine başla — kod tarafındaki tüm M0 kabul kriterleri karşılandı, sadece canlıya alma kaldı.
+- **Görev:** Yok — oturum kapatılıyor, M0 bitti.
+- **Yarım kalan:** Yok.
+- **Sonraki adım:** M1'e başla — `docs/milestones/M1-auth-invites.md`. Seed dev-login gerçek davetiye tabanlı kayıt ile değiştirilecek; TOTP (opsiyonel), access/refresh token, şifre sıfırlama, block-user. En büyük risk TOTP kurtarma UX'i (bkz. Tuzaklar).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
 
 ## Yakın zamanda alınan kararlar
+- 2026-07-29 — DB hosting: Render Postgres (Basic-256mb), Internal Database URL ile — Neon/Supabase değil (aynı platformda, ek hesap yok).
 - 2026-07-28 — WS transport: Socket.IO, native ws değil — bkz. `docs/decisions/ADR-0007`.
-- 2026-07-28 — Access token bellek-içi (React state) saklanıyor, localStorage/sessionStorage YOK — ADR-0002'nin httpOnly cookie hedefine uyumlu ara adım.
-- 2026-07-28 — Oda keşfi `GET /rooms` ile yapılıyor; frontend oda adını hardcode etmiyor.
+- 2026-07-28 — Access token bellek-içi (React state) saklanıyor, localStorage/sessionStorage YOK.
+- 2026-07-28 — M0'ın seed dev-login'i `ENABLE_DEV_LOGIN` env'i ile kapatılabilir hale getirildi (staging'de `true`) — M1'de tamamen kaldırılacak.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
-- TOTP kurtarma akışı gerçek bir davetten önce şahsen test edilmeli.
+- TOTP kurtarma akışı gerçek bir davetten önce şahsen test edilmeli — M1'in en büyük solo-destek riski.
 - `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
-- "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula — bu oturumda bir kez iddia yanlış çıktı (merge fiilen olmamıştı).
-- CI'da job-seviyesi env değişkenleri (örn. `PORT`) o job'daki TÜM adım/alt süreçlere sızar (`next start` da `PORT`'u önceliklendirir) — aynı job'da birden fazla uygulama çalışıyorsa env'i komut bazında scope'la (Playwright `webServer.env` gibi).
-- Prisma client'ın üretilmesi (`prisma generate`) **tek kaynaktan**, `apps/api/package.json`'daki `postinstall` script'inden gelir — her `npm install`/`npm ci`'da (Render, CI, lokal fark etmez) otomatik çalışır. Bunu buildCommand veya tek bir CI adımına gömmeye ÇALIŞMA: `prisma migrate deploy` (CI/prod) `migrate dev` (lokal) gibi generate'i otomatik çalıştırmaz.
-- Render servisi (`koqep-api`) Blueprint'e bağlı DEĞİL, "New Web Service" ile elle kuruldu (Blueprint Postgres ücret istediği için) — `render.yaml`'daki değişiklikler canlı servise OTOMATİK yansımaz, Build/Pre-Deploy Command ve env değişkenleri dashboard'dan elle girilmeli/güncellenmeli.
-- `.env`/`.env.*` dosyaları proje ayarlarında `Read` için engelli (güvenlik) — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz, `cat`/`Read` deneme.
+- "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula.
+- CI'da job-seviyesi env değişkenleri TÜM adım/alt süreçlere sızar — birden fazla uygulama aynı job'daysa env'i komut bazında scope'la.
+- Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i — her `npm install`/`npm ci`'da otomatik çalışır, buildCommand/CI adımına gömmeye çalışma.
+- Render servisi (`koqep-api`) Blueprint'e bağlı DEĞİL, elle kuruldu — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz, dashboard'dan elle güncellenmeli.
+- `.env`/`.env.*` dosyaları `Read` için engelli — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz.
