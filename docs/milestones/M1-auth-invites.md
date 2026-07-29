@@ -15,7 +15,7 @@
 - [x] A real external tester can redeem an invite code and create an account.
 - [x] TOTP is available and optional; enabling it issues recovery codes.
 - [x] Login issues an access + refresh token; refresh rotates correctly.
-- [ ] Password reset follows `docs/THREAT-MODEL.md` row 11: single-use/short-TTL reset link, email notification on reset, all sessions revoked on password change; if TOTP is enabled, reset alone does not grant login.
+- [x] Password reset follows `docs/THREAT-MODEL.md` row 11: single-use/short-TTL reset link, email notification on reset, all sessions revoked on password change; if TOTP is enabled, reset alone does not grant login.
 - [ ] A user can block another user, and blocked users can't message them.
 - [ ] Tests cover signup, login, TOTP setup+recovery, password reset, and block.
 
@@ -23,7 +23,7 @@
 - [x] Invite code model + redemption endpoint (founder-issued pool for now).
 - [x] Signup + login endpoints, access/refresh token issuance (ADR-0002).
 - [x] TOTP setup + recovery codes (optional).
-- [ ] Password reset flow with the THREAT-MODEL row-11 controls.
+- [x] Password reset flow with the THREAT-MODEL row-11 controls.
 - [ ] Block-user feature.
 - [ ] Tests for each flow.
 - [ ] Remove M0's seeded dev-login endpoint (`AuthController`, `POST /auth/dev-login`) and the `ENABLE_DEV_LOGIN` env-gate around it entirely — it issues a token with zero credentials and was only ever env-gated (`ENABLE_DEV_LOGIN=true` in staging) as an M0 stopgap, not a real access control.
@@ -89,3 +89,27 @@ Bu sırada bir "değeri 'false' yapmak yetmedi, değişkeni silmek gerekti" göz
 
 ### Sıradaki
 Slice C (şifre sıfırlama), Slice D (block-user), Slice E (frontend + dev-login kaldırma).
+
+---
+
+## Plan notları — Slice C: şifre sıfırlama (THREAT-MODEL satır 11)
+
+**Görev:** `POST /auth/password-reset/{request,confirm}` — tek kullanımlık/kısa ömürlü link, e-posta bildirimi, şifre değişince tüm oturumların iptali.
+
+**Kapsam kararı (kullanıcıyla netleştirildi):** Gerçek Resend entegrasyonu bu slice'ın kapsamında — mock'lanıp ertelenmedi, çünkü THREAT-MODEL satır 11'in "e-posta bildirimi" kontrolü kozmetik değil, kontrolün kendisi. Domain doğrulama/SPF/DKIM/DMARC kapsam DIŞI — DNS seviyesinde, sadece kullanıcı yapabilir; `docs/milestones/M6-launch-readiness.md`'ye görev olarak eklendi (daha önce hiçbir yerde yoktu, `docs/BACKLOG.md` A11 sadece işaretlemişti). Yalnızca bir Resend hesabı + API key yeterli — Resend'in paylaşımlı `onboarding@resend.dev` adresinden domain'siz gönderim yapılabiliyor.
+
+**Yeni bağımlılık (onaylı):** `resend` — SDK, konstrüktörde API key zorunlu (`new Resend(undefined)` fırlatıyor, herhangi bir string fırlatmıyor — bu yüzden `ConfigService.get('RESEND_API_KEY') ?? 'unset-in-local-dev'` fallback'i şart, yoksa RESEND_API_KEY ayarlanmamış her makinede TÜM e2e testler kırılırdı, sadece şifre sıfırlama değil).
+
+**Bulunan bir API detayı:** Resend SDK hata durumunda fırlatmıyor, `{data, error}` döndürüyor — `EmailService` bunu kontrol edip elle `throw` ediyor, yoksa `AuthService`'teki catch-ve-logla tasarımı hiç tetiklenmezdi.
+
+**Şema:** Yeni `PasswordResetToken` (nullable alan yok, yeni tablo — Slice A'daki gibi expand/contract gerekmedi). `signup.dto.ts`'teki `MIN_PASSWORD_LENGTH`/`MAX_PASSWORD_LENGTH` export edildi, `ConfirmPasswordResetDto` aynı sabitleri kullanıyor (iki ayrı sabit yerine).
+
+**Enumeration'a karşı tasarım:** `requestPasswordReset` her zaman `{ok:true}` döner — kullanıcı bulunamasa da, e-posta gönderimi başarısız olsa da. Sadece e-posta gönderim hataları yutulup loglanıyor (Nest'in yerleşik `Logger`'ı, yeni bağımlılık yok); DB gibi gerçek altyapı hataları hâlâ fırlatılıyor (onlar enumeration riski taşımıyor, tüm istekleri eşit etkiliyor).
+
+**"Sıfırlama tek başına giriş sağlamaz" (TOTP açık olsun olmasın):** Özel bir dallanma yerine yapısal bir sonuç — `confirmPasswordReset` hiçbir zaman token döndürmüyor, kullanıcı ayrıca `/auth/login`'e gidiyor (TOTP kontrolü zaten orada, Slice B'den beri).
+
+### Doğrulama
+`npm run lint && npm run typecheck && npm test && npm run test:e2e --workspace=apps/api && npm run build` (apps/api) + `apps/web`'in `test:e2e:fullstack`'i — hepsi yeşil. E2e test gerçek bir network çağrısı yapmıyor — `EmailService` Nest'in `overrideProvider`'ıyla değiştirilip reset linkini/token'ı network'e çıkmadan yakalıyor.
+
+### Sıradaki
+Slice D (block-user), Slice E (frontend + dev-login kaldırma).

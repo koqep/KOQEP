@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -11,6 +12,8 @@ import { PrismaService } from '../db/prisma.service';
 import { DEV_USER_EMAIL } from '../db/dev-seed.constants';
 import { InvitesService } from './invites.service';
 import { TotpService } from './totp.service';
+import { PasswordResetService } from './password-reset.service';
+import { EmailService } from './email.service';
 import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
@@ -25,11 +28,15 @@ export interface TokenPair {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly invitesService: InvitesService,
     private readonly totpService: TotpService,
+    private readonly passwordResetService: PasswordResetService,
+    private readonly emailService: EmailService,
   ) {}
 
   async issueDevLoginToken(): Promise<{ accessToken: string }> {
@@ -155,6 +162,91 @@ export class AuthService {
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  // Kasıtlı olarak her zaman "başarılı" davranır (istisnası: e-posta
+  // gönderim hatasını loglar, fırlatmaz) — kullanıcı bulunamadıysa veya
+  // e-posta gönderimi başarısız olduysa client'a farklı bir sonuç
+  // dönmek, bu endpoint üzerinden hangi e-postaların kayıtlı olduğunu
+  // sızdırır (THREAT-MODEL satır 11'in "no enumeration" gereksinimi).
+  // Gerçek altyapı hatalarını (DB çökmesi vb.) yutmuyoruz — onlar tüm
+  // isteklerde eşit etkili, enumeration riski taşımıyor.
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return;
+    }
+
+    const rawToken = await this.passwordResetService.createResetToken(user.id);
+    const resetLink = `${process.env.WEB_ORIGIN}/reset-password?token=${rawToken}`;
+
+    try {
+      await this.emailService.sendPasswordResetRequestEmail(
+        user.email,
+        resetLink,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Şifre sıfırlama e-postası gönderilemedi: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  async confirmPasswordReset(
+    rawToken: string,
+    newPassword: string,
+  ): Promise<void> {
+    const tokenHash = sha256Hex(rawToken);
+    const stored = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException(
+        'Geçersiz veya süresi dolmuş sıfırlama bağlantısı.',
+      );
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: { id: stored.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        throw new UnauthorizedException(
+          'Geçersiz veya süresi dolmuş sıfırlama bağlantısı.',
+        );
+      }
+
+      await tx.user.update({
+        where: { id: stored.userId },
+        data: { passwordHash },
+      });
+
+      // THREAT-MODEL satır 11: şifre değişince tüm aktif oturumlar iptal
+      // edilir. Bu endpoint hiçbir zaman token döndürmez (TOTP açık olsun
+      // olmasın) — "sıfırlama tek başına giriş sağlamaz" burada özel bir
+      // dallanma değil, yapısal bir sonuç: kullanıcı ayrıca /auth/login'e
+      // gitmeli, TOTP kontrolü zaten orada uygulanıyor (Slice B).
+      await tx.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: stored.userId },
+    });
+
+    try {
+      await this.emailService.sendPasswordChangedNotificationEmail(user.email);
+    } catch (error) {
+      this.logger.error(
+        `Şifre değişikliği bildirimi gönderilemedi: ${(error as Error).message}`,
+      );
+    }
   }
 
   private async issueTokenPair(

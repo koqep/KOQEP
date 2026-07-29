@@ -25,11 +25,12 @@ model User {
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
   invitees  User[]  @relation("UserInvitedBy")
 
-  messages          Message[]
-  issuedInvites     Invite[]          @relation("InviteIssuer")
-  usedInvite        Invite?           @relation("InviteRedeemer")
-  refreshTokens     RefreshToken[]
-  totpRecoveryCodes TotpRecoveryCode[]
+  messages            Message[]
+  issuedInvites       Invite[]             @relation("InviteIssuer")
+  usedInvite          Invite?              @relation("InviteRedeemer")
+  refreshTokens       RefreshToken[]
+  totpRecoveryCodes   TotpRecoveryCode[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Invite {
@@ -62,6 +63,19 @@ model TotpRecoveryCode {
   id        String    @id @default(uuid())
   codeHash  String    @unique
   createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
   usedAt    DateTime?
 
   userId String
