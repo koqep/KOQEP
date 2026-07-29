@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { login, signup, ApiError, type TokenPair } from "../../lib/api";
+import {
+  login,
+  signup,
+  requestPasswordReset,
+  ApiError,
+  type TokenPair,
+} from "../../lib/api";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot-password";
 
 interface Props {
   onAuthenticated: (tokens: TokenPair) => void;
@@ -19,6 +25,7 @@ export default function AuthView({ onAuthenticated }: Props) {
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
+  const [resetRequested, setResetRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,6 +34,7 @@ export default function AuthView({ onAuthenticated }: Props) {
     setError(null);
     setTotpRequired(false);
     setTotpCode("");
+    setResetRequested(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -35,6 +43,15 @@ export default function AuthView({ onAuthenticated }: Props) {
     setIsSubmitting(true);
 
     try {
+      if (mode === "forgot-password") {
+        await requestPasswordReset(email);
+        // Backend her zaman ok:true döner, e-posta kayıtlı olsun olmasın
+        // (THREAT-MODEL satır 11, enumeration'a karşı) - arayüz de aynı
+        // nötr mesajı gösterir, "bulundu/bulunamadı" ima etmez.
+        setResetRequested(true);
+        return;
+      }
+
       const tokens =
         mode === "signup"
           ? await signup({ inviteCode, email, password })
@@ -65,76 +82,109 @@ export default function AuthView({ onAuthenticated }: Props) {
         <span className="text-neutral-600">#</span> koqep
       </h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {mode === "signup" && (
+      {mode === "forgot-password" && resetRequested ? (
+        <p className="text-neutral-400">
+          Bu e-posta kayıtlıysa bir sıfırlama bağlantısı gönderildi.
+        </p>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {mode === "signup" && (
+            <label className="flex flex-col gap-1 text-neutral-500">
+              davet kodu
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+                required
+                className={inputClassName}
+              />
+            </label>
+          )}
+
           <label className="flex flex-col gap-1 text-neutral-500">
-            davet kodu
+            e-posta
             <input
-              type="text"
-              value={inviteCode}
-              onChange={(event) => setInviteCode(event.target.value)}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
               className={inputClassName}
             />
           </label>
-        )}
 
-        <label className="flex flex-col gap-1 text-neutral-500">
-          e-posta
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className={inputClassName}
-          />
-        </label>
+          {mode !== "forgot-password" && (
+            <label className="flex flex-col gap-1 text-neutral-500">
+              şifre
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                className={inputClassName}
+              />
+            </label>
+          )}
 
-        <label className="flex flex-col gap-1 text-neutral-500">
-          şifre
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            className={inputClassName}
-          />
-        </label>
+          {mode === "login" && totpRequired && (
+            <label className="flex flex-col gap-1 text-neutral-500">
+              totp kodu
+              <input
+                type="text"
+                value={totpCode}
+                onChange={(event) => setTotpCode(event.target.value)}
+                required
+                autoFocus
+                className={inputClassName}
+              />
+            </label>
+          )}
 
-        {totpRequired && (
-          <label className="flex flex-col gap-1 text-neutral-500">
-            totp kodu
-            <input
-              type="text"
-              value={totpCode}
-              onChange={(event) => setTotpCode(event.target.value)}
-              required
-              autoFocus
-              className={inputClassName}
-            />
-          </label>
-        )}
+          {error && <p className="text-red-400">{error}</p>}
 
-        {error && <p className="text-red-400">{error}</p>}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {mode === "signup"
+              ? "kayıt ol"
+              : mode === "forgot-password"
+                ? "gönder"
+                : "giriş yap"}
+          </button>
+        </form>
+      )}
 
+      {mode === "forgot-password" ? (
         <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+          type="button"
+          onClick={() => switchMode("login")}
+          className="mt-4 text-neutral-600 hover:text-neutral-400"
         >
-          {mode === "signup" ? "kayıt ol" : "giriş yap"}
+          girişe dön
         </button>
-      </form>
-
-      <button
-        type="button"
-        onClick={() => switchMode(mode === "login" ? "signup" : "login")}
-        className="mt-4 text-neutral-600 hover:text-neutral-400"
-      >
-        {mode === "login"
-          ? "hesabın yok mu? kayıt ol"
-          : "zaten hesabın var mı? giriş yap"}
-      </button>
+      ) : (
+        <>
+          {mode === "login" && (
+            <button
+              type="button"
+              onClick={() => switchMode("forgot-password")}
+              className="mt-4 text-neutral-600 hover:text-neutral-400"
+            >
+              şifreni mi unuttun?
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+            className="mt-2 text-neutral-600 hover:text-neutral-400"
+          >
+            {mode === "login"
+              ? "hesabın yok mu? kayıt ol"
+              : "zaten hesabın var mı? giriş yap"}
+          </button>
+        </>
+      )}
     </main>
   );
 }

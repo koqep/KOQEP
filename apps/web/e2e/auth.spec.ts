@@ -90,3 +90,23 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
   expect(loginCallCount).toBe(2);
 });
+
+test("sifremi_unuttum_gonderince_notr_mesaj_gosterir", async ({ page }) => {
+  await page.route("**/auth/password-reset/request", (route) =>
+    route.fulfill({ json: { ok: true } }),
+  );
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "şifreni mi unuttun?" }).click();
+
+  await expect(page.getByLabel("şifre")).toHaveCount(0);
+  await page.getByLabel("e-posta").fill("test@koqep.local");
+  await page.getByRole("button", { name: "gönder" }).click();
+
+  await expect(
+    page.getByText("Bu e-posta kayıtlıysa bir sıfırlama bağlantısı gönderildi."),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "girişe dön" }).click();
+  await expect(page.getByRole("button", { name: "giriş yap" })).toBeVisible();
+});

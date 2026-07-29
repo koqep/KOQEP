@@ -8,13 +8,13 @@
 
 ## Şu an ne çalışıyor
 - **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, ayrıca bu oturumda bu makinede bağımsız olarak yeniden doğrulandı (lint/typecheck/build/unit/e2e/fullstack-e2e hepsi yeşil).
-- **M1 Slice A+B+C+D — backend TAMAMLANDI**; **Slice E1 — frontend auth kabuğu (signup+login UI) TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `apps/web` artık gerçek `/auth/signup`+`/auth/login` kullanıyor, dev-login'i mount'ta çağırmıyor. Dev-login backend'i (`DevAuthController`) hâlâ duruyor, bilerek — E5'e kadar silinmeyecek. Şifre sıfırlama/TOTP/block UI'ları henüz yok (E2-E4).
+- **M1 Slice A+B+C+D — backend TAMAMLANDI**; **Slice E1 (auth kabuğu) + E2 (şifre sıfırlama UI) — frontend TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `apps/web` artık gerçek `/auth/signup`+`/auth/login`+`/auth/password-reset/{request,confirm}` kullanıyor, dev-login'i mount'ta çağırmıyor. Yeni `/reset-password` route'u var. Dev-login backend'i (`DevAuthController`) hâlâ duruyor, bilerek — E5'e kadar silinmeyecek. TOTP/block UI'ları henüz yok (E3-E4).
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres, Basic-256mb/5GB) + Prisma + Resend (e-posta, `koqep.com` doğrulanmış).
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M1 Slice E devam ediyor (E1 bitti, E2-E5 kaldı).
-- **Yarım kalan:** Slice A-D + E1 bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
-- **Sonraki adım:** E2 — şifre sıfırlama UI (yeni `/reset-password` route'u gerekecek, E1'de yoktu). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
+- **Görev:** M1 Slice E devam ediyor (E1-E2 bitti, E3-E5 kaldı).
+- **Yarım kalan:** Slice A-D + E1-E2 bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
+- **Sonraki adım:** E3 — TOTP kurulum/kapatma UI. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -31,6 +31,7 @@
 - 2026-07-29 — `koqep.com` Cloudflare üzerinden Resend'e bağlandı, SPF/DKIM/DMARC auto-configure ile eklendi, "Verified". M6'daki ilgili madde erken tamamlandı olarak işaretlendi (bkz. `docs/milestones/M6-launch-readiness.md`). `EMAIL_FROM_ADDRESS=noreply@koqep.com` kullanıcı tarafından `.env`'e eklenecek.
 - 2026-07-29 — M1 Slice D: block tek yönlü ve sessiz, tek paylaşımlı oda mimarisine göre — engellenen kullanıcı odaya yazmaya devam eder, sadece engelleyene ulaşmaz (ne geçmişte ne WS'te). DM yok, moderatör mute/ban M5'e kadar kapsam dışı.
 - 2026-07-29 — M1 Slice E kullanıcıyla E1-E5'e bölündü (tek dev-adımlık iş çok büyüktü). E1: `AuthService.login()`'in 401'leri artık `{code: 'INVALID_CREDENTIALS'|'TOTP_REQUIRED'}` taşıyor (Slice B'nin bilerek ertelediği karar) — frontend mesaj metnine değil `code`'a bakıyor.
+- 2026-07-29 — M1 Slice E2: şifre sıfırlama request adımı `AuthView`'da üçüncü bir `mode` (signup'a paralel), confirm adımı yeni `/reset-password` route'u (ilk gerçek Next.js routing ihtiyacı, `useSearchParams()` + `<Suspense>`). Gerçek e-posta ile fullstack test eklenmedi — Slice C'nin kendi `overrideProvider` tabanlı e2e testi backend akışını zaten kanıtlıyor.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.

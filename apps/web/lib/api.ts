@@ -54,3 +54,14 @@ export function login(input: {
 export async function logout(refreshToken: string): Promise<void> {
   await postJson("/auth/logout", { refreshToken });
 }
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await postJson("/auth/password-reset/request", { email });
+}
+
+export async function confirmPasswordReset(
+  token: string,
+  newPassword: string,
+): Promise<void> {
+  await postJson("/auth/password-reset/confirm", { token, newPassword });
+}

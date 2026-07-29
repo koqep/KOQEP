@@ -157,3 +157,47 @@ Her iki workspace: `apps/api` lint/typecheck/unit(59)/e2e(22)/build; `apps/web` 
 
 ### Sıradaki
 E2 (şifre sıfırlama UI) — ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice E2: şifre sıfırlama UI
+
+**Görev:** Slice C'de hazır olan iki endpoint'in (`POST /auth/password-reset/request`,
+`POST /auth/password-reset/confirm`) frontend'i. İki farklı akış olduğundan iki farklı
+yerde yaşıyorlar: "request" adımı (sadece e-posta) `AuthView`'da üçüncü bir `mode`
+(`forgot-password`) olarak eklendi — signup'a paralel bir toggle. "confirm" adımı ise
+kullanıcı bu cihazda oturum açmamış durumdayken e-postadaki linkten geliyor, o yüzden
+gerçek bir route gerekiyordu: yeni `apps/web/app/reset-password/page.tsx` +
+`app/components/ResetPasswordView.tsx`.
+
+**Anti-enumeration UI'da da korundu:** Backend `request` endpoint'i e-posta kayıtlı
+olsun olmasın her zaman `{ok:true}` döner (THREAT-MODEL satır 11). UI da aynı nötr
+mesajı gösteriyor — "Bu e-posta kayıtlıysa bir sıfırlama bağlantısı gönderildi." —
+"bulundu/bulunamadı" ima eden hiçbir dallanma yok.
+
+**Next.js detayı:** `/reset-password` route'u `useSearchParams()` kullanıyor, bu App
+Router'da `<Suspense>` sınırı gerektiriyor (build sırasında doğrulandı — static prerender
+başarılı). Route dosyası sadece Suspense sarmalayıcısı, gerçek form/mantık
+`ResetPasswordView.tsx`'te.
+
+**Bilinçli kapsam dışı:** Şifre tekrar alanı yok (backend istemiyor, hiçbir tüketici
+talep etmedi). Gerçek e-posta ile uçtan uca fullstack test yok — token'ı gerçek bir
+e-postadan yakalayacak bir test altyapısı yok ve gerekçesi de yok; Slice C'nin kendi
+`password-reset.e2e-spec.ts`'i (`overrideProvider` ile) zaten gerçek backend akışını
+kanıtlıyor. Frontend'in işi sadece iki endpoint'i doğru çağırıp yanıtı doğru işlemek,
+bunu mock'lu testler tam kapsıyor.
+
+**Dokunulan/yeni testler:** `e2e/auth.spec.ts`'e eklendi:
+`sifremi_unuttum_gonderince_notr_mesaj_gosterir` ("şifreni mi unuttun?" linki forma
+geçiyor, gönderince nötr mesaj görünüyor, "girişe dön" login'e geri dönüyor). Yeni
+`e2e/reset-password.spec.ts` (3 test): token'sız URL "geçersiz bağlantı" gösteriyor,
+geçerli token + başarılı mock "şifren güncellendi" + login'e link gösteriyor, başarısız
+mock (400) backend'in kendi hata mesajını gösteriyor.
+
+### Doğrulama
+Her iki workspace: `apps/api` lint/typecheck/unit(59)/e2e(22)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(8, mock'lu)/`test:e2e:fullstack`(1, gerçek) — hepsi ilk
+denemede yeşil.
+
+### Sıradaki
+E3 (TOTP UI) — ayrı bir plan modu turu alacak.
