@@ -54,6 +54,13 @@ async function authedPostJson<T>(
   });
 }
 
+async function authedGetJson<T>(path: string, accessToken: string): Promise<T> {
+  return sendJson<T>(path, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 export function signup(input: {
   inviteCode: string;
   email: string;
@@ -108,4 +115,22 @@ export async function disableTotp(
   totpCode: string,
 ): Promise<void> {
   await authedPostJson("/auth/totp/disable", accessToken, { totpCode });
+}
+
+export async function blockUser(
+  accessToken: string,
+  email: string,
+): Promise<void> {
+  await authedPostJson("/users/block", accessToken, { email });
+}
+
+export async function unblockUser(
+  accessToken: string,
+  email: string,
+): Promise<void> {
+  await authedPostJson("/users/unblock", accessToken, { email });
+}
+
+export function listBlockedUsers(accessToken: string): Promise<string[]> {
+  return authedGetJson<string[]>("/users/blocked", accessToken);
 }

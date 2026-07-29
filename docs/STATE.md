@@ -8,13 +8,13 @@
 
 ## Şu an ne çalışıyor
 - **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, ayrıca bu oturumda bu makinede bağımsız olarak yeniden doğrulandı (lint/typecheck/build/unit/e2e/fullstack-e2e hepsi yeşil).
-- **M1 Slice A+B+C+D — backend TAMAMLANDI**; **Slice E1 (auth kabuğu) + E2 (şifre sıfırlama UI) + E3 (TOTP kurulum/kapatma UI) — frontend TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `apps/web` artık gerçek `/auth/signup`+`/auth/login`+`/auth/password-reset/{request,confirm}`+`/auth/totp/{setup,enable,disable}` kullanıyor, dev-login'i mount'ta çağırmıyor. Yeni `/reset-password` route'u var; TOTP kurulumu `RoomView` içindeki bir panel (yeni route değil). Dev-login backend'i (`DevAuthController`) hâlâ duruyor, bilerek — E5'e kadar silinmeyecek. Block UI'ı henüz yok (E4).
+- **M1 Slice A+B+C+D — backend TAMAMLANDI**; **Slice E1 (auth kabuğu) + E2 (şifre sıfırlama UI) + E3 (TOTP kurulum/kapatma UI) + E4 (block/unblock UI) — frontend TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `apps/web` artık gerçek `/auth/signup`+`/auth/login`+`/auth/password-reset/{request,confirm}`+`/auth/totp/{setup,enable,disable}`+`/users/{block,unblock,blocked}` kullanıyor, dev-login'i mount'ta çağırmıyor. Yeni `/reset-password` route'u var; TOTP kurulumu ve engellenenler yönetimi `RoomView` içinde birbirini dışlayan paneller (yeni route değil). Dev-login backend'i (`DevAuthController`) hâlâ duruyor, bilerek — E5'e kadar silinmeyecek.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres, Basic-256mb/5GB) + Prisma + Resend (e-posta, `koqep.com` doğrulanmış).
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M1 Slice E devam ediyor (E1-E3 bitti, E4-E5 kaldı).
-- **Yarım kalan:** Slice A-D + E1-E3 bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
-- **Sonraki adım:** E4 — block/unblock UI. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
+- **Görev:** M1 Slice E devam ediyor (E1-E4 bitti, sadece E5 kaldı).
+- **Yarım kalan:** Slice A-D + E1-E4 bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
+- **Sonraki adım:** E5 — dev-login'in tamamen kaldırılması (Slice E'nin son parçası). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -33,6 +33,7 @@
 - 2026-07-29 — M1 Slice E kullanıcıyla E1-E5'e bölündü (tek dev-adımlık iş çok büyüktü). E1: `AuthService.login()`'in 401'leri artık `{code: 'INVALID_CREDENTIALS'|'TOTP_REQUIRED'}` taşıyor (Slice B'nin bilerek ertelediği karar) — frontend mesaj metnine değil `code`'a bakıyor.
 - 2026-07-29 — M1 Slice E2: şifre sıfırlama request adımı `AuthView`'da üçüncü bir `mode` (signup'a paralel), confirm adımı yeni `/reset-password` route'u (ilk gerçek Next.js routing ihtiyacı, `useSearchParams()` + `<Suspense>`). Gerçek e-posta ile fullstack test eklenmedi — Slice C'nin kendi `overrideProvider` tabanlı e2e testi backend akışını zaten kanıtlıyor.
 - 2026-07-29 — M1 Slice E3: TOTP UI `RoomView` içinde bir panel (yeni route değil, oturum gerektiriyor); QR için yeni bağımlılık `qrcode-terminal` (ASCII/terminal render, onaylandı). TOTP-açık-mı durumu backend'den sorulmuyor — login'in TOTP istemiş olması zaten cevap. Tam kilitlenme (authenticator + 8 kod birden kaybolursa) için kod yazılmadı, `docs/THREAT-MODEL.md`'ye elle-DB-fix runbook notu eklendi (somut tetikleyiciyle gerçek admin endpoint'ine geçiş planı).
+- 2026-07-29 — M1 Slice E4: engelleme sadece elle email girerek (kullanıcının kararı) — mesaj render'ına gönderen email'i eklenmedi, mesaj üzerinden "engelle" aksiyonu yok. `RoomView`'ın panel state'i `showTotpSettings: boolean`'dan `activePanel: "none"|"totp"|"blocked"` union'ına refactor edildi (iki bağımsız boolean karşılıklı dışlamayı garanti etmezdi).
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.

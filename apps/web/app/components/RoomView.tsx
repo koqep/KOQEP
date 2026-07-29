@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { io, Socket } from "socket.io-client";
 import { logout } from "../../lib/api";
 import TotpSettingsView from "./TotpSettingsView";
+import BlockedUsersView from "./BlockedUsersView";
+
+type ActivePanel = "none" | "totp" | "blocked";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const MAX_MESSAGE_LENGTH = 2000;
@@ -38,7 +41,7 @@ export default function RoomView({
   const [draft, setDraft] = useState("");
   const [isReady, setIsReady] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
-  const [showTotpSettings, setShowTotpSettings] = useState(false);
+  const [activePanel, setActivePanel] = useState<ActivePanel>("none");
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -128,10 +131,17 @@ export default function RoomView({
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => setShowTotpSettings(true)}
+            onClick={() => setActivePanel("totp")}
             className="text-neutral-600 hover:text-neutral-400"
           >
             iki adımlı doğrulama
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePanel("blocked")}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            engellenenler
           </button>
           <button
             type="button"
@@ -143,12 +153,17 @@ export default function RoomView({
         </div>
       </header>
 
-      {showTotpSettings ? (
+      {activePanel === "totp" ? (
         <TotpSettingsView
           accessToken={accessToken}
           initialEnabled={totpEnabled}
           onEnabledChange={setTotpEnabled}
-          onClose={() => setShowTotpSettings(false)}
+          onClose={() => setActivePanel("none")}
+        />
+      ) : activePanel === "blocked" ? (
+        <BlockedUsersView
+          accessToken={accessToken}
+          onClose={() => setActivePanel("none")}
         />
       ) : (
         <>

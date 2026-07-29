@@ -266,3 +266,62 @@ denemede yeşil.
 
 ### Sıradaki
 E4 (block/unblock UI) — ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice E4: block/unblock UI
+
+**Görev:** Slice D'de hazır olan üç endpoint'in (`POST /users/block`, `POST
+/users/unblock`, `GET /users/blocked`, hepsi `JwtAuthGuard` ile korumalı) frontend'i.
+Hedef kullanıcı **email ile** belirtiliyor — backend'de user-list/search endpoint'i yok,
+`MessageDto` da hiçbir zaman `authorId` döndürmüyor, sadece `authorEmail`; yani email
+zaten frontend'in erişebildiği tek kimlik alanı.
+
+**Mesaj filtreleme frontend'de hiç iş gerektirmedi.** `messages.service.ts`'teki
+`OR`-tabanlı null-safe Prisma filtresi ve `messages.gateway.ts`'teki oda-geneli değil
+soket-bazlı `emit` doğrulandı: engellenen kullanıcının mesajları hem geçmişte hem
+gerçek zamanlı akışta zaten sunucu tarafında tamamen yok — frontend'in "engellenen
+kullanıcıdan mesaj" diye gri gösterecek/gizleyecek hiçbir şeyi yok.
+
+**UX kapsamı, kullanıcıyla netleştirildi:** mesaj render'ı dokunulmadan kaldı (gönderen
+email'i mesajların yanında gösterilmiyor, mesaj üzerinden "engelle" aksiyonu yok).
+Engelleme sadece elle email girerek — `TotpSettingsView` ile aynı desende yeni bir
+ayarlar paneli: email gir, engelle; aynı panelde mevcut engellenenler listesi ve
+"engeli kaldır".
+
+**`RoomView.tsx` panel state'i refactor edildi:** tek `showTotpSettings: boolean`
+yerine `activePanel: "none" | "totp" | "blocked"` union'ı — ikinci bir bağımsız boolean
+eklemek iki panelin aynı anda render edilmesine izin verirdi (hiçbir şey karşılıklı
+dışlamayı garanti etmiyordu). Bu, zaten test edilmiş E3 koduna davranış değiştirmeyen
+küçük bir refactor — `totp-settings.spec.ts` hiç dokunulmadan yeniden çalıştırılıp
+hâlâ geçtiği doğrulandı, ayrıca yeni bir regresyon testiyle ("iki adımlı doğrulama"
+paneli açıkken "engellenenler"e tıklayınca birinin kaybolup diğerinin görünmesi)
+karşılıklı dışlamanın gerçekten çalıştığı kanıtlandı.
+
+**`lib/api.ts`:** ilk kez bir `authedGetJson` yardımcısı eklendi (önceden `GET
+/rooms`/`GET /rooms/:name/messages` `RoomView.tsx` içinde ham `fetch` ile çağrılıyordu
+— TOTP çağrılarının izlediği tipli-wrapper deseniyle tutarlı olsun diye). Yeni
+export'lar: `blockUser`, `unblockUser`, `listBlockedUsers`.
+
+**Yeni komponent:** `apps/web/app/components/BlockedUsersView.tsx` —
+`TotpSettingsView`'daki tüm konvansiyonları tekrarlıyor (aynı `accessToken`/`onClose`
+prop şekli, aynı hata gösterimi, aynı panel başlığı/`kapat` düzeni). Mount'ta
+`listBlockedUsers` ile listeyi çekiyor; engelleme/kaldırma optimistic güncelleniyor
+(yeniden fetch yok).
+
+**Dokunulan/yeni testler:** Yeni `e2e/blocked-users.spec.ts` (7 test, mock'lu): liste
+boşken boş durum mesajı; mevcut engellenenler listede görünüyor; email girip
+engelleyince listeye ekleniyor (input temizleniyor); bilinmeyen email hata gösteriyor
+(liste değişmiyor); "engeli kaldır" listeden çıkarıyor; "kapat" sohbet ekranına
+dönüyor; iki panelin karşılıklı dışlandığı (yukarıdaki regresyon testi).
+
+### Doğrulama
+Her iki workspace: `apps/api` lint/typecheck/unit(59)/e2e(22)/build (bu slice'tan
+etkilenmiyor, yine de yeniden çalıştırıldı); `apps/web`
+lint/typecheck/build/`test:e2e`(21, mock'lu)/`test:e2e:fullstack`(1, gerçek) — hepsi
+ilk denemede yeşil (bir testte `getByRole` substring eşleşmesi yüzünden "engelle" ile
+"engellenenler" çakıştı, `exact: true` ile düzeltildi).
+
+### Sıradaki
+E5 (dev-login'in tamamen kaldırılması) — ayrı bir plan modu turu alacak, Slice E'nin
+son alt-parçası.
