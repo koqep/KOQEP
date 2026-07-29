@@ -14,6 +14,7 @@ import {
   MAX_MESSAGE_LENGTH,
   MessagesService,
 } from '../services/messages.service';
+import { BlocksService } from '../services/blocks.service';
 
 interface SocketData {
   userId: string;
@@ -30,6 +31,7 @@ export class MessagesGateway implements OnGatewayConnection {
   constructor(
     private readonly authService: AuthService,
     private readonly messagesService: MessagesService,
+    private readonly blocksService: BlocksService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -81,6 +83,19 @@ export class MessagesGateway implements OnGatewayConnection {
     }
 
     const message = await this.messagesService.sendMessage(userId, content);
-    this.server.to(roomId).emit('message:new', message);
+
+    // Blanket oda broadcast'i yerine bilerek tek tek emit ediyoruz: bu
+    // yazarı engellemiş kullanıcıların socket'lerine mesaj hiç ulaşmamalı
+    // (block-user özelliği, M1 Slice D).
+    const blockerIds = new Set(
+      await this.blocksService.getBlockerIdsOf(userId),
+    );
+    const socketsInRoom = await this.server.in(roomId).fetchSockets();
+    for (const socket of socketsInRoom) {
+      const socketData = socket.data as SocketData;
+      if (!blockerIds.has(socketData.userId)) {
+        socket.emit('message:new', message);
+      }
+    }
   }
 }

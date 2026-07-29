@@ -16,16 +16,16 @@
 - [x] TOTP is available and optional; enabling it issues recovery codes.
 - [x] Login issues an access + refresh token; refresh rotates correctly.
 - [x] Password reset follows `docs/THREAT-MODEL.md` row 11: single-use/short-TTL reset link, email notification on reset, all sessions revoked on password change; if TOTP is enabled, reset alone does not grant login.
-- [ ] A user can block another user, and blocked users can't message them.
-- [ ] Tests cover signup, login, TOTP setup+recovery, password reset, and block.
+- [x] A user can block another user, and blocked users can't message them.
+- [x] Tests cover signup, login, TOTP setup+recovery, password reset, and block.
 
 ## Tasks
 - [x] Invite code model + redemption endpoint (founder-issued pool for now).
 - [x] Signup + login endpoints, access/refresh token issuance (ADR-0002).
 - [x] TOTP setup + recovery codes (optional).
 - [x] Password reset flow with the THREAT-MODEL row-11 controls.
-- [ ] Block-user feature.
-- [ ] Tests for each flow.
+- [x] Block-user feature.
+- [x] Tests for each flow.
 - [ ] Remove M0's seeded dev-login endpoint (`AuthController`, `POST /auth/dev-login`) and the `ENABLE_DEV_LOGIN` env-gate around it entirely — it issues a token with zero credentials and was only ever env-gated (`ENABLE_DEV_LOGIN=true` in staging) as an M0 stopgap, not a real access control.
 
 ## Risks
@@ -113,3 +113,25 @@ Slice C (şifre sıfırlama), Slice D (block-user), Slice E (frontend + dev-logi
 
 ### Sıradaki
 Slice D (block-user), Slice E (frontend + dev-login kaldırma).
+
+---
+
+## Plan notları — Slice D: block-user
+
+**Görev:** Bir kullanıcı diğerini engelleyebilir, engellenenin mesajları engelleyene ulaşmaz.
+
+**Kapsam kararı (bilerek netleştirildi):** Uygulamada tek bir paylaşımlı oda var (`genel`), DM/özel mesajlaşma yok — THREAT-MODEL satır 10'un bahsettiği DM bağlamı henüz mevcut değil. Bu yüzden "engellenen mesaj gönderemez" şu şekilde uygulandı: engellenen kullanıcının mesajları SADECE engelleyene ulaşmıyor (hem geçmişte hem gerçek zamanlı) — odadaki herkes başkası normal şekilde görmeye devam ediyor. Engel tek yönlü ve sessiz (engellenen bilgilendirilmiyor, odaya yazmaktan alıkonulmuyor — bu bir moderatör aksiyonu olurdu, M5'e kadar kapsam dışı). Mevcut mimariye göre doğru minimum yorum bu — var olmayan bir DM-engelleme özelliğinin sulandırılmışı değil.
+
+**Şema:** Yeni `Block` (`@@unique([blockerId, blockedId])` — idempotent engelleme/kaldırma, tekrar satırı yok). Nullable alan yok, yeni tablo — Slice A'daki gibi expand/contract gerekmedi.
+
+**Kullanıcılar email ile referanslanıyor, id ile değil:** `MessageDto` şu an sadece `authorEmail` döndürüyor, `authorId` hiçbir yerde client'a açık değil — bu yüzden `POST /users/block`/`unblock` da `{email}` alıyor, gelecekteki frontend'in gerçekten kullanabileceği tek tanımlayıcı bu.
+
+**Geçmiş filtreleme (`MessagesService.getRecentMessages`):** Bare `notIn` yerine bilerek `OR: [{authorId: null}, {authorId: {notIn: blockedIds}}]` kullanıldı — SQL'in `NOT IN` + NULL semantiği sürpriz yapabilir (`NULL NOT IN (...)` SQL'de `NULL` değerlendirilip satırı sessizce dışarıda bırakabilir), `authorId` nullable (ADR-0005, anonimleştirilmiş yazar) — açık OR, anonimleşmiş mesajların kimse için yanlışlıkla kaybolmayacağını garanti ediyor.
+
+**Gerçek zamanlı filtreleme (`MessagesGateway.handleMessageSend`):** Eskiden `this.server.to(roomId).emit(...)` ile blanket broadcast yapılıyordu. Artık `this.server.in(roomId).fetchSockets()` ile odadaki socket'ler tek tek geziliyor, mesajın yazarını engelleyenlerin socket'i atlanıyor, gerisine ayrı ayrı `emit` ediliyor.
+
+### Doğrulama
+`npm run lint && npm run typecheck && npm test && npm run test:e2e --workspace=apps/api && npm run build` (apps/api) + `apps/web`'in `test:e2e:fullstack`'i — hepsi yeşil. E2e test gerçek 3 kullanıcı + gerçek WS bağlantısıyla tam akışı doğruluyor: engellemeden önceki mesaj geçmişte kalır, engelden sonraki mesaj ne geçmişte ne gerçek zamanlı engelleyene ulaşır (üçüncü kullanıcıya ulaşmaya devam eder), engel kaldırılınca tekrar ulaşır.
+
+### Sıradaki
+Slice E — son slice: frontend signup/login/TOTP/reset/block UI, `apps/web`'in dev-login'den koparılması, `DevAuthController`'ın ve `ENABLE_DEV_LOGIN` kapısının tamamen kaldırılması.

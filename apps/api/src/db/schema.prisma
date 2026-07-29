@@ -31,6 +31,8 @@ model User {
   refreshTokens       RefreshToken[]
   totpRecoveryCodes   TotpRecoveryCode[]
   passwordResetTokens PasswordResetToken[]
+  blocksMade          Block[]              @relation("Blocker")
+  blocksReceived      Block[]              @relation("Blocked")
 }
 
 model Invite {
@@ -82,6 +84,19 @@ model PasswordResetToken {
   user   User   @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  blockerId String
+  blocker   User   @relation("Blocker", fields: [blockerId], references: [id])
+
+  blockedId String
+  blocked   User   @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
 }
 
 model Room {

@@ -6,6 +6,7 @@ import { AuthController } from './api/auth.controller';
 import { DevAuthController } from './api/dev-auth.controller';
 import { TotpController } from './api/totp.controller';
 import { PasswordResetController } from './api/password-reset.controller';
+import { BlocksController } from './api/blocks.controller';
 import { RoomsController } from './api/rooms.controller';
 import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
@@ -14,6 +15,7 @@ import { InvitesService } from './services/invites.service';
 import { TotpService } from './services/totp.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { EmailService } from './services/email.service';
+import { BlocksService } from './services/blocks.service';
 import { RoomsService } from './services/rooms.service';
 import { MessagesService } from './services/messages.service';
 import { PrismaModule } from './db/prisma.module';
@@ -47,6 +49,7 @@ const isDevLoginEnabled = process.env.ENABLE_DEV_LOGIN === 'true';
     ...(isDevLoginEnabled ? [DevAuthController] : []),
     TotpController,
     PasswordResetController,
+    BlocksController,
     RoomsController,
     MessagesController,
   ],
@@ -56,6 +59,7 @@ const isDevLoginEnabled = process.env.ENABLE_DEV_LOGIN === 'true';
     TotpService,
     PasswordResetService,
     EmailService,
+    BlocksService,
     RoomsService,
     MessagesService,
     MessagesGateway,
