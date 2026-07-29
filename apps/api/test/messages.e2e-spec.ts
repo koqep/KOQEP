@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
-import { AuthService } from './../src/services/auth.service';
 import { DEV_USER_EMAIL } from './../src/db/dev-seed.constants';
 
 describe('Messages REST (e2e)', () => {
@@ -24,15 +24,17 @@ describe('Messages REST (e2e)', () => {
     await app.init();
 
     prisma = moduleFixture.get(PrismaService);
-    const authService = moduleFixture.get(AuthService);
+    const jwtService = moduleFixture.get(JwtService);
 
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
       update: {},
       create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
     });
-    const issued = await authService.issueDevLoginToken();
-    accessToken = issued.accessToken;
+    accessToken = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
 
     const room = await prisma.room.create({ data: { name: roomName } });
     roomId = room.id;

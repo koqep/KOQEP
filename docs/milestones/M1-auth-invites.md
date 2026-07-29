@@ -26,7 +26,7 @@
 - [x] Password reset flow with the THREAT-MODEL row-11 controls.
 - [x] Block-user feature.
 - [x] Tests for each flow.
-- [ ] Remove M0's seeded dev-login endpoint (`AuthController`, `POST /auth/dev-login`) and the `ENABLE_DEV_LOGIN` env-gate around it entirely — it issues a token with zero credentials and was only ever env-gated (`ENABLE_DEV_LOGIN=true` in staging) as an M0 stopgap, not a real access control.
+- [x] Remove M0's seeded dev-login endpoint (`AuthController`, `POST /auth/dev-login`) and the `ENABLE_DEV_LOGIN` env-gate around it entirely — it issues a token with zero credentials and was only ever env-gated (`ENABLE_DEV_LOGIN=true` in staging) as an M0 stopgap, not a real access control.
 
 ## Risks
 - TOTP recovery UX is the top solo-support-burden risk identified in Phase 1 — mitigation: the founder personally runs the recovery-code flow start to finish before any real invite goes out.
@@ -325,3 +325,57 @@ ilk denemede yeşil (bir testte `getByRole` substring eşleşmesi yüzünden "en
 ### Sıradaki
 E5 (dev-login'in tamamen kaldırılması) — ayrı bir plan modu turu alacak, Slice E'nin
 son alt-parçası.
+
+---
+
+## Plan notları — Slice E5: dev-login'in tamamen kaldırılması
+
+**Görev:** M0'ın seed'lenmiş dev-login'ini (`POST /auth/dev-login`, `DevAuthController`,
+`ENABLE_DEV_LOGIN` env-gate'i) koddan tamamen silmek. `apps/web` E1'den beri hiç
+kullanmıyordu; bu, M1'in kontrol listesindeki son işaretsiz madde.
+
+**Kaldırma öncesi tam etki alanı çıkarıldı (dosya okuyarak, varsaymadan):**
+silinenler — `dev-auth.controller.ts`, sadece bu route'u test eden
+`dev-login-gate.e2e-spec.ts` ve `auth.e2e-spec.ts` (dosya okunarak doğrulandı: tek testi
+`/auth/dev-login`'e gidiyordu, gerçek signup/login testleri ayrı bir dosyada —
+`auth-signup-login.e2e-spec.ts` — zaten var ve dokunulmadı), `AuthService`'teki
+`issueDevLoginToken()` + ona ait unit testler, `app.module.ts`'teki koşullu kayıt.
+
+**Silinmedi, iş mantığı taşındı:** `messages.e2e-spec.ts` ve
+`messages-gateway.e2e-spec.ts` kurulum aşamasında token almak için
+`authService.issueDevLoginToken()`'ı çağırıyordu (HTTP route'undan değil, doğrudan
+enjekte edilmiş servisten) — bu iki dosya asıl mesaj REST/WS davranışını test ediyor,
+backdoor'un kendisini değil. `issueDevLoginToken()`'ın içinde zaten yaptığı şeyi
+(`jwt.signAsync({sub, email})`) teste taşıdık: `AuthService` yerine `JwtService` enjekte
+edilip token doğrudan imzalanıyor — bu bir backdoor'u geri getirmiyor, hiçbir zaman bir
+HTTP route'undan geçmiyor ya da bir guard'ı atlamıyor, sadece standart bir e2e-fixture
+deseni.
+
+**Silinmedi, backdoor'un parçası değil:** `dev-seed.constants.ts` ve `seed.ts`
+(`db:seed`) bütünüyle kaldı — `DEV_ROOM_NAME` ('genel') tek paylaşımlı odanın adı olarak
+`messages.service.ts`/`messages.gateway.ts` içinde üretim kodunda doğrudan kullanılıyor;
+`DEV_USER_EMAIL`/`DEV_USER_PASSWORD` gerçek bir parola hash'i taşıyan seed kullanıcıyı
+besliyor (fullstack e2e testi bunu gerçek `/auth/login` formuyla kullanıyor);
+`DEV_INVITE_CODES` yerel geliştirme kolaylığı. `seed.ts`, `render.yaml`'ın
+`preDeployCommand`'ında ve CI'da hâlâ çalışıyor — auth'tan bağımsız, odanın var olması
+için gerekli.
+
+**Render dashboard:** kullanıcı bu env var'ı zaten daha önce (Slice A civarında) elle
+silmişti, production'da endpoint zaten 404 dönüyordu — bu slice sadece koddaki
+kalıntıyı temizledi (`render.yaml`, `.github/workflows/ci.yml`, kaynak kod).
+
+**Testler:** yeni test yok — bu slice ölü kod yollarını kaldırıp iki mevcut e2e
+fixture'ını yeniden bağladı. Doğrulama, mevcut testlerin tamamının hâlâ geçmesiyle
+yapıldı (57 unit, önceden 59 — kaldırılan `issueDevLoginToken` testleri; 18 e2e, önceden
+22 — kaldırılan `auth.e2e-spec.ts` + `dev-login-gate.e2e-spec.ts`'nin testleri; fark
+tam olarak silinen dosyalarla eşleşiyor).
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(57)/e2e(18)/build — bu slice'ın asıl konusu backend
+değişikliği olduğu için birincil doğrulama; `apps/web`
+lint/typecheck/build/`test:e2e`(21)/`test:e2e:fullstack`(1) — etkilenmediği yeniden
+doğrulandı. Hepsi ilk denemede yeşil.
+
+### M1 TAMAMLANDI
+Bu, kontrol listesindeki son işaretsiz maddeydi — tüm acceptance criteria ve task'lar
+işaretli. M1 (Real Auth: Invite Signup + Login) bütünüyle bitti.

@@ -9,7 +9,6 @@ import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../db/prisma.service';
-import { DEV_USER_EMAIL } from '../db/dev-seed.constants';
 import { InvitesService } from './invites.service';
 import { TotpService } from './totp.service';
 import { PasswordResetService } from './password-reset.service';
@@ -38,25 +37,6 @@ export class AuthService {
     private readonly passwordResetService: PasswordResetService,
     private readonly emailService: EmailService,
   ) {}
-
-  async issueDevLoginToken(): Promise<{ accessToken: string }> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: DEV_USER_EMAIL },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException(
-        'Seeded dev kullanıcı bulunamadı — önce `npm run db:seed` çalıştırılmalı.',
-      );
-    }
-
-    const accessToken = await this.jwt.signAsync({
-      sub: user.id,
-      email: user.email,
-    });
-
-    return { accessToken };
-  }
 
   async verifyAccessToken(
     token: string,

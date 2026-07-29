@@ -26,7 +26,6 @@ jobs:
       DATABASE_URL: postgresql://koqep:koqep@localhost:5432/koqep_dev?schema=public
       JWT_SECRET: ci-only-test-secret
       RESEND_API_KEY: ci-only-test-key
-      ENABLE_DEV_LOGIN: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -79,7 +78,6 @@ jobs:
       RESEND_API_KEY: ci-only-test-key
       WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3001
-      ENABLE_DEV_LOGIN: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { io, Socket } from 'socket.io-client';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
-import { AuthService } from './../src/services/auth.service';
 import { DEV_USER_EMAIL, DEV_ROOM_NAME } from './../src/db/dev-seed.constants';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
@@ -36,9 +36,9 @@ describe('Messages Gateway (e2e)', () => {
     baseUrl = `http://localhost:${address.port}`;
 
     prisma = moduleFixture.get(PrismaService);
-    const authService = moduleFixture.get(AuthService);
+    const jwtService = moduleFixture.get(JwtService);
 
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
       update: {},
       create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
@@ -49,8 +49,10 @@ describe('Messages Gateway (e2e)', () => {
       create: { name: DEV_ROOM_NAME },
     });
 
-    const issued = await authService.issueDevLoginToken();
-    accessToken = issued.accessToken;
+    accessToken = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
   });
 
   afterAll(async () => {
