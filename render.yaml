@@ -33,3 +33,12 @@ services:
       # Ayarlanmazsa kod onboarding@resend.dev'e duser.
       - key: EMAIL_FROM_ADDRESS
         sync: false
+      # apps/api/src/db/seed.ts'in dev kullanici + DEV_INVITE_CODES olusturma
+      # kismi opt-in (bkz. dosyadaki yorum) - git'te duz metin duran bilinen
+      # kimlik bilgileri/davet kodlari production'da sessizce olusmasin diye.
+      # false = varsayilan/guvenli. DIKKAT: bu dosya canli Render servisine
+      # bagli degil (bkz. STATE.md tuzak notu) - degeri burada false olsa
+      # bile, gercek guvenlik zaten env yokken/false disinda bir deger yokken
+      # saglaniyor; bu sadece dokumantasyon amacli.
+      - key: SEED_DEV_FIXTURES
+        value: 'false'
