@@ -22,7 +22,13 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
-      # M0 staging demo icin gerekli (seed dev-login) - M1'de gercek auth
-      # gelince bu satir tamamen kaldirilmali (bkz. M1-auth-invites.md).
+      # M0'da staging demo icin acilmisti. M1 Slice A ile gercek auth
+      # (/auth/signup, /auth/login) geldi - dev-login artik kimlik dogrulamasi
+      # olmayan tam bir bypass, gercek auth'un yaninda durmasi kabul edilemez.
+      # false yapildi (bkz. docs/THREAT-MODEL.md satir 13). DIKKAT: bu dosya
+      # canli Render servisine bagli degil (bkz. STATE.md tuzak notu) - bu
+      # satiri degistirmek prod'u etkilemez, gercek toggle dashboard'dan
+      # elle kapatilmali. Slice E'de bu env-gate ve DevAuthController
+      # tamamen kaldirilinca bu satir da silinecek.
       - key: ENABLE_DEV_LOGIN
-        value: 'true'
+        value: 'false'
