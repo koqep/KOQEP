@@ -189,7 +189,9 @@ describe('AuthService', () => {
 
       await expect(
         service.login({ email: user.email, password: 'wrong' }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({
+        response: { code: 'INVALID_CREDENTIALS' },
+      });
     });
 
     it('reddeder_bilinmeyen_e_postayi', async () => {
@@ -234,7 +236,9 @@ describe('AuthService', () => {
             email: 'a@koqep.local',
             password: 'correct-password',
           }),
-        ).rejects.toThrow(UnauthorizedException);
+        ).rejects.toMatchObject({
+          response: { code: 'TOTP_REQUIRED' },
+        });
       });
 
       it('reddeder_gecersiz_totp_kodunu', async () => {

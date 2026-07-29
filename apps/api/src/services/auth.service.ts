@@ -117,7 +117,10 @@ export class AuthService {
       : false;
 
     if (!user || !isValid) {
-      throw new UnauthorizedException('E-posta veya şifre hatalı.');
+      throw new UnauthorizedException({
+        code: 'INVALID_CREDENTIALS',
+        message: 'E-posta veya şifre hatalı.',
+      });
     }
 
     if (this.totpService.isEnabled(user)) {
@@ -125,7 +128,13 @@ export class AuthService {
         !!dto.totpCode &&
         (await this.totpService.verifyDuringLogin(user.id, dto.totpCode));
       if (!totpValid) {
-        throw new UnauthorizedException('Geçerli bir TOTP kodu gerekli.');
+        // code alanı Slice E'nin frontend'i için: "yanlış şifre" ile "TOTP
+        // gerekli" durumlarını ayırt etmek için mesaj metnine güvenmek
+        // kırılgan olurdu (bkz. plan notları) - yapısal bir kontrat.
+        throw new UnauthorizedException({
+          code: 'TOTP_REQUIRED',
+          message: 'Geçerli bir TOTP kodu gerekli.',
+        });
       }
     }
 

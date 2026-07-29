@@ -8,13 +8,13 @@
 
 ## Şu an ne çalışıyor
 - **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, ayrıca bu oturumda bu makinede bağımsız olarak yeniden doğrulandı (lint/typecheck/build/unit/e2e/fullstack-e2e hepsi yeşil).
-- **M1 Slice A+B+C+D — signup/login/refresh/logout + TOTP/kurtarma kodları + şifre sıfırlama + block-user TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). Dev-login hâlâ duruyor (`DevAuthController`), production'da `ENABLE_DEV_LOGIN` dashboard'dan kapatıldı ama kod hâlâ orada — `apps/web` hâlâ dev-login kullanıyor, Slice E'de değişecek. Şifre sıfırlama gerçek Resend entegrasyonuyla çalışıyor, domain doğrulandı; `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS` kullanıcı tarafından `.env`'e eklenecek.
+- **M1 Slice A+B+C+D — backend TAMAMLANDI**; **Slice E1 — frontend auth kabuğu (signup+login UI) TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `apps/web` artık gerçek `/auth/signup`+`/auth/login` kullanıyor, dev-login'i mount'ta çağırmıyor. Dev-login backend'i (`DevAuthController`) hâlâ duruyor, bilerek — E5'e kadar silinmeyecek. Şifre sıfırlama/TOTP/block UI'ları henüz yok (E2-E4).
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres, Basic-256mb/5GB) + Prisma + Resend (e-posta, `koqep.com` doğrulanmış).
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M1'in son slice'ı kaldı.
-- **Yarım kalan:** Slice A+B+C+D bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
-- **Sonraki adım:** Slice E — frontend UI + dev-login'in tamamen kaldırılması (M1'in son parçası). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
+- **Görev:** M1 Slice E devam ediyor (E1 bitti, E2-E5 kaldı).
+- **Yarım kalan:** Slice A-D + E1 bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
+- **Sonraki adım:** E2 — şifre sıfırlama UI (yeni `/reset-password` route'u gerekecek, E1'de yoktu). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -30,6 +30,7 @@
 - 2026-07-29 — M1 Slice C: e-posta sağlayıcı Resend, gerçek entegrasyon (mock değil) — kullanıcının kararı, gerekçe: THREAT-MODEL satır 11'in bildirimi kontrolün kendisi.
 - 2026-07-29 — `koqep.com` Cloudflare üzerinden Resend'e bağlandı, SPF/DKIM/DMARC auto-configure ile eklendi, "Verified". M6'daki ilgili madde erken tamamlandı olarak işaretlendi (bkz. `docs/milestones/M6-launch-readiness.md`). `EMAIL_FROM_ADDRESS=noreply@koqep.com` kullanıcı tarafından `.env`'e eklenecek.
 - 2026-07-29 — M1 Slice D: block tek yönlü ve sessiz, tek paylaşımlı oda mimarisine göre — engellenen kullanıcı odaya yazmaya devam eder, sadece engelleyene ulaşmaz (ne geçmişte ne WS'te). DM yok, moderatör mute/ban M5'e kadar kapsam dışı.
+- 2026-07-29 — M1 Slice E kullanıcıyla E1-E5'e bölündü (tek dev-adımlık iş çok büyüktü). E1: `AuthService.login()`'in 401'leri artık `{code: 'INVALID_CREDENTIALS'|'TOTP_REQUIRED'}` taşıyor (Slice B'nin bilerek ertelediği karar) — frontend mesaj metnine değil `code`'a bakıyor.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
@@ -43,3 +44,4 @@
 - Render'da bir env var'ın DEĞERİNİ değiştirmek (ör. `ENABLE_DEV_LOGIN=false`) canlıya yansımayabilir — sadece değişkeni tamamen SİLMEK işe yaradı, gözlemlendi (2026-07-29). Kod tarafı `=== 'true'` ile strict, truthiness bug DEĞİL — doğrulandı, testli. Sebep muhtemelen Render'ın deploy tetikleme davranışı, kesin mekanizma bilinmiyor.
 - `@prisma/client` import edilince `schema.prisma`'nın yanındaki `.env`'i sessizce (yeniden) yükler; dotenv zaten TANIMLI bir key'i override etmez ama `delete`'lenmiş/tanımsız bir key'i geri dolduruyor. Testte "env var yok" simüle etmek için `delete process.env.X` DEĞİL, boş string (`''`) kullan — yoksa test makineden makineye (yerel `.env` var/yok) farklı sonuç verir.
 - `resend` SDK hata durumunda fırlatmaz, `{data, error}` döner — `EmailService` `error`'ı elle kontrol edip `throw` ediyor. Ayrıca `new Resend(undefined)` fırlatır ama boş olmayan herhangi bir string fırlatmaz — `RESEND_API_KEY` yoksa `ConfigService.get(...) ?? 'unset-in-local-dev'` fallback'i şart, yoksa AppModule'u ayağa kaldıran HER e2e test kırılır.
+- `apps/web`'de token bellek-içi (ADR-0002) — reload/yeni sekme oturumu düşürür, bu kasıtlı. `e2e-fullstack` testleri reload sonrası tekrar login yapmalı, eski davranışa (otomatik dev-login) güvenilemez.

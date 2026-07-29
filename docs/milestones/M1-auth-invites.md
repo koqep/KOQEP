@@ -134,4 +134,26 @@ Slice D (block-user), Slice E (frontend + dev-login kaldırma).
 `npm run lint && npm run typecheck && npm test && npm run test:e2e --workspace=apps/api && npm run build` (apps/api) + `apps/web`'in `test:e2e:fullstack`'i — hepsi yeşil. E2e test gerçek 3 kullanıcı + gerçek WS bağlantısıyla tam akışı doğruluyor: engellemeden önceki mesaj geçmişte kalır, engelden sonraki mesaj ne geçmişte ne gerçek zamanlı engelleyene ulaşır (üçüncü kullanıcıya ulaşmaya devam eder), engel kaldırılınca tekrar ulaşır.
 
 ### Sıradaki
-Slice E — son slice: frontend signup/login/TOTP/reset/block UI, `apps/web`'in dev-login'den koparılması, `DevAuthController`'ın ve `ENABLE_DEV_LOGIN` kapısının tamamen kaldırılması.
+Slice E — son slice: frontend signup/login/TOTP/reset/block UI, `apps/web`'in dev-login'den koparılması, `DevAuthController`'ın ve `ENABLE_DEV_LOGIN` kapısının tamamen kaldırılması. E1-E5 olarak alt-slice'lara bölündü (bkz. aşağıdaki plan notları) — bu kadar geniş bir kapsamı tek adımda yapmak yerine.
+
+---
+
+## Plan notları — Slice E1: auth kabuğu (signup + login UI, dev-login-on-mount'un yerini alır)
+
+**Görev:** `apps/web` artık mount'ta otomatik `/auth/dev-login` çağırmıyor — gerçek bir giriş/kayıt ekranı var. Slice E'nin ilk alt-parçası; E2 (şifre sıfırlama UI), E3 (TOTP UI), E4 (block/unblock UI), E5 (dev-login'in tamamen kaldırılması) ayrı plan notları alacak.
+
+**Kullanıcıyla netleştirilen sıralama:** Backend'deki dev-login (`DevAuthController`) bu slice'ta DOKUNULMADAN kalıyor — sadece frontend onu artık çağırmıyor. Silme işi en son, E5'te, frontend gerçekten ihtiyaç duymadığından emin olunca.
+
+**Slice B'den kalan bilinçli ertelenmiş bir kararı çözdü:** Login'in "yanlış şifre" ile "TOTP gerekli" 401'lerini ayırt etme sözleşmesi Slice B'de bilerek tasarlanmamıştı ("henüz var olmayan bir sözleşmeyi tasarlamak yerine"). Artık gerçek bir tüketici (bu UI) var. Mesaj metnine string-match yapmak yerine (kırılgan — kullanıcı Slice A'da `.env` yan-etkisine güvenmeyi tam bu gerekçeyle reddetmişti) NestJS'i doğrudan kontrol edildi: `new UnauthorizedException({code, message})` body'yi olduğu gibi serialize ediyor (`ex.getResponse()` ile doğrulandı). `AuthService.login()`'in iki fırlatma noktası artık `code: 'INVALID_CREDENTIALS'` / `code: 'TOTP_REQUIRED'` taşıyor; testler bu kontratı `toMatchObject({response:{code:...}})` ile açıkça doğruluyor, sadece "bir şey fırlattı" değil.
+
+**Bilinçli kapsam dışı:** Sessiz token-yenileme/retry mantığı YOK. Access token 15 dakika (Slice A); M1'in Demo satırı "giriş/çıkış yapar" diyor, "saatlerce kesintisiz oturum" değil. Süresi dolan bir token'la ortasında başarısız olan bir istek zaten var olan gevşek hata toleransına (`if (!response.ok) return;`) düşüyor — regresyon değil, bilinçli bir kesinti.
+
+**Frontend yapısı:** `lib/api.ts` (yeni, `ApiError` sınıfı `code` alanını taşıyor), `app/components/AuthView.tsx` (tek component, `mode: 'login'|'signup'` iç state — iki ayrı route değil), `app/components/RoomView.tsx` (eskiden `page.tsx`'in tamamı olan oda ekranı, artık `accessToken` prop olarak alıyor, kendi dev-login'ini çekmiyor, bir "çıkış" aksiyonu eklendi), `app/page.tsx` (artık sadece orkestratör — token state'i tutar, `AuthView`/`RoomView` arasında seçer).
+
+**Dokunulan/yeniden yazılan testler:** `e2e/single-room.spec.ts` artık önce login formunu dolduruyor (dev-login mock'u yerine `/auth/login` mock'u). Yeni `e2e/auth.spec.ts`: kayıt başarılı akışı, yanlış bilgi hatası (TOTP alanı görünmüyor), TOTP gerekince alanın belirmesi + doğru kodla ikinci denemenin başarılı olması (route mock'u bir sayaçla ilk çağrıda 401, ikincide başarı döndürüyor). `e2e-fullstack/message-round-trip.spec.ts` artık seed'lenmiş dev kullanıcının gerçek email/şifresiyle her iki context'te de UI üzerinden gerçekten giriş yapıyor; reload sonrası oturum bellek-içi olduğundan düşüyor (ADR-0002, bilinçli), bu yüzden reload'dan sonra tekrar giriş yapılıyor — testin "reload sonrası kalıcı" iddiası artık gerçekten DB kalıcılığını kanıtlıyor, geçici local state'i değil.
+
+### Doğrulama
+Her iki workspace: `apps/api` lint/typecheck/unit(59)/e2e(22)/build; `apps/web` lint/typecheck/build/`test:e2e`(4, mock'lu)/`test:e2e:fullstack`(1, gerçek) — hepsi ilk denemede yeşil.
+
+### Sıradaki
+E2 (şifre sıfırlama UI) — ayrı bir plan modu turu alacak.
