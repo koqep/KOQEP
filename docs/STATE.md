@@ -42,6 +42,7 @@
 - `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
 - "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula.
 - CI'da job-seviyesi env değişkenleri TÜM adım/alt süreçlere sızar — birden fazla uygulama aynı job'daysa env'i komut bazında scope'la.
+- `.github/workflows/ci.yml`'deki her job'ın kendi `env:` bloğu var, JOB'LAR ARASI miras YOK — bir env var'ı sadece bir job'a eklemek diğerlerinde sessizce eksik kalır (gözlemlendi 2026-07-29: `WEB_ORIGIN` sadece `test-fullstack-e2e`'de vardı, `test` job'ında yoktu; `AuthService`'in reset linki `${WEB_ORIGIN}/...` `undefined/...` oluyordu, `password-reset.e2e-spec.ts`'teki `new URL()` "Invalid URL" ile patlıyordu — lokalde `.env` olduğu için gizli kalmıştı). Yeni bir env var eklerken HER job'ı tek tek kontrol et, birine eklemek yetmez.
 - Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i — her `npm install`/`npm ci`'da otomatik çalışır, buildCommand/CI adımına gömmeye çalışma.
 - Render servisi (`koqep-api`) Blueprint'e bağlı DEĞİL, elle kuruldu — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz, dashboard'dan elle güncellenmeli.
 - `.env`/`.env.*` dosyaları `Read` için engelli — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz.
