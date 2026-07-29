@@ -27,7 +27,8 @@
 - 2026-07-28 — M0'ın seed dev-login'i `ENABLE_DEV_LOGIN` env'i ile kapatılabilir hale getirildi (staging'de `true`) — M1'de tamamen kaldırılacak.
 - 2026-07-29 — M1 Slice A: access token 24h → 15m (refresh token artık var); refresh token JWT değil, `crypto.randomBytes` + DB'de SHA-256 hash — ADR-0002'nin gerçek revocation gereksinimi bunu istiyordu.
 - 2026-07-29 — M1 Slice B: `totpSecret` düz metin (şifrelenmemiş) — bilinçli, bkz. `docs/THREAT-MODEL.md` Open items. Kurtarma kodları da `RefreshToken` ile aynı desende hash'lenip tek kullanımlık.
-- 2026-07-29 — M1 Slice C: e-posta sağlayıcı Resend, gerçek entegrasyon (mock değil) — kullanıcının kararı, gerekçe: THREAT-MODEL satır 11'in bildirimi kontrolün kendisi. Domain doğrulama/SPF/DKIM/DMARC `docs/milestones/M6-launch-readiness.md`'ye görev olarak eklendi.
+- 2026-07-29 — M1 Slice C: e-posta sağlayıcı Resend, gerçek entegrasyon (mock değil) — kullanıcının kararı, gerekçe: THREAT-MODEL satır 11'in bildirimi kontrolün kendisi.
+- 2026-07-29 — `koqep.com` Cloudflare üzerinden Resend'e bağlandı, SPF/DKIM/DMARC auto-configure ile eklendi, "Verified". M6'daki ilgili madde erken tamamlandı olarak işaretlendi (bkz. `docs/milestones/M6-launch-readiness.md`). `EMAIL_FROM_ADDRESS=noreply@koqep.com` kullanıcı tarafından `.env`'e eklenecek.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
