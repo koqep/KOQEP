@@ -14,11 +14,45 @@ enum RoomStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
 
-  messages Message[]
+  inviterId String?
+  inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
+  invitees  User[]  @relation("UserInvitedBy")
+
+  messages      Message[]
+  issuedInvites Invite[]       @relation("InviteIssuer")
+  usedInvite    Invite?        @relation("InviteRedeemer")
+  refreshTokens RefreshToken[]
+}
+
+model Invite {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  issuedById String
+  issuedBy   User   @relation("InviteIssuer", fields: [issuedById], references: [id])
+
+  usedById String? @unique
+  usedBy   User?   @relation("InviteRedeemer", fields: [usedById], references: [id])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Room {

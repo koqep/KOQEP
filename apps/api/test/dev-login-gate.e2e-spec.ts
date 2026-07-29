@@ -32,7 +32,7 @@ describe('Dev-login env gate (e2e)', () => {
     await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
       update: {},
-      create: { email: DEV_USER_EMAIL },
+      create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
     });
   });
 
