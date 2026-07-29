@@ -11,15 +11,24 @@ export default function Home() {
   // bellek-içi buna uyumlu bir ara adım - THREAT-MODEL satır 4'teki XSS
   // riskinin blast radius'unu küçültür. Bedeli: reload'da oturum kaybolur.
   const [tokens, setTokens] = useState<TokenPair | null>(null);
+  const [totpEnabled, setTotpEnabled] = useState(false);
 
   if (!tokens) {
-    return <AuthView onAuthenticated={setTokens} />;
+    return (
+      <AuthView
+        onAuthenticated={(nextTokens, nextTotpEnabled) => {
+          setTokens(nextTokens);
+          setTotpEnabled(nextTotpEnabled);
+        }}
+      />
+    );
   }
 
   return (
     <RoomView
       accessToken={tokens.accessToken}
       refreshToken={tokens.refreshToken}
+      initialTotpEnabled={totpEnabled}
       onLoggedOut={() => setTokens(null)}
     />
   );

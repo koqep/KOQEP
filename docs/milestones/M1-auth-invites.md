@@ -201,3 +201,68 @@ denemede yeşil.
 
 ### Sıradaki
 E3 (TOTP UI) — ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice E3: TOTP kurulum/kapatma UI
+
+**Görev:** Slice B'de hazır olan üç endpoint'in (`POST /auth/totp/{setup,enable,disable}`,
+hepsi `JwtAuthGuard` ile korumalı) frontend'i. `setup` secret'ı hemen kalıcı hale getirir
+ama "etkin" değildir; `enable` doğru kodla onaylanınca `totpEnabledAt`'i set eder ve
+8 kurtarma kodunu bir kerelik açık metin döner; `disable` canlı bir TOTP kodu ya da
+kullanılmamış bir kurtarma kodu ister, şifre istemez.
+
+**Backend'de kullanıcı profili/durumu endpoint'i yok** (`GET /auth/me` vb.) — frontend'in
+"bu kullanıcıda TOTP açık mı" diye sorabileceği bir yer yok. Backend değişikliği
+gerekmeden çözüldü: bir login'in TOTP istemesi zaten "TOTP açık" demektir, signup ise
+tanım gereği kapalı demektir. `AuthView`, `onAuthenticated(tokens, totpEnabled)` imzasıyla
+bunu (`mode === "signup" ? false : totpRequired`) yukarı taşıyor; `page.tsx` `totpEnabled`
+state'i tutup `RoomView`'a `initialTotpEnabled` olarak geçiyor. `RoomView` kendi
+`totpEnabled` state'ini bu prop'tan besliyor, sonraki değişiklikleri (enable/disable
+başarılı olunca) yeniden sorgulamadan optimistic günceliyor.
+
+**Yeni bağımlılık — onaylandı:** `qrcode-terminal` (+ dev: `@types/qrcode-terminal`).
+Görsel `<img>` QR ya da sade metin-secret alternatiflerine karşı seçildi — paketin
+gerçek kaynağı (`lib/main.js`) okunarak doğrulandı: `{small: true}` seçeneğiyle çıktı
+saf Unicode blok karakteri (█▀▄), ANSI kaçış kodu yok, Node'a özgü API (`fs`/`process`)
+kullanmıyor — tarayıcıda güvenle çalışıyor. Sıfır alt-bağımlılık. "Terminal estetikli,
+metin-only" ürün kimliğine `<img>` QR'dan daha uygun.
+
+**UI yapısı — yeni route yok:** Şifre sıfırlamanın aksine (oturumsuz, e-posta linkiyle
+erişilir), TOTP kurulumu aktif oturum gerektirir — `RoomView` içinde header'daki yeni
+"iki adımlı doğrulama" butonuyla açılan, `page.tsx`'in `AuthView`/`RoomView` arasında
+kullandığı aynı tam-değiştirme desenini bir seviye aşağıda tekrarlayan yeni bir
+`TotpSettingsView.tsx` komponenti. Modal/dialog kurulmadı — kodda hiç precedent yok,
+gereksiz karmaşıklık (overlay, focus trap, z-index) eklerdi.
+
+**`lib/api.ts`:** `postJson`'ın hata ayrıştırma mantığı ortak bir `sendJson` yardımcısına
+çıkarıldı; `authedPostJson` bunu `Authorization: Bearer` header'ıyla kullanıyor (kod
+tekrarını önlemek için — önceden bu header sadece `RoomView.tsx`'te satır içi
+oluşturuluyordu). Yeni export'lar: `TotpSetup`, `setupTotp`, `enableTotp`, `disableTotp`.
+
+**Kilitlenme kurtarma boşluğu (kullanıcı sorusu üzerine, uygulamadan önce çözüldü):**
+Hem authenticator hem 8 kurtarma kodu kaybedilirse kod tarafında kurtarma yolu yok —
+ne bir admin/rol kavramı ne bir admin endpoint'i var. `docs/PRD.md`'nin "Zero users lost
+to account lockout from TOTP" hedefiyle gerginlik burada. Kod yazılmadı; bunun yerine
+`docs/THREAT-MODEL.md`'ye yeni bir "open item" eklendi: doğrulanmış bir destek talebinde
+founder Render Postgres konsolundan elle `totpSecret`/`totpEnabledAt`'i `NULL`lar,
+somut bir tetikleyiciyle ("ikinci kez talep edilirse" ya da "M3 kapsamı") gerçek bir
+admin endpoint'ine geçiş planlanır — plaintext-`totpSecret` maddesiyle aynı desen.
+
+**Dokunulan/yeni testler:** Yeni `e2e/totp-settings.spec.ts` (6 test, mock'lu): TOTP
+kapalıyken panel "kurulumu başlat" gösteriyor; kurulum başlatılınca secret + ASCII QR +
+kod alanı görünüyor; doğru kodla etkinleştirince 8 kurtarma kodu "bir daha
+gösterilmeyecek" uyarısıyla gösteriliyor, "kaydettim" sonrası panel kapatma formuna
+geçiyor; yanlış kod hata gösteriyor ama kurulumu yeniden başlatmıyor; TOTP zaten
+açıkken panel doğrudan kapatma formuna giriyor, başarılı kapatma "kurulumu başlat"a
+dönüyor; "kapat" sohbet ekranına dönüyor. `auth.spec.ts`'e dokunulmadı —
+`onAuthenticated` imza değişikliği iç detay, görünür login davranışı değişmedi.
+
+### Doğrulama
+Her iki workspace: `apps/api` lint/typecheck/unit(59)/e2e(22)/build (bu slice'tan
+etkilenmiyor, yine de yeniden çalıştırıldı); `apps/web`
+lint/typecheck/build/`test:e2e`(14, mock'lu)/`test:e2e:fullstack`(1, gerçek) — hepsi ilk
+denemede yeşil.
+
+### Sıradaki
+E4 (block/unblock UI) — ayrı bir plan modu turu alacak.

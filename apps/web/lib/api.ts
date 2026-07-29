@@ -14,12 +14,8 @@ export interface TokenPair {
   refreshToken: string;
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+async function sendJson<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, init);
 
   if (!response.ok) {
     const errorBody = (await response.json().catch(() => ({}))) as {
@@ -33,6 +29,29 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  return sendJson<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function authedPostJson<T>(
+  path: string,
+  accessToken: string,
+  body?: unknown,
+): Promise<T> {
+  return sendJson<T>(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
 }
 
 export function signup(input: {
@@ -64,4 +83,29 @@ export async function confirmPasswordReset(
   newPassword: string,
 ): Promise<void> {
   await postJson("/auth/password-reset/confirm", { token, newPassword });
+}
+
+export interface TotpSetup {
+  secret: string;
+  otpauthUrl: string;
+}
+
+export function setupTotp(accessToken: string): Promise<TotpSetup> {
+  return authedPostJson<TotpSetup>("/auth/totp/setup", accessToken);
+}
+
+export function enableTotp(
+  accessToken: string,
+  totpCode: string,
+): Promise<string[]> {
+  return authedPostJson<string[]>("/auth/totp/enable", accessToken, {
+    totpCode,
+  });
+}
+
+export async function disableTotp(
+  accessToken: string,
+  totpCode: string,
+): Promise<void> {
+  await authedPostJson("/auth/totp/disable", accessToken, { totpCode });
 }

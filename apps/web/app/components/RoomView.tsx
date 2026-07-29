@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { io, Socket } from "socket.io-client";
 import { logout } from "../../lib/api";
+import TotpSettingsView from "./TotpSettingsView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const MAX_MESSAGE_LENGTH = 2000;
@@ -22,18 +23,22 @@ interface Message {
 interface Props {
   accessToken: string;
   refreshToken: string;
+  initialTotpEnabled: boolean;
   onLoggedOut: () => void;
 }
 
 export default function RoomView({
   accessToken,
   refreshToken,
+  initialTotpEnabled,
   onLoggedOut,
 }: Props) {
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [isReady, setIsReady] = useState(false);
+  const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
+  const [showTotpSettings, setShowTotpSettings] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -120,54 +125,74 @@ export default function RoomView({
           <span className="text-neutral-600">#</span>
           {room?.name ?? "..."}
         </h1>
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          className="text-neutral-600 hover:text-neutral-400"
-        >
-          çıkış
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setShowTotpSettings(true)}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            iki adımlı doğrulama
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            çıkış
+          </button>
+        </div>
       </header>
 
-      <section className="flex-1 overflow-y-auto py-4 text-neutral-500">
-        {messages.length === 0 ? (
-          <p>henüz mesaj yok</p>
-        ) : (
-          <ul className="space-y-1">
-            {messages.map((message) => (
-              <li key={message.id} className="text-neutral-200">
-                {message.content}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {showTotpSettings ? (
+        <TotpSettingsView
+          accessToken={accessToken}
+          initialEnabled={totpEnabled}
+          onEnabledChange={setTotpEnabled}
+          onClose={() => setShowTotpSettings(false)}
+        />
+      ) : (
+        <>
+          <section className="flex-1 overflow-y-auto py-4 text-neutral-500">
+            {messages.length === 0 ? (
+              <p>henüz mesaj yok</p>
+            ) : (
+              <ul className="space-y-1">
+                {messages.map((message) => (
+                  <li key={message.id} className="text-neutral-200">
+                    {message.content}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 border-t border-neutral-800 pt-2"
-      >
-        <span className="text-neutral-600">&gt;</span>
-        <input
-          type="text"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          disabled={!isReady}
-          placeholder="mesaj yaz..."
-          className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none disabled:cursor-not-allowed"
-        />
-        <span
-          className="terminal-cursor inline-block h-4 w-2 bg-neutral-400"
-          aria-hidden="true"
-        />
-        <button
-          type="submit"
-          disabled={!canSend}
-          className="text-neutral-600 disabled:cursor-not-allowed"
-        >
-          gönder
-        </button>
-      </form>
+          <form
+            onSubmit={handleSubmit}
+            className="flex items-center gap-2 border-t border-neutral-800 pt-2"
+          >
+            <span className="text-neutral-600">&gt;</span>
+            <input
+              type="text"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              disabled={!isReady}
+              placeholder="mesaj yaz..."
+              className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none disabled:cursor-not-allowed"
+            />
+            <span
+              className="terminal-cursor inline-block h-4 w-2 bg-neutral-400"
+              aria-hidden="true"
+            />
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="text-neutral-600 disabled:cursor-not-allowed"
+            >
+              gönder
+            </button>
+          </form>
+        </>
+      )}
     </main>
   );
 }

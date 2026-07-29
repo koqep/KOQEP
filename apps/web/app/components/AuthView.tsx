@@ -12,7 +12,7 @@ import {
 type Mode = "login" | "signup" | "forgot-password";
 
 interface Props {
-  onAuthenticated: (tokens: TokenPair) => void;
+  onAuthenticated: (tokens: TokenPair, totpEnabled: boolean) => void;
 }
 
 const inputClassName =
@@ -60,7 +60,7 @@ export default function AuthView({ onAuthenticated }: Props) {
               password,
               ...(totpRequired ? { totpCode } : {}),
             });
-      onAuthenticated(tokens);
+      onAuthenticated(tokens, mode === "signup" ? false : totpRequired);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TOTP_REQUIRED") {
