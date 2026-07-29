@@ -24,6 +24,7 @@
 - [ ] Rate limiter middleware at the WS gateway and REST API.
 - [ ] Tests for edit history access control and rate limiting.
 - [ ] Basic load test.
+- [ ] Real invite-issuance endpoint (not detailed yet — scope to be clarified next session). Added because `docs/THREAT-MODEL.md`'s Open items named M2 as the concrete trigger for this: there's currently no authenticated API to create an `Invite`, only manual Postgres inserts, and that also turned out to be the only way to bootstrap the very first production user.
 
 ## Risks
 - None major beyond normal build risk — this milestone mostly hardens M0/M1 scope rather than adding new surface area.
