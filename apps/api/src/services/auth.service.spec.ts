@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import { createHash } from 'crypto';
 import { AuthService } from './auth.service';
 import { InvitesService } from './invites.service';
+import { TotpService } from './totp.service';
 import { PrismaService } from '../db/prisma.service';
 import { DEV_USER_EMAIL } from '../db/dev-seed.constants';
 
@@ -14,11 +15,13 @@ describe('AuthService', () => {
   function buildService(
     prismaMock: Partial<PrismaService>,
     invitesMock: Partial<InvitesService> = {},
+    totpMock: Partial<TotpService> = { isEnabled: () => false },
   ): AuthService {
     return new AuthService(
       prismaMock as PrismaService,
       jwt,
       invitesMock as InvitesService,
+      totpMock as TotpService,
     );
   }
 
@@ -190,6 +193,73 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: 'yok@koqep.local', password: 'x' }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    describe('TOTP etkinken', () => {
+      async function buildTotpEnabledUser(): Promise<{
+        user: { id: string; email: string; passwordHash: string };
+        prismaMock: Partial<PrismaService>;
+      }> {
+        const passwordHash = await argon2.hash('correct-password');
+        const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+          } as unknown as PrismaService['user'],
+          refreshToken: {
+            create: jest.fn().mockResolvedValue({}),
+          } as unknown as PrismaService['refreshToken'],
+        };
+        return { user, prismaMock };
+      }
+
+      it('reddeder_totp_kodu_verilmezse', async () => {
+        const { prismaMock } = await buildTotpEnabledUser();
+        const totpMock: Partial<TotpService> = { isEnabled: () => true };
+        const service = buildService(prismaMock, {}, totpMock);
+
+        await expect(
+          service.login({
+            email: 'a@koqep.local',
+            password: 'correct-password',
+          }),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('reddeder_gecersiz_totp_kodunu', async () => {
+        const { prismaMock } = await buildTotpEnabledUser();
+        const totpMock: Partial<TotpService> = {
+          isEnabled: () => true,
+          verifyDuringLogin: jest.fn().mockResolvedValue(false),
+        };
+        const service = buildService(prismaMock, {}, totpMock);
+
+        await expect(
+          service.login({
+            email: 'a@koqep.local',
+            password: 'correct-password',
+            totpCode: '000000',
+          }),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('doner_token_cifti_gecerli_totp_koduyla', async () => {
+        const { user, prismaMock } = await buildTotpEnabledUser();
+        const totpMock: Partial<TotpService> = {
+          isEnabled: () => true,
+          verifyDuringLogin: jest.fn().mockResolvedValue(true),
+        };
+        const service = buildService(prismaMock, {}, totpMock);
+
+        const { accessToken } = await service.login({
+          email: 'a@koqep.local',
+          password: 'correct-password',
+          totpCode: '123456',
+        });
+
+        const payload = jwt.verify<{ sub: string; email: string }>(accessToken);
+        expect(payload.sub).toBe(user.id);
+      });
     });
   });
 

@@ -7,7 +7,7 @@ import {
 import { Request } from 'express';
 import { AuthService } from '../services/auth.service';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user: { sub: string; email: string };
 }
 

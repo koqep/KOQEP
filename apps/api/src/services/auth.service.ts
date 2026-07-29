@@ -6,10 +6,12 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../db/prisma.service';
 import { DEV_USER_EMAIL } from '../db/dev-seed.constants';
 import { InvitesService } from './invites.service';
+import { TotpService } from './totp.service';
+import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
 
@@ -27,6 +29,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly invitesService: InvitesService,
+    private readonly totpService: TotpService,
   ) {}
 
   async issueDevLoginToken(): Promise<{ accessToken: string }> {
@@ -110,11 +113,20 @@ export class AuthService {
       throw new UnauthorizedException('E-posta veya şifre hatalı.');
     }
 
+    if (this.totpService.isEnabled(user)) {
+      const totpValid =
+        !!dto.totpCode &&
+        (await this.totpService.verifyDuringLogin(user.id, dto.totpCode));
+      if (!totpValid) {
+        throw new UnauthorizedException('Geçerli bir TOTP kodu gerekli.');
+      }
+    }
+
     return this.issueTokenPair(user.id, user.email);
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {
-    const tokenHash = hashRefreshToken(refreshToken);
+    const tokenHash = sha256Hex(refreshToken);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
     });
@@ -138,7 +150,7 @@ export class AuthService {
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const tokenHash = hashRefreshToken(refreshToken);
+    const tokenHash = sha256Hex(refreshToken);
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
@@ -155,17 +167,13 @@ export class AuthService {
     await this.prisma.refreshToken.create({
       data: {
         userId,
-        tokenHash: hashRefreshToken(refreshToken),
+        tokenHash: sha256Hex(refreshToken),
         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
       },
     });
 
     return { accessToken, refreshToken };
   }
-}
-
-function hashRefreshToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
 }
 
 async function verifyPasswordSafely(

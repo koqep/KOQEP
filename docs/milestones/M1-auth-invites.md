@@ -13,7 +13,7 @@
 
 ## Acceptance criteria
 - [x] A real external tester can redeem an invite code and create an account.
-- [ ] TOTP is available and optional; enabling it issues recovery codes.
+- [x] TOTP is available and optional; enabling it issues recovery codes.
 - [x] Login issues an access + refresh token; refresh rotates correctly.
 - [ ] Password reset follows `docs/THREAT-MODEL.md` row 11: single-use/short-TTL reset link, email notification on reset, all sessions revoked on password change; if TOTP is enabled, reset alone does not grant login.
 - [ ] A user can block another user, and blocked users can't message them.
@@ -22,7 +22,7 @@
 ## Tasks
 - [x] Invite code model + redemption endpoint (founder-issued pool for now).
 - [x] Signup + login endpoints, access/refresh token issuance (ADR-0002).
-- [ ] TOTP setup + recovery codes (optional).
+- [x] TOTP setup + recovery codes (optional).
 - [ ] Password reset flow with the THREAT-MODEL row-11 controls.
 - [ ] Block-user feature.
 - [ ] Tests for each flow.
@@ -57,3 +57,35 @@
 
 ### Sıradaki
 Slice B (TOTP), Slice C (şifre sıfırlama), Slice D (block-user), Slice E (frontend signup/login UI + dev-login'in tamamen kaldırılması).
+
+---
+
+## Plan notları — Slice A takip: dev-login exposure kapatıldı
+
+Gerçek auth (Slice A) yayına girdikten sonra staging'de `ENABLE_DEV_LOGIN=true` açık kalmıştı — bu artık gerçek auth'un yanında duran, sıfır kimlik doğrulamalı tam bir bypass'tı. `render.yaml`'da `false` yapıldı, ama Render servisi Blueprint'e bağlı olmadığı için bunun canlıya yansıması için dashboard'dan elle kapatılması gerekti (yapıldı, `POST /auth/dev-login` artık 404). `docs/THREAT-MODEL.md` satır 13 olarak eklendi.
+
+Bu sırada bir "değeri 'false' yapmak yetmedi, değişkeni silmek gerekti" gözlemi geldi. İncelendi: `app.module.ts`'teki karşılaştırma zaten `=== 'true'` (strict), truthiness bug DEĞİL — mevcut test (`dev-login-gate.e2e-spec.ts`) zaten literal `'false'` string'ini test ediyor ve geçiyordu. Ayrı, gerçek bir bulgu: `@prisma/client` import edilince `.env`'i sessizce yeniden yüklüyor, `delete`'lenmiş bir key'i geri dolduruyor (dotenv zaten TANIMLI bir key'e dokunmuyor ama silinmişe dokunuyor) — bu yüzden testte "tanımsız" simülasyonu `delete` yerine boş string ile yapıldı (ortam-bağımsız, güvenilir). Production'daki asıl sebep (Render'ın deploy tetikleme davranışı) doğrulanamadı, `STATE.md`'de "gözlemlendi, mekanizma bilinmiyor" olarak dürüstçe kaydedildi.
+
+---
+
+## Plan notları — Slice B: TOTP + kurtarma kodları
+
+**Görev:** Opsiyonel TOTP kurulumu/etkinleştirme/kapatma + login akışına ikinci faktör.
+
+**Kapsam dışı (bilinçli):** Şifre sıfırlama, block-user — ayrı slice'lar. Frontend UI — backend-only, Slice A'nın aynı gerekçesiyle. TOTP disable UI/akışı frontend'de yok henüz ama backend endpoint'i var (M1'in "optional" ifadesi hem açma hem kapamayı gerektiriyor).
+
+**Yeni bağımlılık (onaylı):** `otpauth` — RFC 6238 TOTP, TypeScript-native, sıfır alt-bağımlılık.
+
+**Şema:** `User.totpSecret`/`totpEnabledAt` (ikisi de nullable — Slice A'daki gibi expand/contract gerekmedi), yeni `TotpRecoveryCode` (`RefreshToken` ile aynı desen: hash'lenmiş, tek kullanımlık, `usedAt`).
+
+**Küçük refactor:** `auth.service.ts`'e özel `hashRefreshToken` fonksiyonu, paylaşılan `crypto.util.ts`'deki `sha256Hex`'e taşındı — recovery code hash'leme de aynı fonksiyonu kullanıyor, kod tekrarı yok.
+
+**Login akışı:** `LoginDto.totpCode` opsiyonel alan oldu. `AuthService.login()`: şifre doğrulandıktan sonra, kullanıcının TOTP'si açıksa `totpCode` zorunlu — önce canlı TOTP kodu olarak denenir, olmazsa kurtarma kodu olarak (tüketilerek). Yanıt şekli (ayrı bir "TOTP gerekli" sinyali vs. tek bir 401) bilerek basit tutuldu — Slice E'ye kadar hiçbir frontend bunu tüketmiyor, henüz var olmayan bir sözleşmeyi tasarlamak yerine.
+
+**Bilerek ertelenen:** `totpSecret` DB'de düz metin duruyor, şifrelenmiyor — `JWT_SECRET`/`DATABASE_URL` ile aynı güven sınırında (ikisi de zaten Render'da düz env var), yani ek şifreleme asıl olarak "sadece DB sızıntısı, app sunucusu değil" senaryosuna karşı koruma sağlardı. `docs/THREAT-MODEL.md`'nin Open items bölümüne kalıcı bir not olarak eklendi, sessizce atlanmadı.
+
+### Doğrulama
+`npm run lint && npm run typecheck && npm test && npm run test:e2e --workspace=apps/api && npm run build` (apps/api) + `apps/web`'in `test:e2e:fullstack`'i (dev-login yolu etkilenmediği doğrulandı) — hepsi yeşil.
+
+### Sıradaki
+Slice C (şifre sıfırlama), Slice D (block-user), Slice E (frontend + dev-login kaldırma).

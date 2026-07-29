@@ -14,19 +14,22 @@ enum RoomStatus {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  totpSecret    String?
+  totpEnabledAt DateTime?
 
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
   invitees  User[]  @relation("UserInvitedBy")
 
-  messages      Message[]
-  issuedInvites Invite[]       @relation("InviteIssuer")
-  usedInvite    Invite?        @relation("InviteRedeemer")
-  refreshTokens RefreshToken[]
+  messages          Message[]
+  issuedInvites     Invite[]          @relation("InviteIssuer")
+  usedInvite        Invite?           @relation("InviteRedeemer")
+  refreshTokens     RefreshToken[]
+  totpRecoveryCodes TotpRecoveryCode[]
 }
 
 model Invite {
@@ -48,6 +51,18 @@ model RefreshToken {
   createdAt DateTime  @default(now())
   expiresAt DateTime
   revokedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model TotpRecoveryCode {
+  id        String    @id @default(uuid())
+  codeHash  String    @unique
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
 
   userId String
   user   User   @relation(fields: [userId], references: [id])

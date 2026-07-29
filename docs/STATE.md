@@ -8,13 +8,13 @@
 
 ## Şu an ne çalışıyor
 - **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, ayrıca bu oturumda bu makinede bağımsız olarak yeniden doğrulandı (lint/typecheck/build/unit/e2e/fullstack-e2e hepsi yeşil).
-- **M1 Slice A — invite-gated signup + login + token TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `POST /auth/signup|login|refresh|logout` çalışıyor, testli. Dev-login hâlâ duruyor (`DevAuthController`, `ENABLE_DEV_LOGIN` ile), `apps/web` hâlâ onu kullanıyor — Slice E'de değişecek.
+- **M1 Slice A + B — invite-gated signup/login/refresh/logout + TOTP/kurtarma kodları TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). Dev-login hâlâ duruyor (`DevAuthController`), production'da `ENABLE_DEV_LOGIN` dashboard'dan kapatıldı ama kod hâlâ orada — `apps/web` hâlâ dev-login kullanıyor, Slice E'de değişecek.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres, Basic-256mb/5GB) + Prisma.
 
 ## Şu an üzerinde çalışılan
 - **Görev:** M1 devam ediyor.
-- **Yarım kalan:** Slice A bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
-- **Sonraki adım:** Slice B (TOTP + kurtarma kodları). En büyük risk TOTP kurtarma UX'i (bkz. Tuzaklar).
+- **Yarım kalan:** Slice A+B bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
+- **Sonraki adım:** Slice C (şifre sıfırlama, THREAT-MODEL satır 11 kontrolleri). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (bkz. Tuzaklar) — kod hazır ama UX riski hâlâ geçerli.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -26,6 +26,7 @@
 - 2026-07-28 — Access token bellek-içi (React state) saklanıyor, localStorage/sessionStorage YOK.
 - 2026-07-28 — M0'ın seed dev-login'i `ENABLE_DEV_LOGIN` env'i ile kapatılabilir hale getirildi (staging'de `true`) — M1'de tamamen kaldırılacak.
 - 2026-07-29 — M1 Slice A: access token 24h → 15m (refresh token artık var); refresh token JWT değil, `crypto.randomBytes` + DB'de SHA-256 hash — ADR-0002'nin gerçek revocation gereksinimi bunu istiyordu.
+- 2026-07-29 — M1 Slice B: `totpSecret` düz metin (şifrelenmemiş) — bilinçli, bkz. `docs/THREAT-MODEL.md` Open items. Kurtarma kodları da `RefreshToken` ile aynı desende hash'lenip tek kullanımlık.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.

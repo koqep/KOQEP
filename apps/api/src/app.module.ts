@@ -4,11 +4,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { HealthController } from './api/health.controller';
 import { AuthController } from './api/auth.controller';
 import { DevAuthController } from './api/dev-auth.controller';
+import { TotpController } from './api/totp.controller';
 import { RoomsController } from './api/rooms.controller';
 import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
 import { AuthService } from './services/auth.service';
 import { InvitesService } from './services/invites.service';
+import { TotpService } from './services/totp.service';
 import { RoomsService } from './services/rooms.service';
 import { MessagesService } from './services/messages.service';
 import { PrismaModule } from './db/prisma.module';
@@ -40,12 +42,14 @@ const isDevLoginEnabled = process.env.ENABLE_DEV_LOGIN === 'true';
     HealthController,
     AuthController,
     ...(isDevLoginEnabled ? [DevAuthController] : []),
+    TotpController,
     RoomsController,
     MessagesController,
   ],
   providers: [
     AuthService,
     InvitesService,
+    TotpService,
     RoomsService,
     MessagesService,
     MessagesGateway,
