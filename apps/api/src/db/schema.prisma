@@ -14,19 +14,25 @@ enum RoomStatus {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  totpSecret    String?
+  totpEnabledAt DateTime?
 
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
   invitees  User[]  @relation("UserInvitedBy")
 
-  messages      Message[]
-  issuedInvites Invite[]       @relation("InviteIssuer")
-  usedInvite    Invite?        @relation("InviteRedeemer")
-  refreshTokens RefreshToken[]
+  messages            Message[]
+  issuedInvites       Invite[]             @relation("InviteIssuer")
+  usedInvite          Invite?              @relation("InviteRedeemer")
+  refreshTokens       RefreshToken[]
+  totpRecoveryCodes   TotpRecoveryCode[]
+  passwordResetTokens PasswordResetToken[]
+  blocksMade          Block[]              @relation("Blocker")
+  blocksReceived      Block[]              @relation("Blocked")
 }
 
 model Invite {
@@ -53,6 +59,44 @@ model RefreshToken {
   user   User   @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model TotpRecoveryCode {
+  id        String    @id @default(uuid())
+  codeHash  String    @unique
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  blockerId String
+  blocker   User   @relation("Blocker", fields: [blockerId], references: [id])
+
+  blockedId String
+  blocked   User   @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
 }
 
 model Room {

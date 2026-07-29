@@ -1,0 +1,136 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+export class ApiError extends Error {
+  code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
+async function sendJson<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, init);
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => ({}))) as {
+      code?: string;
+      message?: string | string[];
+    };
+    const message = Array.isArray(errorBody.message)
+      ? errorBody.message.join(", ")
+      : (errorBody.message ?? "Bir şeyler ters gitti.");
+    throw new ApiError(message, errorBody.code);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  return sendJson<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function authedPostJson<T>(
+  path: string,
+  accessToken: string,
+  body?: unknown,
+): Promise<T> {
+  return sendJson<T>(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+async function authedGetJson<T>(path: string, accessToken: string): Promise<T> {
+  return sendJson<T>(path, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function signup(input: {
+  inviteCode: string;
+  email: string;
+  password: string;
+}): Promise<TokenPair> {
+  return postJson<TokenPair>("/auth/signup", input);
+}
+
+export function login(input: {
+  email: string;
+  password: string;
+  totpCode?: string;
+}): Promise<TokenPair> {
+  return postJson<TokenPair>("/auth/login", input);
+}
+
+export async function logout(refreshToken: string): Promise<void> {
+  await postJson("/auth/logout", { refreshToken });
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await postJson("/auth/password-reset/request", { email });
+}
+
+export async function confirmPasswordReset(
+  token: string,
+  newPassword: string,
+): Promise<void> {
+  await postJson("/auth/password-reset/confirm", { token, newPassword });
+}
+
+export interface TotpSetup {
+  secret: string;
+  otpauthUrl: string;
+}
+
+export function setupTotp(accessToken: string): Promise<TotpSetup> {
+  return authedPostJson<TotpSetup>("/auth/totp/setup", accessToken);
+}
+
+export function enableTotp(
+  accessToken: string,
+  totpCode: string,
+): Promise<string[]> {
+  return authedPostJson<string[]>("/auth/totp/enable", accessToken, {
+    totpCode,
+  });
+}
+
+export async function disableTotp(
+  accessToken: string,
+  totpCode: string,
+): Promise<void> {
+  await authedPostJson("/auth/totp/disable", accessToken, { totpCode });
+}
+
+export async function blockUser(
+  accessToken: string,
+  email: string,
+): Promise<void> {
+  await authedPostJson("/users/block", accessToken, { email });
+}
+
+export async function unblockUser(
+  accessToken: string,
+  email: string,
+): Promise<void> {
+  await authedPostJson("/users/unblock", accessToken, { email });
+}
+
+export function listBlockedUsers(accessToken: string): Promise<string[]> {
+  return authedGetJson<string[]>("/users/blocked", accessToken);
+}

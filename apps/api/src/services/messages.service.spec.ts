@@ -1,13 +1,22 @@
 import { NotFoundException } from '@nestjs/common';
 import { MessagesService } from './messages.service';
+import { BlocksService } from './blocks.service';
 import { PrismaService } from '../db/prisma.service';
 import { DEV_ROOM_NAME } from '../db/dev-seed.constants';
 
 describe('MessagesService', () => {
   const room = { id: 'room-1', name: DEV_ROOM_NAME };
 
-  function buildService(prismaMock: Partial<PrismaService>): MessagesService {
-    return new MessagesService(prismaMock as PrismaService);
+  function buildService(
+    prismaMock: Partial<PrismaService>,
+    blocksMock: Partial<BlocksService> = {
+      getBlockedAuthorIds: jest.fn().mockResolvedValue([]),
+    },
+  ): MessagesService {
+    return new MessagesService(
+      prismaMock as PrismaService,
+      blocksMock as BlocksService,
+    );
   }
 
   describe('sendMessage', () => {
@@ -83,7 +92,10 @@ describe('MessagesService', () => {
       };
 
       const service = buildService(prismaMock);
-      const page = await service.getRecentMessages(DEV_ROOM_NAME);
+      const page = await service.getRecentMessages(
+        DEV_ROOM_NAME,
+        'requester-1',
+      );
 
       expect(findManyMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -109,7 +121,12 @@ describe('MessagesService', () => {
       };
 
       const service = buildService(prismaMock);
-      await service.getRecentMessages(DEV_ROOM_NAME, 'msg-10', 20);
+      await service.getRecentMessages(
+        DEV_ROOM_NAME,
+        'requester-1',
+        'msg-10',
+        20,
+      );
 
       expect(findManyMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -129,8 +146,56 @@ describe('MessagesService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.getRecentMessages('yok-oda')).rejects.toThrow(
-        NotFoundException,
+      await expect(
+        service.getRecentMessages('yok-oda', 'requester-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('engellenen_yazarlarin_mesajlarini_disarida_birakir', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        message: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['message'],
+      };
+      const blocksMock: Partial<BlocksService> = {
+        getBlockedAuthorIds: jest.fn().mockResolvedValue(['blocked-1']),
+      };
+
+      const service = buildService(prismaMock, blocksMock);
+      await service.getRecentMessages(DEV_ROOM_NAME, 'requester-1');
+
+      expect(findManyMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            roomId: room.id,
+            OR: [{ authorId: null }, { authorId: { notIn: ['blocked-1'] } }],
+          },
+        }),
+      );
+    });
+
+    it('engellenen_kimse_yoksa_ekstra_filtre_eklemez', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        message: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+      await service.getRecentMessages(DEV_ROOM_NAME, 'requester-1');
+
+      expect(findManyMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { roomId: room.id },
+        }),
       );
     });
   });

@@ -15,6 +15,7 @@
 - [ ] An uptime check and error tracker are live and alerting the founder.
 - [ ] A documented backup/restore runbook exists and has been exercised at least once — a real restore, not just a backup that's never been tested.
 - [ ] The UI passes a basic screen-reader/contrast check (Phase 1 accessibility finding).
+- [x] Transactional email (password reset, M1 Slice C) sends from a verified, branded domain with SPF/DKIM/DMARC configured — not Resend's shared `onboarding@resend.dev` sender. Done 2026-07-29, ahead of this milestone: `koqep.com` connected via Cloudflare, auto-configure added SPF/DKIM/DMARC, "Verified" in Resend.
 
 ## Tasks
 - [ ] Draft privacy policy + ToS.
@@ -22,6 +23,7 @@
 - [ ] Set up uptime monitoring + free-tier error tracking.
 - [ ] Write the backup/restore runbook; perform one test restore.
 - [ ] Accessibility pass on the terminal UI.
+- [x] Verify a sending domain in Resend (SPF/DKIM/DMARC DNS records) and set `EMAIL_FROM_ADDRESS` to a branded sender — `docs/BACKLOG.md` item A11, previously flagged but unplaced; became concrete once M1 Slice C started actually sending email. Done 2026-07-29 (`koqep.com` via Cloudflare, `EMAIL_FROM_ADDRESS=noreply@koqep.com` being set in `apps/api/.env`).
 
 ## Risks
 - The legal check may reveal a real blocker (e.g., a stricter reading of 5651) — mitigation: start it early enough (parallel with M4/M5) that a finding here doesn't become a late surprise that delays launch.

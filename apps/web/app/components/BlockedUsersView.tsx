@@ -1,0 +1,129 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import {
+  blockUser,
+  unblockUser,
+  listBlockedUsers,
+  ApiError,
+} from "../../lib/api";
+
+interface Props {
+  accessToken: string;
+  onClose: () => void;
+}
+
+const inputClassName =
+  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
+
+export default function BlockedUsersView({ accessToken, onClose }: Props) {
+  const [blockedEmails, setBlockedEmails] = useState<string[] | null>(null);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listBlockedUsers(accessToken)
+      .then((emails) => {
+        if (!cancelled) setBlockedEmails(emails);
+      })
+      .catch(() => {
+        if (!cancelled) setBlockedEmails([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  async function handleBlock(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await blockUser(accessToken, email);
+      setBlockedEmails((prev) => [...(prev ?? []), email]);
+      setEmail("");
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleUnblock(targetEmail: string) {
+    setError(null);
+    try {
+      await unblockUser(accessToken, targetEmail);
+      setBlockedEmails((prev) => (prev ?? []).filter((e) => e !== targetEmail));
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+      );
+    }
+  }
+
+  return (
+    <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-neutral-400">
+          <span className="text-neutral-600">#</span> engellenenler
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-neutral-600 hover:text-neutral-400"
+        >
+          kapat
+        </button>
+      </div>
+
+      <form onSubmit={handleBlock} className="mb-6 flex flex-col gap-3">
+        <label className="flex flex-col gap-1 text-neutral-500">
+          e-posta
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            className={inputClassName}
+          />
+        </label>
+        {error && <p className="text-red-400">{error}</p>}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          engelle
+        </button>
+      </form>
+
+      {blockedEmails === null ? (
+        <p>yükleniyor...</p>
+      ) : blockedEmails.length === 0 ? (
+        <p>henüz kimseyi engellemedin</p>
+      ) : (
+        <ul className="space-y-2">
+          {blockedEmails.map((blockedEmail) => (
+            <li
+              key={blockedEmail}
+              className="flex items-center justify-between gap-4 text-neutral-200"
+            >
+              {blockedEmail}
+              <button
+                type="button"
+                onClick={() => void handleUnblock(blockedEmail)}
+                className="text-neutral-600 hover:text-neutral-400"
+              >
+                engeli kaldır
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

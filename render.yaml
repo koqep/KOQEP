@@ -22,7 +22,14 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
-      # M0 staging demo icin gerekli (seed dev-login) - M1'de gercek auth
-      # gelince bu satir tamamen kaldirilmali (bkz. M1-auth-invites.md).
-      - key: ENABLE_DEV_LOGIN
-        value: 'true'
+      # M1 Slice C: sifre sifirlama e-postalari icin. Hesap + API key
+      # yeterli (Resend'in paylasimli onboarding@resend.dev adresinden
+      # gonderir, domain dogrulamasi gerekmez). Deger dashboard'dan elle
+      # girilmeli.
+      - key: RESEND_API_KEY
+        sync: false
+      # Opsiyonel — sadece kendi domain'ini Resend'de dogruladiktan sonra
+      # ayarla (SPF/DKIM/DMARC, bkz. docs/milestones/M6-launch-readiness.md).
+      # Ayarlanmazsa kod onboarding@resend.dev'e duser.
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
