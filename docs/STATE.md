@@ -7,13 +7,14 @@
 **Aktif milestone:** M1 — Real Auth: Invite Signup + Login (`docs/milestones/M1-auth-invites.md`)
 
 ## Şu an ne çalışıyor
-- **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı: CI yeşil, seeded dev-login, WS round-trip (gönder → gerçek-zamanlı-al → persist), 1 e2e test, `apps/api` Render'da + `apps/web` Vercel'de canlı, production'da iki-sekme gerçek zamanlı demo doğrulandı (`/health` OK, DB bağlı).
+- **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, ayrıca bu oturumda bu makinede bağımsız olarak yeniden doğrulandı (lint/typecheck/build/unit/e2e/fullstack-e2e hepsi yeşil).
+- **M1 Slice A — invite-gated signup + login + token TAMAMLANDI** (`m1/slice-a-auth` branch'i, henüz merge edilmedi). `POST /auth/signup|login|refresh|logout` çalışıyor, testli. Dev-login hâlâ duruyor (`DevAuthController`, `ENABLE_DEV_LOGIN` ile), `apps/web` hâlâ onu kullanıyor — Slice E'de değişecek.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres, Basic-256mb/5GB) + Prisma.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Yok — oturum kapatılıyor, M0 bitti.
-- **Yarım kalan:** Yok.
-- **Sonraki adım:** M1'e başla — `docs/milestones/M1-auth-invites.md`. Seed dev-login gerçek davetiye tabanlı kayıt ile değiştirilecek; TOTP (opsiyonel), access/refresh token, şifre sıfırlama, block-user. En büyük risk TOTP kurtarma UX'i (bkz. Tuzaklar).
+- **Görev:** M1 devam ediyor.
+- **Yarım kalan:** Slice A bitti (bkz. `docs/milestones/M1-auth-invites.md` Plan notları), henüz push/PR edilmedi.
+- **Sonraki adım:** Slice B (TOTP + kurtarma kodları). En büyük risk TOTP kurtarma UX'i (bkz. Tuzaklar).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -24,6 +25,7 @@
 - 2026-07-28 — WS transport: Socket.IO, native ws değil — bkz. `docs/decisions/ADR-0007`.
 - 2026-07-28 — Access token bellek-içi (React state) saklanıyor, localStorage/sessionStorage YOK.
 - 2026-07-28 — M0'ın seed dev-login'i `ENABLE_DEV_LOGIN` env'i ile kapatılabilir hale getirildi (staging'de `true`) — M1'de tamamen kaldırılacak.
+- 2026-07-29 — M1 Slice A: access token 24h → 15m (refresh token artık var); refresh token JWT değil, `crypto.randomBytes` + DB'de SHA-256 hash — ADR-0002'nin gerçek revocation gereksinimi bunu istiyordu.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.

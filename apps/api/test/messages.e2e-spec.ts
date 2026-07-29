@@ -29,7 +29,7 @@ describe('Messages REST (e2e)', () => {
     await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
       update: {},
-      create: { email: DEV_USER_EMAIL },
+      create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
     });
     const issued = await authService.issueDevLoginToken();
     accessToken = issued.accessToken;
