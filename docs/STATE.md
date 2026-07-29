@@ -36,3 +36,5 @@
 - Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i — her `npm install`/`npm ci`'da otomatik çalışır, buildCommand/CI adımına gömmeye çalışma.
 - Render servisi (`koqep-api`) Blueprint'e bağlı DEĞİL, elle kuruldu — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz, dashboard'dan elle güncellenmeli.
 - `.env`/`.env.*` dosyaları `Read` için engelli — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz.
+- Render'da bir env var'ın DEĞERİNİ değiştirmek (ör. `ENABLE_DEV_LOGIN=false`) canlıya yansımayabilir — sadece değişkeni tamamen SİLMEK işe yaradı, gözlemlendi (2026-07-29). Kod tarafı `=== 'true'` ile strict, truthiness bug DEĞİL — doğrulandı, testli. Sebep muhtemelen Render'ın deploy tetikleme davranışı, kesin mekanizma bilinmiyor.
+- `@prisma/client` import edilince `schema.prisma`'nın yanındaki `.env`'i sessizce (yeniden) yükler; dotenv zaten TANIMLI bir key'i override etmez ama `delete`'lenmiş/tanımsız bir key'i geri dolduruyor. Testte "env var yok" simüle etmek için `delete process.env.X` DEĞİL, boş string (`''`) kullan — yoksa test makineden makineye (yerel `.env` var/yok) farklı sonuç verir.

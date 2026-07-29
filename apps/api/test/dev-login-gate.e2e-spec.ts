@@ -64,6 +64,30 @@ describe('Dev-login env gate (e2e)', () => {
     await app.close();
   });
 
+  it('ENABLE_DEV_LOGIN_bos_string_iken_route_kayitli_degil_404_doner', async () => {
+    // Bilerek delete DEĞİL: PrismaModule import zincirinin bir yan etkisi
+    // olarak @prisma/client, schema.prisma'nın yanındaki .env dosyasını
+    // otomatik (yeniden) yüklüyor - dotenv zaten TANIMLI bir key'i asla
+    // override etmez ama SİLİNMİŞ (tanımsız) bir key'i sessizce geri
+    // dolduruyor. Bu yüzden `delete` burada güvenilmez ve makineden
+    // makineye (yerel .env var/yok) farklı sonuç verir - boş string zaten
+    // "tanımlı" sayıldığı için dotenv'in üzerine yazmadığı, hem 'true'
+    // hem 'false'tan farklı, ortam-bağımsız bir "false" temsili.
+    process.env.ENABLE_DEV_LOGIN = '';
+    const AppModule = loadFreshAppModule();
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    const app: INestApplication<App> = moduleFixture.createNestApplication();
+    await app.init();
+
+    await request(app.getHttpServer()).post('/auth/dev-login').expect(404);
+
+    await app.close();
+  });
+
   it('ENABLE_DEV_LOGIN_true_iken_route_kayitli_ve_calisiyor', async () => {
     process.env.ENABLE_DEV_LOGIN = 'true';
     const AppModule = loadFreshAppModule();
