@@ -4,7 +4,7 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-29
-**Aktif milestone:** M1 TAMAMEN BİTTİ. M2 (`docs/milestones/M2-core-rooms-messaging.md`) henüz başlamadı, kapsamı netleşmedi.
+**Aktif milestone:** M1 TAMAMEN BİTTİ. M2 (`docs/milestones/M2-core-rooms-messaging.md`) kapsamı netleşti (7 slice: A-D backend, E-G frontend), henüz implementasyona başlanmadı.
 
 ## Şu an ne çalışıyor
 - **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, bu makinede bağımsız doğrulandı.
@@ -13,14 +13,16 @@
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Oturum sonu. M2'nin kapsamı henüz netleşmedi; tek karar: gerçek bir davet-üretme endpoint'i M2'ye giriyor (bootstrap boşluğu + THREAT-MODEL'in Open items'ı bunu gerektiriyor) — `docs/milestones/M2-core-rooms-messaging.md`'ye sadece not olarak düşüldü, detaylı planlama yapılmadı.
-- **Yarım kalan:** Bu not + bu STATE.md güncellemesi `docs/m2-invite-endpoint-note` branch'inde, henüz commit/push/merge edilmedi.
-- **Sonraki adım:** M2 planını netleştirmek (başka bir bilgisayardan devam edilecek). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (M1'in en büyük solo-destek riski, hâlâ geçerli).
+- **Görev:** M2 kapsam netleştirme bitti (kod yazılmadı, sadece plan). Araştırma THREAT-MODEL/ADR-0006/DATA-MODEL'in rate limiting, oda-oluşturma altyapısı ve moderatör kavramını VARMIŞ gibi anlattığını ama hiçbirinin kodda olmadığını ortaya çıkardı — tahmin dahi 28-42h'ten 55-80h'e revize edildi. `docs/milestones/M2-core-rooms-messaging.md` 7 slice'a bölünerek yeniden yazıldı; `docs/THREAT-MODEL.md` satır 1/5/6/7/9 gerçeği yansıtacak şekilde düzeltildi (aktif kontrol değil, "M2 Slice C'de geliyor"/satır 6 için "M3'e ertelendi").
+- **Yarım kalan:** Bu güncellemeler `docs/m2-scope-and-threat-model-corrections` branch'inde, henüz commit/push/merge edilmedi.
+- **Sonraki adım:** M2 Slice A (çekirdek odalar + oda-parametreli mesajlaşma + `User.role` migration) kendi plan modu turunu alacak — muhtemelen başka bir bilgisayardan. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
-- Gerçek bir "davet üret" endpoint'i yok — hem founder-invite akışı hem ilk-kullanıcı bootstrap'ı elle SQL'e dayanıyor (bkz. `docs/THREAT-MODEL.md` Open items). M2'de kapatılacak.
+- Gerçek bir "davet üret" endpoint'i yok — hem founder-invite akışı hem ilk-kullanıcı bootstrap'ı elle SQL'e dayanıyor (bkz. `docs/THREAT-MODEL.md` Open items). M2 Slice C'de kapatılacak.
+- Rate limiting hiçbir yerde implement edilmemiş (kütüphane bile yok) — THREAT-MODEL satır 1/5/6/7/9 bunu aktif kontrolmüş gibi anlatıyordu, düzeltildi. M2 Slice C'de `@nestjs/throttler` ile gelecek (oda-oluşturma kısmı hariç — M3).
+- `User`'da role/moderatör kavramı yok — M2'nin edit-history erişim kontrolü bunsuz yapılamaz. M2 Slice A'da `User.role` migration'ı geliyor; founder'ın kendi satırı elle SQL ile `moderator` yapılacak (bootstrap ile aynı desen).
 
 ## Yakın zamanda alınan kararlar
 - DB hosting: Render Postgres, Internal Database URL — Neon/Supabase değil.
