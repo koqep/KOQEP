@@ -2,10 +2,11 @@ import { NotFoundException } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { BlocksService } from './blocks.service';
 import { PrismaService } from '../db/prisma.service';
-import { DEV_ROOM_NAME } from '../db/dev-seed.constants';
+import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
 describe('MessagesService', () => {
-  const room = { id: 'room-1', name: DEV_ROOM_NAME };
+  const room = { id: 'room-1', name: CORE_ROOM_NAMES[0] };
+  const otherRoom = { id: 'room-2', name: CORE_ROOM_NAMES[1] };
 
   function buildService(
     prismaMock: Partial<PrismaService>,
@@ -25,6 +26,7 @@ describe('MessagesService', () => {
         id: 'msg-1',
         content: 'merhaba',
         createdAt: new Date('2026-01-01'),
+        roomId: room.id,
         author: { email: 'dev@koqep.local' },
       };
       const createMock = jest.fn().mockResolvedValue(created);
@@ -38,7 +40,11 @@ describe('MessagesService', () => {
       };
 
       const service = buildService(prismaMock);
-      const result = await service.sendMessage('user-1', 'merhaba');
+      const result = await service.sendMessage(
+        'user-1',
+        CORE_ROOM_NAMES[0],
+        'merhaba',
+      );
 
       expect(createMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -50,7 +56,49 @@ describe('MessagesService', () => {
         content: 'merhaba',
         createdAt: created.createdAt,
         authorEmail: 'dev@koqep.local',
+        roomId: room.id,
       });
+    });
+
+    it('ikinci_cekirdek_odaya_da_mesaj_olusturabilir', async () => {
+      const created = {
+        id: 'msg-2',
+        content: 'meta selam',
+        createdAt: new Date('2026-01-01'),
+        roomId: otherRoom.id,
+        author: { email: 'dev@koqep.local' },
+      };
+      const findUniqueMock = jest.fn().mockResolvedValue(otherRoom);
+      const createMock = jest.fn().mockResolvedValue(created);
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: findUniqueMock,
+        } as unknown as PrismaService['room'],
+        message: {
+          create: createMock,
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.sendMessage(
+        'user-1',
+        CORE_ROOM_NAMES[1],
+        'meta selam',
+      );
+
+      expect(findUniqueMock).toHaveBeenCalledWith({
+        where: { name: CORE_ROOM_NAMES[1] },
+      });
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            content: 'meta selam',
+            roomId: otherRoom.id,
+            authorId: 'user-1',
+          },
+        }),
+      );
+      expect(result.roomId).toBe(otherRoom.id);
     });
 
     it('reddeder_oda_bulunamazsa', async () => {
@@ -62,9 +110,9 @@ describe('MessagesService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.sendMessage('user-1', 'merhaba')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -93,7 +141,7 @@ describe('MessagesService', () => {
 
       const service = buildService(prismaMock);
       const page = await service.getRecentMessages(
-        DEV_ROOM_NAME,
+        CORE_ROOM_NAMES[0],
         'requester-1',
       );
 
@@ -122,7 +170,7 @@ describe('MessagesService', () => {
 
       const service = buildService(prismaMock);
       await service.getRecentMessages(
-        DEV_ROOM_NAME,
+        CORE_ROOM_NAMES[0],
         'requester-1',
         'msg-10',
         20,
@@ -166,7 +214,7 @@ describe('MessagesService', () => {
       };
 
       const service = buildService(prismaMock, blocksMock);
-      await service.getRecentMessages(DEV_ROOM_NAME, 'requester-1');
+      await service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1');
 
       expect(findManyMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -190,7 +238,7 @@ describe('MessagesService', () => {
       };
 
       const service = buildService(prismaMock);
-      await service.getRecentMessages(DEV_ROOM_NAME, 'requester-1');
+      await service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1');
 
       expect(findManyMock).toHaveBeenCalledWith(
         expect.objectContaining({

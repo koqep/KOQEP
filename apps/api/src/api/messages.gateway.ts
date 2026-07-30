@@ -8,17 +8,17 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../db/prisma.service';
-import { DEV_ROOM_NAME } from '../db/dev-seed.constants';
+import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 import { AuthService } from '../services/auth.service';
 import {
   MAX_MESSAGE_LENGTH,
   MessagesService,
 } from '../services/messages.service';
+import type { MessageDto } from '../services/messages.service';
 import { BlocksService } from '../services/blocks.service';
 
 interface SocketData {
   userId: string;
-  roomId: string;
 }
 
 @WebSocketGateway({
@@ -45,18 +45,20 @@ export class MessagesGateway implements OnGatewayConnection {
 
     try {
       const payload = await this.authService.verifyAccessToken(token);
-      const room = await this.prisma.room.findUnique({
-        where: { name: DEV_ROOM_NAME },
+      const rooms = await this.prisma.room.findMany({
+        where: { name: { in: [...CORE_ROOM_NAMES] } },
       });
 
-      if (!room) {
+      if (rooms.length === 0) {
         client.disconnect(true);
         return;
       }
 
-      const data: SocketData = { userId: payload.sub, roomId: room.id };
+      const data: SocketData = { userId: payload.sub };
       client.data = data;
-      await client.join(room.id);
+      for (const room of rooms) {
+        await client.join(room.id);
+      }
       // Baglanti+auth+join tamamlanmadan client mesaj gonderirse
       // client.data henuz set edilmemis olabilir (async handleConnection
       // yarisi) - bu yuzden client'a acik bir hazir sinyali veriyoruz.
@@ -69,10 +71,12 @@ export class MessagesGateway implements OnGatewayConnection {
   @SubscribeMessage('message:send')
   async handleMessageSend(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { content?: unknown },
+    @MessageBody() body: { content?: unknown; roomName?: unknown },
   ): Promise<void> {
-    const { userId, roomId } = client.data as SocketData;
+    const { userId } = client.data as SocketData;
     const content = body?.content;
+    const roomName =
+      typeof body?.roomName === 'string' ? body.roomName : CORE_ROOM_NAMES[0];
 
     if (
       typeof content !== 'string' ||
@@ -82,7 +86,18 @@ export class MessagesGateway implements OnGatewayConnection {
       return;
     }
 
-    const message = await this.messagesService.sendMessage(userId, content);
+    let message: MessageDto;
+    try {
+      message = await this.messagesService.sendMessage(
+        userId,
+        roomName,
+        content,
+      );
+    } catch {
+      // Bilinmeyen/gecersiz roomName - sessizce yoksay, ayni icerik
+      // dogrulamasindaki gibi (client'i guvenilir kabul etme).
+      return;
+    }
 
     // Blanket oda broadcast'i yerine bilerek tek tek emit ediyoruz: bu
     // yazarı engellemiş kullanıcıların socket'lerine mesaj hiç ulaşmamalı
@@ -90,7 +105,7 @@ export class MessagesGateway implements OnGatewayConnection {
     const blockerIds = new Set(
       await this.blocksService.getBlockerIdsOf(userId),
     );
-    const socketsInRoom = await this.server.in(roomId).fetchSockets();
+    const socketsInRoom = await this.server.in(message.roomId).fetchSockets();
     for (const socket of socketsInRoom) {
       const socketData = socket.data as SocketData;
       if (!blockerIds.has(socketData.userId)) {

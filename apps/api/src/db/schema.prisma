@@ -13,11 +13,17 @@ enum RoomStatus {
   deleted
 }
 
+enum UserRole {
+  user
+  moderator
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
   passwordHash  String
   createdAt     DateTime  @default(now())
+  role          UserRole  @default(user)
   totpSecret    String?
   totpEnabledAt DateTime?
 

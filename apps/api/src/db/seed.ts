@@ -3,9 +3,9 @@ import * as argon2 from 'argon2';
 import {
   DEV_USER_EMAIL,
   DEV_USER_PASSWORD,
-  DEV_ROOM_NAME,
   DEV_INVITE_CODES,
 } from './dev-seed.constants';
+import { CORE_ROOM_NAMES } from './core-rooms.constants';
 
 // Bu script her deploy'da (render.yaml preDeployCommand) production'a karşı da
 // çalışıyor. Dev kullanıcı + davet kodları git'te düz metin sabitler - opt-in
@@ -17,11 +17,13 @@ const shouldSeedDevFixtures = process.env.SEED_DEV_FIXTURES === 'true';
 async function main(): Promise<void> {
   const prisma = new PrismaClient();
 
-  await prisma.room.upsert({
-    where: { name: DEV_ROOM_NAME },
-    update: {},
-    create: { name: DEV_ROOM_NAME },
-  });
+  for (const name of CORE_ROOM_NAMES) {
+    await prisma.room.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
 
   if (!shouldSeedDevFixtures) {
     console.log(
