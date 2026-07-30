@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Invite } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../db/prisma.service';
+
+const INVITE_CODE_BYTES = 12;
 
 @Injectable()
 export class InvitesService {
@@ -21,5 +24,11 @@ export class InvitesService {
     }
 
     return invite;
+  }
+
+  async createInvite(issuedById: string): Promise<{ code: string }> {
+    const code = randomBytes(INVITE_CODE_BYTES).toString('base64url');
+    await this.prisma.invite.create({ data: { code, issuedById } });
+    return { code };
   }
 }

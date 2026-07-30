@@ -6,6 +6,8 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
@@ -16,6 +18,10 @@ import {
 } from '../services/messages.service';
 import type { MessageDto } from '../services/messages.service';
 import { BlocksService } from '../services/blocks.service';
+import { WsThrottlerGuard } from './ws-throttler.guard';
+
+const MESSAGE_SEND_LIMIT = 10;
+const MESSAGE_SEND_TTL_MS = 10 * 1000;
 
 interface SocketData {
   userId: string;
@@ -69,6 +75,10 @@ export class MessagesGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('message:send')
+  @UseGuards(WsThrottlerGuard)
+  @Throttle({
+    default: { limit: MESSAGE_SEND_LIMIT, ttl: MESSAGE_SEND_TTL_MS },
+  })
   async handleMessageSend(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { content?: unknown; roomName?: unknown },
@@ -103,6 +113,10 @@ export class MessagesGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('message:edit')
+  @UseGuards(WsThrottlerGuard)
+  @Throttle({
+    default: { limit: MESSAGE_SEND_LIMIT, ttl: MESSAGE_SEND_TTL_MS },
+  })
   async handleMessageEdit(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { messageId?: unknown; content?: unknown },

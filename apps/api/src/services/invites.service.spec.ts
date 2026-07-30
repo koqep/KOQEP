@@ -54,4 +54,38 @@ describe('InvitesService', () => {
       ConflictException,
     );
   });
+
+  describe('createInvite', () => {
+    it('yuksek_entropili_bir_kod_uretir_ve_issuedbyi_dogru_kaydeder', async () => {
+      const createMock = jest.fn().mockResolvedValue({});
+      const prismaMock: Partial<PrismaService> = {
+        invite: {
+          create: createMock,
+        } as unknown as PrismaService['invite'],
+      };
+
+      const service = buildService(prismaMock);
+      const { code } = await service.createInvite('user-1');
+
+      expect(code).toEqual(expect.any(String));
+      expect(code.length).toBeGreaterThanOrEqual(16);
+      expect(createMock).toHaveBeenCalledWith({
+        data: { code, issuedById: 'user-1' },
+      });
+    });
+
+    it('her_cagrida_farkli_bir_kod_uretir', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        invite: {
+          create: jest.fn().mockResolvedValue({}),
+        } as unknown as PrismaService['invite'],
+      };
+
+      const service = buildService(prismaMock);
+      const first = await service.createInvite('user-1');
+      const second = await service.createInvite('user-1');
+
+      expect(first.code).not.toBe(second.code);
+    });
+  });
 });

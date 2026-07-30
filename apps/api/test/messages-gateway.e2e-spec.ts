@@ -247,4 +247,36 @@ describe('Messages Gateway (e2e)', () => {
     });
     expect(row?.content).toBe(originalContent);
   }, 10000);
+
+  it('siniri_asan_hizli_mesaj_gonderimi_kullaniciya_ozel_engellenir', async () => {
+    // Ayrı, taze bir kullanıcı - paylaşılan accessToken'ın önceki testlerden
+    // gelen mesaj sayacını devralmaması için (limit kullanıcı başına, dosya
+    // genelinde birikiyor).
+    const token = await createOtherUserToken();
+    const client = connect(token);
+    await waitForEvent(client, 'ready');
+
+    const WS_MESSAGE_LIMIT = 10;
+    for (let i = 0; i < WS_MESSAGE_LIMIT; i++) {
+      const receivedPromise = waitForEvent<{ id: string; content: string }>(
+        client,
+        'message:new',
+      );
+      client.emit('message:send', { content: `limit-icinde-${i}` });
+      const message = await receivedPromise;
+      createdMessageIds.push(message.id);
+    }
+
+    const exceptionPromise = waitForEvent<{ status: string }>(
+      client,
+      'exception',
+    );
+    client.emit('message:send', { content: 'siniri-asan-mesaj' });
+    await exceptionPromise;
+
+    const row = await prisma.message.findFirst({
+      where: { content: 'siniri-asan-mesaj' },
+    });
+    expect(row).toBeNull();
+  }, 15000);
 });

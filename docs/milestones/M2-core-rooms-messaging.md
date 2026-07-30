@@ -46,11 +46,11 @@ describing these as active controls.
 - [x] Edit history is visible only to the message's author and to users with
       `role: moderator` (`docs/THREAT-MODEL.md` row 3) — enforced at the service layer,
       not just UI-hidden.
-- [ ] `POST /invites` exists, requires auth, generates a real high-entropy single-use
+- [x] `POST /invites` exists, requires auth, generates a real high-entropy single-use
       code, and is rate-limited per issuer (`docs/THREAT-MODEL.md` row 1).
-- [ ] `POST /auth/signup` is rate-limited against invite-code-guessing attempts
+- [x] `POST /auth/signup` is rate-limited against invite-code-guessing attempts
       (`docs/THREAT-MODEL.md` row 9).
-- [ ] Message sending is rate-limited per-user at the WS gateway
+- [x] Message sending is rate-limited per-user at the WS gateway
       (`docs/THREAT-MODEL.md` row 5).
 - [ ] A basic load test at ~50 concurrent WS connections holds up without errors.
 - [ ] `apps/web` has a room switcher (currently always picks the first room from
@@ -66,7 +66,7 @@ for its Slice A-E split):
 - [x] **M2 Slice B — Message editing + history + access control.** `MessageEdit` model +
       migration; author-only edit endpoint; edit-history read gated to author-or-
       moderator via `role`.
-- [ ] **M2 Slice C — Invite issuance + rate limiting.** `POST /invites` (server-generated
+- [x] **M2 Slice C — Invite issuance + rate limiting.** `POST /invites` (server-generated
       high-entropy code); `@nestjs/throttler` added, applied to this endpoint and to
       `POST /auth/signup`; a custom WS throttle guard for message send. Bundled because
       the rate limiter's first real consumer is this endpoint.
@@ -91,6 +91,12 @@ end-to-end (same reasoning M1 applied to its own frontend slices):
   real moderator until the founder manually sets their own `User.role = 'moderator'` via
   SQL after Slice A's migration ships — same manual-SQL pattern as this session's
   TOTP-lockout runbook and production user-bootstrap, not a new kind of risk.
+- **Rate limit numbers (Slice C) are proposed defaults, not final** — 100/60s global,
+  5/hour invites, 20/60s signup, 10/10s WS messages. Concrete revisit trigger (not just
+  "adjustable," which tends to get forgotten): whichever comes first — **(a)** M6 ships,
+  or **(b)** a real incident — a legitimate user gets blocked, or an abuse pattern gets
+  through despite them. Same two-sided trigger style as the `totpSecret` encryption
+  deferral in `docs/THREAT-MODEL.md`.
 
 ---
 
@@ -204,3 +210,64 @@ düzeltmesi gerekmediği için `--create-only` gerekmedi).
 
 ### Sıradaki
 Slice C (davet üretme + rate limiting) — ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice C: davet üretme + rate limiting
+
+**Görev:** `POST /invites` (gerçek, yüksek-entropili, tek-kullanımlık kod üreten bir
+endpoint — M1'in post-merge güvenlik düzeltmesinden beri açık olan boşluk); ilk kez
+`@nestjs/throttler` eklendi ve `POST /invites` (kullanıcı başına), `POST /auth/signup`
+(IP başına, davet kodu tahmin etmeye karşı), ve WS `message:send`/`message:edit`
+(kullanıcı başına) üzerine uygulandı.
+
+**`@nestjs/throttler`'ın gerçek API'si (eğitim verisinden değil) GitHub README'sinden
+doğrulandı** — `ttl`'in milisaniye olduğu, `@Throttle()` dekoratörünün tam şekli, ve
+WS için belgelenmiş `ThrottlerGuard` alt sınıflama deseni (`handleRequest`'i override
+etmek, `APP_GUARD`/`useGlobalGuards()` WS için çalışmıyor) — kod yazmadan önce.
+
+**Gerçek testler iki ayrı, ince kütüphane hatası/yanlış-kullanımı yakaladı — ikisi de
+sadece "muhtemelen doğru" denip geçilseydi fark edilmezdi:**
+
+1. **Global (APP_GUARD, IP-bazlı) guard ile route-özel `UserThrottlerGuard`'ın aynı
+   `@Throttle()` metadata'sını okuyup İKİ AYRI sayaç tutması** — `/invites`'a 3.
+   istekte beklenmedik 429 olarak yakalandı (test client'ı hem global IP hem kendi
+   kullanıcı sayacını aynı anda tüketiyordu). Çözüm: `UserThrottlerGuard`,
+   `ThrottlerGuard`'ı extend etmekten vazgeçip `ThrottlerStorage`'ı doğrudan kullanan
+   bağımsız bir `CanActivate`'e dönüştürüldü — global guard'ın paylaşılan
+   `this.throttlers` listesine hiç girmiyor, `@Throttle()` metadata'sı artık bu route
+   için anlamsız (kaldırıldı).
+2. **`storageService.increment()`'e `blockDuration=0` vermek bloğu AYNI çağrı içinde
+   sıfırlıyor** — kütüphanenin kendi `ThrottlerStorageService` implementasyonu
+   okunarak bulundu: `blockExpiresAt = now+0` hemen "süresi dolmuş" sayılıp
+   `resetBlockdRequest()` anında tetikleniyor. 6. istek 429 yerine 201 dönerek
+   yakalandı. Base `ThrottlerGuard.canActivate()`'in kendisi de belirtilmediğinde
+   `blockDuration`'ı `ttl`'e düşürüyor — `UserThrottlerGuard` aynı varsayılanı elle
+   uyguladı.
+
+**WS tarafında global HTTP guard'ın karışıp karışmadığı gerçek testle doğrulandı** —
+`messages-gateway.e2e-spec.ts`'in TÜM testleri (throttle testi dahil) sorunsuz geçti,
+global `ThrottlerGuard`'ın WS context'inde sessizce bozmadığı/karışmadığı kanıtlandı,
+varsayılmadı.
+
+**Davet kodu: `randomBytes(12).toString('base64url')`** — refresh token'larla aynı
+üretim deseni (`REFRESH_TOKEN_BYTES`), daha kısa (12 byte = 96 bit, hâlâ astronomik
+ölçüde yeterli) çünkü bir davet kodu insan tarafından elle paylaşılıyor, refresh token
+uzunluğunda bir string pratik olmazdı.
+
+**Dokunulan/yeni testler:** `invites.service.spec.ts` (kod üretimi + issuedById);
+yeni `invites.e2e-spec.ts` (gerçek kod üretimi + gerçek signup ile kullanılabilirliği
++ saatte 5'ten fazlasının 429 alması); `messages-gateway.e2e-spec.ts`'e WS limitini
+aşan hızlı gönderimin `exception` event'iyle engellendiğini kanıtlayan test eklendi
+(taze bir kullanıcıyla — paylaşılan `accessToken`'ın önceki testlerden gelen sayacını
+devralmaması için, limit kullanıcı başına dosya genelinde birikiyor).
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(67)/e2e(29)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(21)/`test:e2e:fullstack`(1, gerçek backend'e karşı) —
+hepsi yeşil. Bu slice'ta yanlış bir rate limit sayısı BAŞKA testleri kırabilirdi, bu
+yüzden tüm e2e suite'i (sadece yeni dosyalar değil) asıl doğrulama oldu.
+
+### Sıradaki
+Slice D (temel yük testi) — ayrı bir plan modu turu alacak, ya da kullanıcı frontend
+slice'larına (E-G) geçmek isterse o.
