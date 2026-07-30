@@ -4,24 +4,23 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-29
-**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — Slice A+B bitti, C-G kaldı (7 slice: A-D backend, E-G frontend).
+**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — Slice A+B+C bitti, D-G kaldı (7 slice: A-D backend, E-G frontend).
 
 ## Şu an ne çalışıyor
 - **M0 + M1 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları `apps/web`'de, dev-login koddan tamamen silindi. Merge-sonrası bulunan bir güvenlik açığı (`seed.ts`'in dev fixture'ları production'a da yazması) `SEED_DEV_FIXTURES` opt-in env'iyle kapatıldı; kullanıcı production'da eski test hesaplarını silip **kendi ilk gerçek hesabını elle SQL ile bootstrap etti**. Detaylar `docs/milestones/M1-auth-invites.md`.
-- **M2 kapsamı netleşti. Slice A `main`'e MERGE EDİLDİ; Slice B TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Araştırma THREAT-MODEL/ADR-0006/DATA-MODEL'in rate limiting, oda-oluşturma altyapısı ve moderatör kavramını VARMIŞ gibi anlattığını ama hiçbirinin kodda olmadığını ortaya çıkardı (tahmin 28-42h'ten 55-80h'e revize edildi). Slice A: 'genel' odası id/geçmişi korunarak 'general'e taşındı, 'meta' eklendi, mesaj gönderme + WS gateway oda-parametreli oldu, `User.role` migration'ı geldi. Slice B: `MessageEdit` modeli, `message:edit` WS event'i (REST değil — `sendMessage` deseniyle aynı), `message:updated` yayını, geçmiş okuma yazar/moderatöre gated REST endpoint'i. `apps/web` hiç dokunulmadı (gerçek fullstack testle doğrulandı, her iki slice'ta da).
+- **M2 kapsamı netleşti. Slice A+B `main`'e MERGE EDİLDİ; Slice C TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: 'genel' odası id/geçmişi korunarak 'general'e taşındı, 'meta' eklendi, mesajlaşma oda-parametreli oldu, `User.role` geldi. Slice B: `MessageEdit` + `message:edit` WS event'i + `message:updated` yayını + yazar/moderatöre gated geçmiş okuma. Slice C: `POST /invites` (gerçek, yüksek-entropili kod) + `@nestjs/throttler` (davet/signup/WS mesaj limitleri) — implementasyon sırasında kütüphanenin kendisinde iki gerçek hata/tuzak bulundu ve düzeltildi (bkz. Tuzaklar). `apps/web` üç slice'ta da hiç dokunulmadı, gerçek fullstack testle doğrulandı.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2 Slice B kod + test + doküman tamamlandı, `m2/slice-b-message-editing` branch'inde commit edilecek.
+- **Görev:** M2 Slice C kod + test + doküman tamamlandı, `m2/slice-c-invites-rate-limiting` branch'inde commit edilecek.
 - **Yarım kalan:** Bu branch'in commit/push/merge edilmesi.
-- **Sonraki adım:** M2 Slice C (davet üretme + rate limiting, `@nestjs/throttler`) kendi plan modu turunu alacak. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor (gerçek moderatör hesabıyla Slice B'yi elle de doğrulamak için). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
+- **Sonraki adım:** M2 Slice D (temel yük testi, ~50 eşzamanlı WS bağlantısı) kendi plan modu turunu alacak — ya da kullanıcı frontend slice'larına (E-G) geçmek isterse o. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
-- Gerçek bir "davet üret" endpoint'i yok — hem founder-invite akışı hem ilk-kullanıcı bootstrap'ı elle SQL'e dayanıyor (bkz. `docs/THREAT-MODEL.md` Open items). M2 Slice C'de kapatılacak.
-- Rate limiting hiçbir yerde implement edilmemiş (kütüphane bile yok) — THREAT-MODEL satır 1/5/6/7/9 bunu aktif kontrolmüş gibi anlatıyordu, düzeltildi. M2 Slice C'de `@nestjs/throttler` ile gelecek (oda-oluşturma kısmı hariç — M3).
-- `User.role` alanı var (Slice A) ve erişim kontrolü kodda çalışıyor (Slice B, e2e'de gerçek moderatör rolüyle test edildi) ama production'da henüz kimse `moderator` değil — founder'ın kendi satırını elle SQL ile ayarlaması hâlâ öneriliyor.
+- Rate limit sayıları (100/60s global, 5/saat davet, 20/60s signup, 10/10s WS) ayarlanabilir varsayılan — somut tetikleyici: M6 ships VEYA gerçek bir olay (yanlış engelleme ya da kaçan bir suistimal).
+- `User.role` alanı var, erişim kontrolü kodda çalışıyor ama production'da henüz kimse `moderator` değil — founder'ın kendi satırını elle SQL ile ayarlaması hâlâ öneriliyor.
 
 ## Yakın zamanda alınan kararlar
 - DB hosting: Render Postgres, Internal Database URL — Neon/Supabase değil.
@@ -32,6 +31,7 @@
 - 2026-07-29 — Sıfır-kullanıcılı DB bootstrap boşluğu koda değil belgeye gitti: `docs/THREAT-MODEL.md` Open items'a somut tetikleyiciyle (M2'nin davet endpoint'i bunu da kapsamalı) eklendi.
 - 2026-07-30 — M2 Slice A: oda adları `dev-seed.constants.ts`'ten yeni `core-rooms.constants.ts`'e taşındı (odalar "dev fixture" değil çekirdek altyapı). Gateway TÜM odalara değil sadece `CORE_ROOM_NAMES`'e join oluyor (paylaşılan test DB'sindeki rastgele-isimli test odalarını kirletmemek için, bilinçli M2-only basitleştirme). `message:send`'deki `roomName` opsiyonel, verilmezse ilk çekirdek odaya düşüyor — Slice E'ye kadar `apps/web`'i bozmamak için.
 - 2026-07-30 — M2 Slice B: düzenleme WS'te (`message:edit`), REST `PATCH` değil — `sendMessage`'ın zaten REST karşılığı yok, aynı deseni izledi. Yayın `message:updated` (yeni event, `message:new` değil). Moderatör rolü JWT'ye eklenmedi, her okumada DB'den taze çekiliyor (nadiren değişen bir değer için token'ı genişletmeye değmedi). Public "düzenlendi" işareti bilerek eklenmedi (kapsam dışı, Slice F'nin kararı).
+- 2026-07-30 — M2 Slice C: `POST /invites` kullanıcı-bazlı limit için `ThrottlerGuard`'ı extend etmiyor, `ThrottlerStorage`'ı doğrudan kullanan bağımsız bir guard (global APP_GUARD ile çakışmayı önlemek için, bkz. Tuzaklar). Davet kodu `randomBytes(12).toString('base64url')` — refresh token'la aynı desen, daha kısa (insan tarafından paylaşılacağı için).
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
@@ -50,3 +50,5 @@
 - Yerel Postgres Docker container'ı (`docker-compose.yml`) Docker Desktop kapalıyken çalışmaz ve Desktop'ı Bash'ten otomatik başlatmak güvenilir değil (denendi, path bulunamadı) — kullanıcıdan başlatmasını iste.
 - `prisma migrate dev` migration dosyasını hemen uyguluyor — elle SQL eklemek (data-fix gibi) için önce `--create-only` kullan, YOKSA dosyayı sonradan editlemek checksum uyuşmazlığı yaratır. Düzeltmek `prisma migrate reset` gerektirir — bu Prisma'nın kendi "AI agent önce kullanıcıya sor" güvenlik kilidini tetikler (env var + kullanıcının TAM onay metnini ister), sessizce bypass edilemez, doğru davranış.
 - Yeni bir tabloya `ON DELETE RESTRICT` FK eklerken (Prisma varsayılanı) mevcut e2e testlerin `afterAll` temizliğini kontrol et — ebeveyn satırı (ör. `Message`) artık çocuk satırı (ör. `MessageEdit`) olmadan silinemez, temizlik sırası tersten olmalı (önce çocuk, sonra ebeveyn). Slice B'de bu gerçek bir test hatası olarak yakalandı.
+- `@nestjs/throttler`: aynı route'ta HEM global (APP_GUARD) HEM route-özel bir `ThrottlerGuard` alt sınıfı varsa, ikisi de AYNI `@Throttle()` metadata'sını okuyup birbirinden habersiz AYRI sayaç tutar (IP-bazlı + kullanıcı-bazlı gibi) — beklenmedik erken 429'lara yol açar, gerçek testte yakalandı. Farklı tracking mantığı gereken route'lar için `ThrottlerGuard`'ı extend etmek yerine `ThrottlerStorage`'ı doğrudan kullanan bağımsız bir `CanActivate` yaz.
+- `@nestjs/throttler`'ın `storageService.increment()`'ine `blockDuration=0` vermek bloğu AYNI çağrı içinde sessizce sıfırlıyor (kaynak kodda doğrulandı) — limit aşılsa bile hep izin veriyormuş gibi görünür. `blockDuration` hep `ttl` (ya da üstü) olmalı, base `ThrottlerGuard` da belirtilmediğinde buna düşüyor.
