@@ -134,3 +134,28 @@ export async function unblockUser(
 export function listBlockedUsers(accessToken: string): Promise<string[]> {
   return authedGetJson<string[]>("/users/blocked", accessToken);
 }
+
+export interface UserProfile {
+  email: string;
+  role: "user" | "moderator";
+}
+
+export function getCurrentUser(accessToken: string): Promise<UserProfile> {
+  return authedGetJson<UserProfile>("/users/me", accessToken);
+}
+
+export interface MessageEdit {
+  previousContent: string;
+  editedAt: string;
+}
+
+export function getMessageEditHistory(
+  accessToken: string,
+  roomName: string,
+  messageId: string,
+): Promise<MessageEdit[]> {
+  return authedGetJson<MessageEdit[]>(
+    `/rooms/${roomName}/messages/${messageId}/edits`,
+    accessToken,
+  );
+}

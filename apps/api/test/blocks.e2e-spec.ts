@@ -94,6 +94,17 @@ describe('Block-user (e2e)', () => {
     return { email, accessToken: body.accessToken };
   }
 
+  it('doner_kendi_email_ve_rolunu', async () => {
+    const a = await signUpFreshUser();
+
+    const response = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${a.accessToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({ email: a.email, role: 'user' });
+  });
+
   it('reddeder_kendini_engellemeyi', async () => {
     const a = await signUpFreshUser();
 

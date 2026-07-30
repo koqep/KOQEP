@@ -18,6 +18,7 @@ import { TotpService } from './services/totp.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { EmailService } from './services/email.service';
 import { BlocksService } from './services/blocks.service';
+import { UsersService } from './services/users.service';
 import { RoomsService } from './services/rooms.service';
 import { MessagesService } from './services/messages.service';
 import { PrismaModule } from './db/prisma.module';
@@ -67,6 +68,7 @@ const DEFAULT_RATE_LIMIT = 100;
     PasswordResetService,
     EmailService,
     BlocksService,
+    UsersService,
     RoomsService,
     MessagesService,
     MessagesGateway,

@@ -3,11 +3,20 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { BlockUserDto } from './dto/block-user.dto';
 import { BlocksService } from '../services/blocks.service';
+import { UsersService, UserProfile } from '../services/users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class BlocksController {
-  constructor(private readonly blocksService: BlocksService) {}
+  constructor(
+    private readonly blocksService: BlocksService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  @Get('me')
+  getMe(@Req() req: AuthenticatedRequest): Promise<UserProfile> {
+    return this.usersService.getProfile(req.user.sub);
+  }
 
   @Post('block')
   async block(

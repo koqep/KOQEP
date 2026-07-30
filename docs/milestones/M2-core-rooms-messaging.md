@@ -76,7 +76,7 @@ for its Slice A-E split):
 Frontend, same per-slice cadence — needed for this milestone's own Demo line to be true
 end-to-end (same reasoning M1 applied to its own frontend slices):
 - [x] **M2 Slice E — Room switcher UI.**
-- [ ] **M2 Slice F — Message edit + history UI**, gated the same way the backend gates
+- [x] **M2 Slice F — Message edit + history UI**, gated the same way the backend gates
       it.
 - [ ] **M2 Slice G — Invite-issuance UI**, likely following the existing settings-panel
       pattern (`TotpSettingsView`/`BlockedUsersView`).
@@ -414,3 +414,83 @@ basmak). Ayrı `fix/room-switcher-panel-close` branch'inde, Slice F'den önce.
 
 ### Sıradaki
 Slice F (mesaj düzenleme + geçmiş UI) — ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice F: mesaj düzenleme + geçmiş UI
+
+**Görev:** `apps/web`'de WS `message:edit` göndermenin ve
+`GET rooms/:name/messages/:id/edits` okumanın hiçbir UI'ı yoktu, ve
+`message:updated` event'inin hiç dinleyicisi yoktu (Slice E bilerek dışarıda
+bırakmıştı). Artık kendi mesajını düzenleyebiliyor, yazar/moderatör geçmişi
+görebiliyor — backend'in erişim kurallarıyla birebir.
+
+**Asıl keşif: frontend, giriş yapmış kullanıcının kim olduğunu HİÇ bilmiyordu.**
+`login`/`signup` sadece `{accessToken, refreshToken}` dönüyordu; JWT payload'u
+sadece `{sub, email}` (rol Slice B'den beri bilerek yok); `apps/web`'de JWT
+decode eden hiçbir kod yoktu; `/auth/me` ya da `/users/me` diye bir endpoint
+yoktu. "Bu mesaj benim mi" ve "moderatör müyüm" sorularını cevaplayacak hiçbir
+zemin yoktu — bu slice'ın kendi "backend'in gated ettiği gibi gate et"
+kriterinin önkoşuluydu.
+
+**Yeni `GET /users/me` → `{email, role}`.** Yeni bir controller değil, mevcut
+`BlocksController`'a (`@Controller('users')`, zaten `JwtAuthGuard`) tek bir
+`@Get('me')` eklendi. İş mantığı yeni `UsersService.getProfile(userId)`'de
+(`app.module.ts`'e `BlocksService`'in yanına eklendi) — tek bir
+`prisma.user.findUnique`, satır yoksa `AuthService.verifyAccessToken`'ın
+"token geçerli ama hesaba karşılık gelmiyor" davranışıyla aynı
+`UnauthorizedException`. `apps/web` bunu girişten hemen sonra, `RoomView`'ın
+mevcut bootstrap effect'inde (`/rooms` fetch'iyle birlikte) bir kere çekiyor —
+JWT'den decode edilmiyor, uzun süre cache'lenmiyor; Slice B'nin backend
+tarafında zaten kullandığı "rolü taze oku, token'a güvenme" tercihiyle aynı.
+
+**Yeni `apps/web/app/components/MessageItem.tsx` — mesaj başına bir
+component**, `RoomView.tsx`'e inline değil. `RoomView.tsx` zaten ~260 satırdı;
+düzenleme-modu + geçmiş-aç/kapa state'i ve iki yeni buton eklemek onu
+`TotpSettingsView`/`BlockedUsersView`'ın zaten kurduğu "kendi başına bir UI
+parçası = kendi component'i" desenine göre ayırmayı gerektirdi
+(`CLAUDE.md`'nin 400 satır tartışma eşiğine yaklaşmadan). Props: `message`,
+`isMine`, `canViewHistory`, `onSubmitEdit`, `fetchHistory` — gating mantığı
+`RoomView`'da bir kere hesaplanıp prop olarak geçiyor, `MessageItem` içinde
+tekrar hesaplanmıyor.
+
+**Düzenleme satır-içi, modal değil** — `apps/web`'de hiç modal precedent'i
+yok. "düzenle" tıklanınca satır bir input + kaydet/iptal formuna dönüşüyor
+(mevcut `inputClassName`/buton sınıfları tekrar kullanıldı), submit
+`message:edit` gönderip formu HEMEN kapatıyor — bekleyecek bir ack event'i
+yok (`messages-gateway.e2e-spec.ts`'te doğrulandı: yetkisiz bir düzenleme
+tamamen sessiz, `message:send`'le aynı duruş). Gerçek güncelleme
+`message:updated` yayınıyla geliyor.
+
+**Geçmiş de satır-içi açılıp kapanan bir liste, modal değil.** "geçmiş"
+tıklanınca `GET rooms/:name/messages/:id/edits` her seferinde YENİDEN fetch
+ediliyor (client-side cache yok — Slice E'nin oda değiştirmede zaten seçtiği
+"basit olsun" tercihiyle aynı), sonuçlar mesajın altında küçük soluk bir
+liste olarak (en eskiden yeniye) gösteriliyor.
+
+**Gating backend'le birebir:** `isMine = authorEmail === kendi email'im`;
+`canViewHistory = isMine || rolüm === 'moderator'`. Düzenlemede moderatör
+override'ı YOK (backend'de de yok — `editMessage` sadece `authorId`
+kontrol ediyor), sadece geçmiş okumada var. `authorEmail` null ise (ADR-0005,
+anonimleştirilmiş yazar) `isMine` her zaman false, satırda "silinmiş
+kullanıcı" gösteriliyor.
+
+**Dokunulan/yeni testler:** `users.service.spec.ts` (yeni); `blocks.e2e-spec.ts`'e
+`GET /users/me` testi eklendi (aynı controller, mevcut auth-header kurulumu);
+yeni `e2e/message-edit.spec.ts` (mocked) — kendi mesajında iki buton da
+görünür + form dolu açılır, sıradan kullanıcı başkasının mesajında hiçbirini
+görmez, moderatör başkasının mesajında sadece geçmişi görür (düzenle yok),
+geçmiş tıklanınca mock'lanan önceki içerik listelenir; yeni
+`e2e-fullstack/message-editing.spec.ts` (gerçek backend) — bir mesaj
+düzenlenince hem gönderen sekmede hem karşı sekmede gerçek zamanlı güncelleniyor
+(gerçek `message:updated` yayını), geçmiş açılınca orijinal içerik gerçekten
+listeleniyor (gerçek REST + DB satırı).
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(70)/e2e(30)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(26, yeni message-edit.spec.ts dahil)/
+`test:e2e:fullstack`(3, yeni message-editing.spec.ts dahil) — hepsi yeşil.
+
+### Sıradaki
+Slice G (davet-üretme UI) — ayrı bir plan modu turu alacak. M2'nin backend'i
++ Slice E + Slice F bitti, kalan tek şey davet UI'ı.
