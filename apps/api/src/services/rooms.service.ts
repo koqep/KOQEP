@@ -13,6 +13,7 @@ export class RoomsService {
   async listRooms(): Promise<RoomSummary[]> {
     return this.prisma.room.findMany({
       select: { id: true, name: true },
+      orderBy: { name: 'asc' },
     });
   }
 }
