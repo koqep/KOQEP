@@ -75,7 +75,7 @@ for its Slice A-E split):
 
 Frontend, same per-slice cadence — needed for this milestone's own Demo line to be true
 end-to-end (same reasoning M1 applied to its own frontend slices):
-- [ ] **M2 Slice E — Room switcher UI.**
+- [x] **M2 Slice E — Room switcher UI.**
 - [ ] **M2 Slice F — Message edit + history UI**, gated the same way the backend gates
       it.
 - [ ] **M2 Slice G — Invite-issuance UI**, likely following the existing settings-panel
@@ -327,3 +327,78 @@ sonuçları görmekti (yukarıda), ayrı bir test suite'i değil.
 ### Sıradaki
 M2'nin backend'i tamamen bitti (Slice A-D). Kalan Slice E-G (oda değiştirici UI,
 düzenleme/geçmiş UI, davet üretme UI) — her biri ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice E: oda değiştirici UI
+
+**Görev:** `apps/web`'in her zaman `GET /rooms`'un ilk odasını seçtiği,
+`'meta'`'ya hiç ulaşılamadığı davranışı bitti — artık her iki çekirdek oda da
+görünür ve tıklanarak değiştirilebiliyor.
+
+**Yan not, bu slice'ın parçası değil:** `apps/web/AGENTS.md` ve onu import eden
+`apps/web/CLAUDE.md`, M0'ın `create-next-app` scaffold commit'inde (a12dda0c)
+gelmiş, kullanıcının hiç yazmadığı, `node_modules/next/dist/docs/` (var olmayan
+bir yol) okumayı isteyen sahte bir "agent kuralları" dosyasıydı — muhtemelen
+scaffold'ı yapan önceki bir Claude Code oturumunun uydurduğu, gerçek
+create-next-app çıktısının parçası olmayan içerik. Bu slice'tan hemen önce ayrı
+küçük bir commit'te (`chore/remove-fabricated-agents-md` branch) kaldırıldı —
+M2 Slice E'nin bir parçası değil, temizlik.
+
+**Backend'e tek satırlık bir düzeltme gerekti: `RoomsService.listRooms()`'a
+`orderBy: { name: 'asc' }`.** Önceden sıra garanti değildi — bir oda
+değiştiricinin reload'lar arası sırası karışan bir listesi bozuk görünürdü.
+Dokunulmamış bir fonksiyona davranış değişikliği olduğu için yeni bir birim
+testi geldi (`rooms.service.spec.ts`, önceden hiç yoktu).
+
+**Oda değiştirici header'da, mevcut ayarlar-paneli toggle'ının (`ActivePanel`
+/ Totp / Blocked) ARKASINDA DEĞİL.** O iki panel bilerek tüm içerik alanını
+kaplıyor çünkü ikincil ayar eylemleri. Oda değiştirmek birincil gezinme —
+IRC/Slack kanal sekmeleri gibi sohbetle birlikte hep görünür kalmalı, bir
+paneli açıp kapatmayı gerektirmemeli. Eski statik `<h1>{room?.name}</h1>`,
+`GET /rooms`'daki her odayı tıklanabilir `#isim` butonu olarak listeleyen bir
+`<nav>`'a dönüştü (aktif oda `text-neutral-200`, pasif
+`text-neutral-600 hover:text-neutral-400` — panel başlıklarında zaten kullanılan
+aynı sınıflar, yeni bir token yok).
+
+**Tek kalıcı socket bağlantısı, oda değişince YENİDEN BAĞLANMIYOR.**
+Gateway zaten her socket'i TÜM çekirdek odalara join ediyor (Slice A) — oda
+değiştirmek saf bir client-side kaygı. `activeRoomIdRef` (bir `useEffect` ile
+`activeRoom`'la senkron tutulan ref), mount'ta bir kere kurulan `message:new`
+dinleyicisinin, yeniden abone olmadan/soket'i koparmadan her zaman GÜNCEL aktif
+odayı okuyabilmesini sağlıyor — stale closure riski yok.
+
+**Oda değiştirince geçmiş yeniden fetch edilip mesaj listesi DEĞİŞTİRİLİYOR,
+client-side cache yok.** Basit ve doğru: mevcut "bir kere fetch et, sonra
+dinle" şeklini sadece oda-parametreli hale getiriyor. `fetchGenerationRef`
+sayacı, hızlı art arda iki oda değişiminde eski bir fetch'in yeni birini
+ezmesini engelliyor (mevcut bootstrap effect'teki `cancelled` bayrağıyla aynı
+desen, mount/unmount yerine her switch'e uygulanmış hali).
+`message:updated` bilerek eklenmedi — M2 dokümanı onu Slice F'ye kapsıyor,
+bugün hiç dinleyicisi yok, henüz tüketilmeyen bir event için oda-farkında
+filtreleme ölü kod olurdu.
+
+**`message:send` artık `roomName: activeRoom.name` gönderiyor.** Slice A'nın
+plan notlarının bilerek bu slice'a bıraktığı asıl bağlantı noktası buydu —
+önceden frontend sadece `{ content }` gönderip backend'in
+`CORE_ROOM_NAMES[0]` varsayılanına sessizce güveniyordu. Oda değişince taslak
+metin de temizleniyor (tek satır) — yoksa `#general` için yarım yazılmış bir
+mesaj switch sonrası sessizce `#meta`'ya gidebilirdi.
+
+**Dokunulan/yeni testler:** `rooms.service.spec.ts` (yeni, alfabetik sıra);
+`e2e/single-room.spec.ts` → `e2e/room-switcher.spec.ts` (iki odayı ve
+oda-bazlı ayrı `GET /rooms/:name/messages` mock'larını simüle edip buton
+listesinin, aktif-oda stilinin, ve tıklayınca mesaj listesinin değişmesinin
+kanıtlanması); yeni `e2e-fullstack/room-switching.spec.ts` — gerçek backend'e
+karşı, `#general`'da mesaj gönderip `#meta`'ya geçince görünmediğini, geri
+dönünce hâlâ orada olduğunu kanıtlıyor (sadece gerçek bir backend'in
+kanıtlayabileceği şey: `roomName`'in send→gateway→doğru oda'ya gerçekten
+gittiği ve alım tarafındaki `roomId` filtrelemesinin doğru çalıştığı).
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(68)/e2e(29)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(21, yeni room-switcher.spec.ts dahil)/
+`test:e2e:fullstack`(2, yeni room-switching.spec.ts dahil) — hepsi yeşil.
+
+### Sıradaki
+Slice F (mesaj düzenleme + geçmiş UI) — ayrı bir plan modu turu alacak.

@@ -4,17 +4,17 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — backend (A-D) bitti, E-G frontend kaldı.
+**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — backend (A-D) + Slice E bitti, F-G frontend kaldı.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları `apps/web`'de, dev-login koddan tamamen silindi. Merge-sonrası bulunan bir güvenlik açığı (`seed.ts`'in dev fixture'ları production'a da yazması) `SEED_DEV_FIXTURES` opt-in env'iyle kapatıldı; kullanıcı production'da eski test hesaplarını silip **kendi ilk gerçek hesabını elle SQL ile bootstrap etti**. Detaylar `docs/milestones/M1-auth-invites.md`.
-- **M2'nin backend'i (Slice A-D) tamamlandı. A+B+C `main`'e MERGE EDİLDİ; Slice D TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: 'genel' odası id/geçmişi korunarak 'general'e taşındı, 'meta' eklendi, mesajlaşma oda-parametreli oldu, `User.role` geldi. Slice B: `MessageEdit` + `message:edit` WS event'i + `message:updated` yayını + yazar/moderatöre gated geçmiş okuma. Slice C: `POST /invites` (gerçek, yüksek-entropili kod) + `@nestjs/throttler` (davet/signup/WS mesaj limitleri) — implementasyon sırasında kütüphanenin kendisinde iki gerçek hata/tuzak bulundu ve düzeltildi (bkz. Tuzaklar). Slice D: `test/load/ws-load-test.ts` — 50 eşzamanlı WS bağlantısı gerçekten çalıştırıldı, 50/50 bağlandı, 200 mesaj/10000 teslimat, 0 hata. `apps/web` dört slice'ta da hiç dokunulmadı, gerçek fullstack testle doğrulandı.
+- **M2'nin backend'i (Slice A-D) tamamen `main`'e MERGE EDİLDİ. Slice E (oda değiştirici UI) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: 'genel' odası id/geçmişi korunarak 'general'e taşındı, 'meta' eklendi, mesajlaşma oda-parametreli oldu, `User.role` geldi. Slice B: `MessageEdit` + `message:edit` WS event'i + `message:updated` yayını + yazar/moderatöre gated geçmiş okuma. Slice C: `POST /invites` + `@nestjs/throttler` (davet/signup/WS mesaj limitleri) — kütüphanenin kendisinde iki gerçek hata/tuzak bulundu ve düzeltildi (bkz. Tuzaklar). Slice D: `test/load/ws-load-test.ts` — 50/50 WS bağlantısı, 200 mesaj/10000 teslimat, 0 hata. Slice E: `apps/web`'de ilk kez `#meta`'ya ulaşılabiliyor — header'da her iki çekirdek odayı listeleyen bir oda değiştirici, `roomName`'in artık gerçekten `message:send`'e gitmesi, gerçek backend'e karşı oda-izolasyonu kanıtlayan yeni bir fullstack test.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2 Slice D kod + test + doküman tamamlandı, `m2/slice-d-load-test` branch'inde commit edilecek.
-- **Yarım kalan:** Bu branch'in commit/push/merge edilmesi.
-- **Sonraki adım:** M2'nin backend'i bitti — frontend slice'ları (E: oda değiştirici, F: düzenleme/geçmiş UI, G: davet-üretme UI) kaldı, her biri kendi plan modu turunu alacak. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
+- **Görev:** M2 Slice E kod + test + doküman tamamlandı, `m2/slice-e-room-switcher-ui` branch'inde commit edildi. Ayrıca sahte `apps/web/AGENTS.md`/`CLAUDE.md` dosyalarını kaldıran ayrı küçük bir temizlik commit'i (`chore/remove-fabricated-agents-md`) var.
+- **Yarım kalan:** İki branch'in de push/merge edilmesi (birbirinden bağımsız, ayrı ayrı merge edilebilir).
+- **Sonraki adım:** Slice F (mesaj düzenleme + geçmiş UI), sonra Slice G (davet-üretme UI) — her biri kendi plan modu turunu alacak. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -33,6 +33,8 @@
 - 2026-07-30 — M2 Slice B: düzenleme WS'te (`message:edit`), REST `PATCH` değil — `sendMessage`'ın zaten REST karşılığı yok, aynı deseni izledi. Yayın `message:updated` (yeni event, `message:new` değil). Moderatör rolü JWT'ye eklenmedi, her okumada DB'den taze çekiliyor (nadiren değişen bir değer için token'ı genişletmeye değmedi). Public "düzenlendi" işareti bilerek eklenmedi (kapsam dışı, Slice F'nin kararı).
 - 2026-07-30 — M2 Slice C: `POST /invites` kullanıcı-bazlı limit için `ThrottlerGuard`'ı extend etmiyor, `ThrottlerStorage`'ı doğrudan kullanan bağımsız bir guard (global APP_GUARD ile çakışmayı önlemek için, bkz. Tuzaklar). Davet kodu `randomBytes(12).toString('base64url')` — refresh token'la aynı desen, daha kısa (insan tarafından paylaşılacağı için).
 - 2026-07-30 — M2 Slice D: yük testi bağımsız script (`npm run test:load:ws`), Jest/CI'a bağlı değil — talep üzerine elle çalıştırılıyor. Gerçek sonuç: 50/50 bağlantı, 200 mesaj/10000 teslimat, 0 hata (detay: milestone dosyası).
+- 2026-07-30 — M2 Slice E: oda değiştirici header'da, ayarlar-paneli (Totp/Blocked) toggle'ının arkasında değil — birincil gezinme olduğu için sohbetle birlikte hep görünür. Tek socket bağlantısı korunuyor, oda değişince yeniden bağlanmıyor (gateway zaten tüm çekirdek odalara join ediyor).
+- 2026-07-30 — `apps/web/AGENTS.md`/`CLAUDE.md` kaldırıldı: kullanıcı hiç yazmadı, M0'ın create-next-app scaffold commit'inde (muhtemelen önceki bir Claude Code oturumu tarafından uydurulmuş) gelmişti, var olmayan bir yolu (`node_modules/next/dist/docs/`) okumayı isteyen sahte bir "agent kuralları" dosyasıydı. Talimat hiç çalıştırılmadı, ayrı bir temizlik commit'iyle silindi.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
