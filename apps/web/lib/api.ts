@@ -2,9 +2,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export class ApiError extends Error {
   code?: string;
+  status: number;
 
-  constructor(message: string, code?: string) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
+    this.status = status;
     this.code = code;
   }
 }
@@ -25,7 +27,7 @@ async function sendJson<T>(path: string, init: RequestInit): Promise<T> {
     const message = Array.isArray(errorBody.message)
       ? errorBody.message.join(", ")
       : (errorBody.message ?? "Bir şeyler ters gitti.");
-    throw new ApiError(message, errorBody.code);
+    throw new ApiError(message, response.status, errorBody.code);
   }
 
   return (await response.json()) as T;
@@ -158,4 +160,8 @@ export function getMessageEditHistory(
     `/rooms/${roomName}/messages/${messageId}/edits`,
     accessToken,
   );
+}
+
+export function createInvite(accessToken: string): Promise<{ code: string }> {
+  return authedPostJson<{ code: string }>("/invites", accessToken);
 }
