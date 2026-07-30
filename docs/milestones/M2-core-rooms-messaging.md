@@ -400,5 +400,17 @@ gittiği ve alım tarafındaki `roomId` filtrelemesinin doğru çalıştığı).
 lint/typecheck/build/`test:e2e`(21, yeni room-switcher.spec.ts dahil)/
 `test:e2e:fullstack`(2, yeni room-switching.spec.ts dahil) — hepsi yeşil.
 
+**Merge-sonrası bulunan bug (manuel test, 2026-07-30):** panel açıkken
+(Totp/Blocked) oda butonuna basmak hiçbir şey yapmıyordu — özellikle zaten
+aktif olan odaya tekrar basmak `handleRoomSwitch`'in en baştaki
+`if (next.id === activeRoom?.id) return;` erken-çıkışına takılıp paneli hiç
+kapatmıyordu (kullanıcı "geri dönmek" için sezgisel olarak zaten aktif odaya
+basıyordu). Düzeltme: `handleRoomSwitch` artık ilk satırda koşulsuz
+`setActivePanel("none")` çağırıyor — herhangi bir oda butonuna basmak her
+zaman sohbete döner, oda gerçekten değişse de değişmese de. Regresyon testi:
+`e2e/blocked-users.spec.ts`'e `oda_butonuna_basinca_acik_panel_kapanip_sohbete_doner`
+eklendi (aynen bug'ın tekrarı: panel açıkken zaten aktif olan tek odaya
+basmak). Ayrı `fix/room-switcher-panel-close` branch'inde, Slice F'den önce.
+
 ### Sıradaki
 Slice F (mesaj düzenleme + geçmiş UI) — ayrı bir plan modu turu alacak.

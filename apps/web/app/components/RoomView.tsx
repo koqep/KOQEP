@@ -111,6 +111,7 @@ export default function RoomView({
   }, [accessToken]);
 
   async function handleRoomSwitch(next: Room) {
+    setActivePanel("none");
     if (next.id === activeRoom?.id) return;
     setActiveRoom(next);
     setDraft("");
