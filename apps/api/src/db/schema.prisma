@@ -125,5 +125,18 @@ model Message {
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
+  edits MessageEdit[]
+
   @@index([roomId, createdAt])
+}
+
+model MessageEdit {
+  id              String   @id @default(uuid())
+  previousContent String
+  editedAt        DateTime @default(now())
+
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id])
+
+  @@index([messageId])
 }

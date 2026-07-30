@@ -42,8 +42,8 @@ describing these as active controls.
       and receive messages in either (messaging is room-parameterized, not hardcoded to
       one room).
 - [x] `User.role` exists (`user`/`moderator`, default `user`) and can be set.
-- [ ] A user can edit their own message; prior content is stored in `MessageEdit`.
-- [ ] Edit history is visible only to the message's author and to users with
+- [x] A user can edit their own message; prior content is stored in `MessageEdit`.
+- [x] Edit history is visible only to the message's author and to users with
       `role: moderator` (`docs/THREAT-MODEL.md` row 3) — enforced at the service layer,
       not just UI-hidden.
 - [ ] `POST /invites` exists, requires auth, generates a real high-entropy single-use
@@ -63,7 +63,7 @@ for its Slice A-E split):
 - [x] **M2 Slice A — Core rooms + room-aware messaging.** Seed #general/#meta (replace
       the single hardcoded room); `MessagesService.sendMessage`/`MessagesGateway` become
       room-parameterized; `User.role` migration (small, unblocks Slice B).
-- [ ] **M2 Slice B — Message editing + history + access control.** `MessageEdit` model +
+- [x] **M2 Slice B — Message editing + history + access control.** `MessageEdit` model +
       migration; author-only edit endpoint; edit-history read gated to author-or-
       moderator via `role`.
 - [ ] **M2 Slice C — Invite issuance + rate limiting.** `POST /invites` (server-generated
@@ -143,3 +143,64 @@ hepsi yeşil. Migration lokal DB'de gerçekten uygulandı (üretilip test edilme
 
 ### Sıradaki
 Slice B (mesaj düzenleme + geçmiş + erişim kontrolü) — ayrı bir plan modu turu alacak.
+
+---
+
+## Plan notları — Slice B: mesaj düzenleme + geçmiş + yazar/moderatör erişim kontrolü
+
+**Görev:** `MessageEdit` modeli + migration; kendi mesajını düzenleme; düzenleme
+geçmişini sadece yazarın ya da `role: moderator` olan birinin görebilmesi
+(`docs/THREAT-MODEL.md` satır 3, `docs/DATA-MODEL.md`'nin zaten tarif ettiği ama
+kodda olmayan tasarım).
+
+**Düzenleme WS üzerinden (`message:edit`), REST `PATCH` değil** — mevcut desenle
+birebir aynı: `sendMessage`'ın zaten hiçbir REST karşılığı yok (mesaj oluşturma
+sadece WS), `MessagesController` sadece okuma. Düzenleme de odaya canlı yayılması
+gereken aynı tür bir mutasyon, ikinci bir mutasyon yolu açmak yerine aynı ayrımı
+izliyor. Geçmişi okumak REST'te kaldı (`GET rooms/:name/messages/:id/edits`) —
+mevcut geçmiş okumayla tutarlı.
+
+**Yayın için yeni `message:updated` event'i** (`message:new` değil) — frontend'in
+(Slice F) "yeni mesaj ekle" ile "id X'i bul, içeriğini değiştir"i ayırt edebilmesi
+için. Aynı block-filtreli tek-tek-emit deseni (`handleMessageSend` zaten kullanıyordu)
+`message:edit` için de tekrar kullanıldı — kod tekrarını önlemek için gateway'e
+paylaşılan bir `broadcastToRoom` private metodu eklendi.
+
+**Moderatör rolü her seferinde DB'den taze okunuyor, JWT'ye eklenmedi** — access
+token payload'u `{sub, email}` olarak kalıyor. Rolü JWT'ye eklemek her login/signup
+akışını etkiler, halbuki nadiren değişen (elle SQL ile) bir değer için sadece bu tek
+okumada ihtiyaç var. `getMessageEditHistory` içinde tek bir ekstra
+`prisma.user.findUnique` yeterli — Slice B'yi mesajlaşma alanının dışına çıkarmıyor.
+
+**Düzenleme sadece yazara özel, moderatör override'ı yok** — THREAT-MODEL satır 3
+geçmişin *görünürlüğü* hakkında ("sadece yazar ve moderatörlere görünür"), başkasının
+içeriğini değiştirme yetkisi değil. `DATA-MODEL.md`'nin ifadesiyle birebir uyumlu.
+
+**Public bir "düzenlendi" işareti eklenmedi** — `MessageDto`'ya `editedAt` eklemek
+düşünüldü (diğer oda üyeleri neyin değiştiğini değil ama değiştirildiğini görsün diye)
+ama Slice B'nin kabul kriterlerinde yok, yeni bir kolon/join gerektirir, ve bir
+frontend-görünüm kararı — sessizce unutulmasın diye burada not edildi, şimdi
+yapılmadı.
+
+**Testler bir gerçek regresyon buldu:** `messages-gateway.e2e-spec.ts`'in `afterAll`
+temizliği artık `MessageEdit`'in `Message`'a `ON DELETE RESTRICT` FK'si yüzünden
+başarısız oluyordu (düzenlenen bir mesaj artık geçmiş satırı olmadan silinemiyor) —
+temizlik sırası düzeltildi (`messageEdit.deleteMany` önce, `message.deleteMany` sonra).
+
+**Dokunulan/yeni testler:** `messages.service.spec.ts`'e `editMessage` (yazar
+günceller + geçmişe eski içeriği yazar; yazar-olmayanı reddeder; bilinmeyen mesajı
+reddeder) ve `getMessageEditHistory` (yazar görebilir; moderatör görebilir; ne yazar
+ne moderatör olan reddedilir; bilinmeyen mesaj 404) testleri eklendi.
+`messages-gateway.e2e-spec.ts`'e gerçek WS üzerinden düzenleme + canlı yayın testi ve
+başkasının mesajını düzenleme denemesinin sessizce yoksayıldığını kanıtlayan test
+eklendi. Yeni `message-edit-history.e2e-spec.ts`: REST erişim kontrolünü gerçek HTTP
+istekleriyle doğruluyor (yazar/moderatör/sıradan kullanıcı/bilinmeyen mesaj).
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(65)/e2e(25)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(21)/`test:e2e:fullstack`(1, gerçek backend'e karşı) —
+hepsi yeşil. Migration lokal DB'de gerçekten üretilip uygulandı (bu sefer veri
+düzeltmesi gerekmediği için `--create-only` gerekmedi).
+
+### Sıradaki
+Slice C (davet üretme + rate limiting) — ayrı bir plan modu turu alacak.
