@@ -52,7 +52,7 @@ describing these as active controls.
       (`docs/THREAT-MODEL.md` row 9).
 - [x] Message sending is rate-limited per-user at the WS gateway
       (`docs/THREAT-MODEL.md` row 5).
-- [ ] A basic load test at ~50 concurrent WS connections holds up without errors.
+- [x] A basic load test at ~50 concurrent WS connections holds up without errors.
 - [ ] `apps/web` has a room switcher (currently always picks the first room from
       `GET /rooms`) and UI for editing a message, viewing its edit history (when
       permitted), and generating an invite code.
@@ -70,7 +70,7 @@ for its Slice A-E split):
       high-entropy code); `@nestjs/throttler` added, applied to this endpoint and to
       `POST /auth/signup`; a custom WS throttle guard for message send. Bundled because
       the rate limiter's first real consumer is this endpoint.
-- [ ] **M2 Slice D — Basic load test.** ~50 concurrent WS connections; depends on A-C
+- [x] **M2 Slice D — Basic load test.** ~50 concurrent WS connections; depends on A-C
       being done to load-test something real.
 
 Frontend, same per-slice cadence — needed for this milestone's own Demo line to be true
@@ -271,3 +271,59 @@ yüzden tüm e2e suite'i (sadece yeni dosyalar değil) asıl doğrulama oldu.
 ### Sıradaki
 Slice D (temel yük testi) — ayrı bir plan modu turu alacak, ya da kullanıcı frontend
 slice'larına (E-G) geçmek isterse o.
+
+---
+
+## Plan notları — Slice D: temel yük testi (~50 eşzamanlı WS bağlantısı)
+
+**Görev:** M2'nin son backend kabul kriteri — ~50 eşzamanlı WS bağlantısının
+hatasız ayakta kalması. Slice A-C'nin gerçek olmasına bağımlıydı (oda-farkında
+mesajlaşma, düzenleme/yayın, ve en önemlisi Slice C'nin rate limitleri) — yoksa
+yük-test edecek gerçek bir şey olmazdı.
+
+**Bağımsız bir script, Jest testi değil, CI'a bağlı değil.** "Yük testi" ile
+"doğruluk testi" farklı şeyler — bu script iş mantığını doğrulamıyor (Slice A-C'nin
+e2e testleri zaten bunu yapıyor), sistemin eşzamanlılık altında ayakta kaldığını
+gösteriyor. Her CI push'unda 50 gerçek WS bağlantısı açmak yavaş olurdu ve kod
+doğruluğuyla ilgisiz flaky hatalara kapı açardı. Yeni `apps/api/test/load/ws-load-test.ts`
++ yeni `npm run test:load:ws` — talep üzerine çalıştırılıyor (kapasiteyi etkileyecek
+gerçek bir değişiklikten önce ya da ara sıra sağlık kontrolü olarak), otomatik değil.
+
+**Kendi `NestFactory.create(AppModule)` instance'ını açıyor** (main.ts'in yaptığı gibi),
+`Test.createTestingModule` değil — gerçek production bootstrap yolunu kullanmak için.
+Efemeral porta (`app.listen(0)`) dinliyor, mevcut e2e testlerinin kendi
+`INestApplication`'ları için zaten yaptığı gibi.
+
+**50 kullanıcı gerçek `/auth/signup` yerine doğrudan Prisma + `JwtService.signAsync`
+ile üretildi.** Kısayol değil, bilinçli: Slice C'nin `/auth/signup`'ı artık IP başına
+20/60s'e sınırlı — 50 hesabı tek script/IP'den gerçek signup'tan geçirmek bu slice'ın
+yük-test etmeye çalıştığı şeyin ETRAFINDAN değil TAM ORTASINDAN geçip kendi limitine
+takılırdı. `messages-gateway.e2e-spec.ts`/`blocks.e2e-spec.ts`'in zaten kullandığı
+"token'ı doğrudan üret" deseniyle aynı.
+
+**Senaryo bilerek her kullanıcının kendi WS rate limitinin İÇİNDE kalıyor, onu
+zorlamıyor.** Kullanıcı başına 4 mesaj (limit 10/10s) — amaç limiti tetiklemek değil,
+normal eşzamanlı kullanım altında sistemin ayakta kalması. Her socket Slice A'nın
+gateway tasarımı gereği iki çekirdek odaya da otomatik join olduğundan, ölçülü bir
+gönderim sayısı bile gerçek bir fan-out yükü üretiyor.
+
+### Gerçek sonuçlar (2026-07-30, lokal dev DB'ye karşı)
+```
+Bağlantı: 50/50 başarılı (310ms)
+Gönderilen mesaj: 200 (kullanıcı başına 4)
+Alınan mesaj (tüm soketler toplamı): 10000  (200 mesaj × 50 alıcı — her socket
+  kendi mesajı dahil her iki çekirdek odadaki her mesajı alıyor, beklenen davranış)
+Hata sayısı: 0
+Toplam süre: 7333ms
+```
+Sistem hatasız ayakta kaldı; uygulama kodunda değişiklik gerekmedi.
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(67)/e2e(29)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(21)/`test:e2e:fullstack`(1, gerçek backend'e karşı) —
+hepsi yeşil. Bu slice'ın asıl doğrulaması scripti gerçekten çalıştırıp gerçek
+sonuçları görmekti (yukarıda), ayrı bir test suite'i değil.
+
+### Sıradaki
+M2'nin backend'i tamamen bitti (Slice A-D). Kalan Slice E-G (oda değiştirici UI,
+düzenleme/geçmiş UI, davet üretme UI) — her biri ayrı bir plan modu turu alacak.
