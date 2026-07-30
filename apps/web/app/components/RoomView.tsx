@@ -2,14 +2,21 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { io, Socket } from "socket.io-client";
-import { logout } from "../../lib/api";
+import {
+  logout,
+  getCurrentUser,
+  getMessageEditHistory,
+  type UserProfile,
+  type MessageEdit,
+} from "../../lib/api";
 import TotpSettingsView from "./TotpSettingsView";
 import BlockedUsersView from "./BlockedUsersView";
+import MessageItem from "./MessageItem";
 
 type ActivePanel = "none" | "totp" | "blocked";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-const MAX_MESSAGE_LENGTH = 2000;
+export const MAX_MESSAGE_LENGTH = 2000;
 
 interface Room {
   id: string;
@@ -44,6 +51,7 @@ export default function RoomView({
   const [isReady, setIsReady] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
   const [activePanel, setActivePanel] = useState<ActivePanel>("none");
+  const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const activeRoomIdRef = useRef<string | null>(null);
   const fetchGenerationRef = useRef(0);
@@ -73,6 +81,15 @@ export default function RoomView({
       try {
         const authHeaders = { Authorization: `Bearer ${accessToken}` };
 
+        getCurrentUser(accessToken)
+          .then((profile) => {
+            if (!cancelled) setMyProfile(profile);
+          })
+          .catch(() => {
+            // Profil alınamazsa düzenle/geçmiş butonları hiç görünmez -
+            // sohbetin geri kalanı bundan bağımsız çalışmaya devam eder.
+          });
+
         const roomsResponse = await fetch(`${API_URL}/rooms`, {
           headers: authHeaders,
         });
@@ -95,6 +112,13 @@ export default function RoomView({
         socket.on("message:new", (message: Message) => {
           if (!cancelled && message.roomId === activeRoomIdRef.current) {
             setMessages((prev) => [...prev, message]);
+          }
+        });
+        socket.on("message:updated", (message: Message) => {
+          if (!cancelled && message.roomId === activeRoomIdRef.current) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === message.id ? message : m)),
+            );
           }
         });
       } catch {
@@ -139,6 +163,15 @@ export default function RoomView({
       roomName: activeRoom.name,
     });
     setDraft("");
+  }
+
+  function handleMessageEdit(messageId: string, content: string) {
+    socketRef.current?.emit("message:edit", { messageId, content });
+  }
+
+  function fetchHistoryForMessage(messageId: string): Promise<MessageEdit[]> {
+    if (!activeRoom) return Promise.resolve([]);
+    return getMessageEditHistory(accessToken, activeRoom.name, messageId);
   }
 
   async function handleLogout() {
@@ -224,11 +257,23 @@ export default function RoomView({
               <p>henüz mesaj yok</p>
             ) : (
               <ul className="space-y-1">
-                {messages.map((message) => (
-                  <li key={message.id} className="text-neutral-200">
-                    {message.content}
-                  </li>
-                ))}
+                {messages.map((message) => {
+                  const isMine =
+                    message.authorEmail !== null &&
+                    message.authorEmail === myProfile?.email;
+                  const canViewHistory =
+                    isMine || myProfile?.role === "moderator";
+                  return (
+                    <MessageItem
+                      key={message.id}
+                      message={message}
+                      isMine={isMine}
+                      canViewHistory={canViewHistory}
+                      onSubmitEdit={handleMessageEdit}
+                      fetchHistory={fetchHistoryForMessage}
+                    />
+                  );
+                })}
               </ul>
             )}
           </section>
