@@ -11,9 +11,10 @@ import {
 } from "../../lib/api";
 import TotpSettingsView from "./TotpSettingsView";
 import BlockedUsersView from "./BlockedUsersView";
+import InviteView from "./InviteView";
 import MessageItem from "./MessageItem";
 
-type ActivePanel = "none" | "totp" | "blocked";
+type ActivePanel = "none" | "totp" | "blocked" | "invites";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -230,6 +231,13 @@ export default function RoomView({
           </button>
           <button
             type="button"
+            onClick={() => setActivePanel("invites")}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            invites
+          </button>
+          <button
+            type="button"
             onClick={() => void handleLogout()}
             className="text-neutral-600 hover:text-neutral-400"
           >
@@ -247,6 +255,11 @@ export default function RoomView({
         />
       ) : activePanel === "blocked" ? (
         <BlockedUsersView
+          accessToken={accessToken}
+          onClose={() => setActivePanel("none")}
+        />
+      ) : activePanel === "invites" ? (
+        <InviteView
           accessToken={accessToken}
           onClose={() => setActivePanel("none")}
         />

@@ -4,17 +4,17 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — backend (A-D) + Slice E + Slice F bitti, sadece Slice G kaldı.
+**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — TAMAMLANDI (backend A-D + frontend E-G), Slice G henüz merge edilmedi.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları `apps/web`'de, dev-login koddan tamamen silindi. Merge-sonrası bulunan bir güvenlik açığı (`seed.ts`'in dev fixture'ları production'a da yazması) `SEED_DEV_FIXTURES` opt-in env'iyle kapatıldı; kullanıcı production'da eski test hesaplarını silip **kendi ilk gerçek hesabını elle SQL ile bootstrap etti**. Detaylar `docs/milestones/M1-auth-invites.md`.
-- **M2'nin backend'i (Slice A-D) + Slice E (oda değiştirici UI) tamamen `main`'e MERGE EDİLDİ. Slice F (mesaj düzenleme + geçmiş UI) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: 'genel' odası id/geçmişi korunarak 'general'e taşındı, 'meta' eklendi, mesajlaşma oda-parametreli oldu, `User.role` geldi. Slice B: `MessageEdit` + `message:edit` WS event'i + `message:updated` yayını + yazar/moderatöre gated geçmiş okuma. Slice C: `POST /invites` + `@nestjs/throttler` — kütüphanenin kendisinde iki gerçek hata/tuzak bulundu ve düzeltildi (bkz. Tuzaklar). Slice D: yük testi, 50/50 WS bağlantısı, 0 hata. Slice E: oda değiştirici — merge-sonrası bulunan bir bug (panel açıkken oda butonu çalışmıyordu) ayrı `fix/room-switcher-panel-close` branch'inde düzeltildi. Slice F: `GET /users/me` (yeni, frontend ilk kez kendi email/rolünü biliyor) + satır-içi mesaj düzenleme + satır-içi geçmiş görüntüleme, backend'in yazar/moderatör kuralıyla birebir UI gating.
+- **M2 TAMAMLANDI.** Backend (Slice A-D: çekirdek odalar, mesaj düzenleme+geçmiş, davet üretme+rate limiting, yük testi) `main`'e MERGE EDİLDİ. Frontend (Slice E: oda değiştirici, F: düzenleme+geçmiş UI, G: davet-üretme UI) de MERGE EDİLDİ — Slice G ile birlikte arayüz metni Türkçe'den İngilizce'ye geçmeye başladı (kullanıcı kararı, sadece görünen metin, kademeli). Her slice'ın kararları/tuzakları `docs/milestones/M2-core-rooms-messaging.md`'nin kendi Plan notları bölümlerinde tam haliyle duruyor — burada tekrar edilmiyor.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2 Slice F kod + test + doküman tamamlandı, `m2/slice-f-edit-history-ui` branch'inde commit edildi (bugfix branch'inin üzerine).
-- **Yarım kalan:** `fix/room-switcher-panel-close` ve `m2/slice-f-edit-history-ui`'nin merge edilmesi (bugfix önce, Slice F ondan sonra — branch bağımlı).
-- **Sonraki adım:** Slice G (davet-üretme UI) — kendi plan modu turunu alacak, M2'nin son slice'ı. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
+- **Görev:** M2 Slice G kod + test + doküman tamamlandı, `m2/slice-g-invite-ui` branch'inde commit edildi.
+- **Yarım kalan:** Bu branch'in merge edilmesi — M2'nin son parçası.
+- **Sonraki adım:** M2 bitince M3'e geçiş kullanıcının kararı. Kalan Türkçe→İngilizce arayüz çevirisi (Slice G dışındaki bileşenler + testleri) ayrı, kapsamı belirlenmemiş bir görev. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -29,13 +29,9 @@
 - M1'in slice-by-slice kararları (A-D backend, E1-E5 frontend) tekrar buraya taşınmadı — `docs/milestones/M1-auth-invites.md`'nin Plan notları bölümlerinde tam haliyle duruyor.
 - 2026-07-29 — `SEED_DEV_FIXTURES` opt-in env'i: `NODE_ENV`'e bilerek güvenilmedi (kod tabanında hiç kullanılmıyordu, Render'ın set etme davranışı doğrulanamadı). `test-fullstack-e2e` CI job'ı `true` ile açık; `test` job'ı kapalı bırakıldı, testler değişmeden geçti.
 - 2026-07-29 — Sıfır-kullanıcılı DB bootstrap boşluğu koda değil belgeye gitti: `docs/THREAT-MODEL.md` Open items'a somut tetikleyiciyle (M2'nin davet endpoint'i bunu da kapsamalı) eklendi.
-- 2026-07-30 — M2 Slice A: oda adları `dev-seed.constants.ts`'ten yeni `core-rooms.constants.ts`'e taşındı (odalar "dev fixture" değil çekirdek altyapı). Gateway TÜM odalara değil sadece `CORE_ROOM_NAMES`'e join oluyor (paylaşılan test DB'sindeki rastgele-isimli test odalarını kirletmemek için, bilinçli M2-only basitleştirme). `message:send`'deki `roomName` opsiyonel, verilmezse ilk çekirdek odaya düşüyor — Slice E'ye kadar `apps/web`'i bozmamak için.
-- 2026-07-30 — M2 Slice B: düzenleme WS'te (`message:edit`), REST `PATCH` değil — `sendMessage`'ın zaten REST karşılığı yok, aynı deseni izledi. Yayın `message:updated` (yeni event, `message:new` değil). Moderatör rolü JWT'ye eklenmedi, her okumada DB'den taze çekiliyor (nadiren değişen bir değer için token'ı genişletmeye değmedi). Public "düzenlendi" işareti bilerek eklenmedi (kapsam dışı, Slice F'nin kararı).
-- 2026-07-30 — M2 Slice C: `POST /invites` kullanıcı-bazlı limit için `ThrottlerGuard`'ı extend etmiyor, `ThrottlerStorage`'ı doğrudan kullanan bağımsız bir guard (global APP_GUARD ile çakışmayı önlemek için, bkz. Tuzaklar). Davet kodu `randomBytes(12).toString('base64url')` — refresh token'la aynı desen, daha kısa (insan tarafından paylaşılacağı için).
-- 2026-07-30 — M2 Slice D: yük testi bağımsız script (`npm run test:load:ws`), Jest/CI'a bağlı değil — talep üzerine elle çalıştırılıyor. Gerçek sonuç: 50/50 bağlantı, 200 mesaj/10000 teslimat, 0 hata (detay: milestone dosyası).
-- 2026-07-30 — M2 Slice E: oda değiştirici header'da, ayarlar-paneli (Totp/Blocked) toggle'ının arkasında değil — birincil gezinme olduğu için sohbetle birlikte hep görünür. Tek socket bağlantısı korunuyor, oda değişince yeniden bağlanmıyor.
+- 2026-07-30 — M2 Slice A-F kararları (oda-parametreli mesajlaşma, `message:updated`, rate limiting tuzakları, yük testi, oda değiştirici, `GET /users/me` + düzenleme/geçmiş UI) tekrar buraya taşınmadı — `docs/milestones/M2-core-rooms-messaging.md`'nin ilgili Plan notları bölümlerinde tam haliyle duruyor.
 - 2026-07-30 — `apps/web/AGENTS.md`/`CLAUDE.md` kaldırıldı: kullanıcı hiç yazmadı, muhtemelen önceki bir Claude Code oturumunun uydurduğu sahte bir "agent kuralları" dosyasıydı (var olmayan bir yol okumayı istiyordu). Talimat hiç çalıştırılmadı.
-- 2026-07-30 — M2 Slice F: yeni `GET /users/me` (`BlocksController`'a eklendi, ayrı controller değil) — frontend artık kendi email/rolünü biliyor, JWT'ye rol eklenmedi (Slice B'nin kararıyla tutarlı). Düzenleme/geçmiş satır-içi, modal yok — `apps/web`'de hiç modal precedent'i olmadığı için. Mesaj başına ayrı `MessageItem.tsx` component'i (400 satır eşiğine yaklaşan `RoomView.tsx`'i büyütmemek için).
+- 2026-07-30 — M2 Slice G: `ApiError`'a `status: number` eklendi (429'u ham `ThrottlerException` string'i yerine dostane mesajla göstermek için) — mevcut hiçbir çağrı yeri değişmedi. Davet kodları session-only listede birikiyor (silinmiyor), panoya kopyalama yok (hiç precedent'i yoktu). Bu slice'tan itibaren arayüz metni İngilizce (kullanıcı kararı) — geri kalan Türkçe bileşenlerin çevirisi ayrı bir görev.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.

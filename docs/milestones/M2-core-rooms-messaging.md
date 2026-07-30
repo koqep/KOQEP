@@ -53,7 +53,7 @@ describing these as active controls.
 - [x] Message sending is rate-limited per-user at the WS gateway
       (`docs/THREAT-MODEL.md` row 5).
 - [x] A basic load test at ~50 concurrent WS connections holds up without errors.
-- [ ] `apps/web` has a room switcher (currently always picks the first room from
+- [x] `apps/web` has a room switcher (currently always picks the first room from
       `GET /rooms`) and UI for editing a message, viewing its edit history (when
       permitted), and generating an invite code.
 
@@ -78,7 +78,7 @@ end-to-end (same reasoning M1 applied to its own frontend slices):
 - [x] **M2 Slice E — Room switcher UI.**
 - [x] **M2 Slice F — Message edit + history UI**, gated the same way the backend gates
       it.
-- [ ] **M2 Slice G — Invite-issuance UI**, likely following the existing settings-panel
+- [x] **M2 Slice G — Invite-issuance UI**, likely following the existing settings-panel
       pattern (`TotpSettingsView`/`BlockedUsersView`).
 
 ## Risks
@@ -494,3 +494,68 @@ lint/typecheck/build/`test:e2e`(26, yeni message-edit.spec.ts dahil)/
 ### Sıradaki
 Slice G (davet-üretme UI) — ayrı bir plan modu turu alacak. M2'nin backend'i
 + Slice E + Slice F bitti, kalan tek şey davet UI'ı.
+
+---
+
+## Plan notları — Slice G: davet-üretme UI (M2'nin son dilimi)
+
+**Görev:** `POST /invites` (Slice C'den beri hazır — gerçek, tek-kullanımlık,
+saatte-5 sınırlı kod üretimi) için hiç UI yoktu. Artık `apps/web`'de "invites"
+paneli var — kod üretiyor, ve M2'nin kendi Demo satırının tarif ettiği döngü
+(davet üret → kullan → yeni hesap) gerçek bir fullstack testle kanıtlandı.
+
+**Dil notu:** bu slice'tan itibaren kullanıcıya görünen arayüz metni
+İngilizce yazılıyor (kullanıcının kararı) — Türkçe yazıp sonra çevirmek
+yerine tek seferde. Kapsam: sadece görünen metin (buton etiketleri,
+başlıklar, hata mesajları). Test adları hâlâ Türkçe (`testing.md`'nin
+mevcut kuralı, değişmedi). `RoomView.tsx`'e eklenen tek yeni header butonu
+("invites") artık İngilizce, yanındaki "engellenenler"/"iki adımlı
+doğrulama" hâlâ Türkçe — bilinçli, geçici bir tutarsızlık, ayrı bir çeviri
+görevi bekliyor (kapsam dışı, burada başlatılmadı).
+
+**Yeni `apps/web/app/components/InviteView.tsx`, `TotpSettingsView`/
+`BlockedUsersView`'ın panel desenini birebir izliyor** (aynı prop şekli,
+aynı başlık satırı + kapat butonu deseni, aynı `ApiError` yakalama). Form
+alanı yok — `POST /invites` hiç body almıyor, panel sadece "create invite"
+butonu. Her tıklama yeni bir kod üretip yerel (session-only) bir listeye
+EKLİYOR, öncekini silmiyor — "davetlerimi listele" diye bir endpoint yok
+(doğrulandı), ama tek oturumda birden fazla kişi davet etmek gerçek bir
+kullanım şekli, önceki kodu kaybetmek gereksiz bir sürtünme olurdu. Kodlar
+`font-mono select-all` metin olarak gösteriliyor — `TotpSettingsView`'ın
+zaten kurduğu "bir kerelik gizli değeri göster" deseninin birebir tekrarı,
+panoya kopyalama butonu yok (kod tabanında hiç `navigator.clipboard`
+precedent'i yok).
+
+**`ApiError`'a `status: number` eklendi, `sendJson` artık `response.status`'ü
+de fırlatıyor.** Sadece ekleme, mevcut hiçbir çağrı yeri değişmedi. Neden:
+`POST /invites`'ın 429 yanıtı (`@nestjs/throttler`'ın standart
+`ThrottlerException`'ı, bu API'de özel bir exception filter yok) ham
+`"ThrottlerException: Too Many Requests"` string'i dönüyor — kullanıcıya
+gösterilecek bir metin değil. `InviteView` artık `err.status === 429`'u
+özel olarak yakalayıp sabit bir İngilizce mesaj gösteriyor, ham string hiç
+ekrana çıkmıyor.
+
+**Panel bir kodun kullanılıp kullanılmadığını göstermiyor** — böyle bir
+endpoint yok (sadece üretim var, doğrulandı). Bilerek ertelendi, M2'nin
+kendi "self-service moderatör yönetimi" ertelemesiyle aynı belgeleme
+alışkanlığı — sessiz bir boşluk değil.
+
+**Dokunulan/yeni testler:** yeni `e2e/invite.spec.ts` (mocked) — boş durum,
+üretince kodun listeye eklenmesi, ikinci üretimde ilkinin kaybolmaması, 429
+yanıtında ham `ThrottlerException` yerine dostane mesajın gösterilmesi; yeni
+`e2e-fullstack/invite-issuance.spec.ts` (gerçek backend) — dev kullanıcı
+gerçek bir kod üretiyor, İKİNCİ bir browser context o kodu gerçek signup
+formunda kullanıp gerçekten yeni bir hesap açıyor — M2'nin Demo satırının
+tarif ettiği tam döngü, sadece kod string'inin göründüğünü değil.
+
+### Doğrulama
+`apps/web` lint/typecheck/build/`test:e2e`(28, yeni invite.spec.ts dahil)/
+`test:e2e:fullstack`(4, yeni invite-issuance.spec.ts dahil) — hepsi yeşil.
+`apps/api`'de değişiklik yok, hızlı yeniden doğrulama: lint/typecheck/
+unit(70)/e2e(30)/build — hepsi yeşil, dokunulmadı.
+
+### Sıradaki
+**M2 TAMAMLANDI** — backend (Slice A-D) + frontend (Slice E-G) hepsi bitti.
+Kalan Türkçe→İngilizce arayüz çevirisi (bu slice'ın kapsamına bilerek
+alınmayan geri kalan tüm bileşenler + testleri) ayrı, kapsamı henüz
+belirlenmemiş bir görev. M3'e geçiş kullanıcının kararı.
