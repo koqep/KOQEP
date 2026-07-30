@@ -1,5 +1,9 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
-import { MessagePage, MessagesService } from '../services/messages.service';
+import {
+  MessageEditDto,
+  MessagePage,
+  MessagesService,
+} from '../services/messages.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 
@@ -23,5 +27,13 @@ export class MessagesController {
       cursor,
       parsedLimit,
     );
+  }
+
+  @Get(':id/edits')
+  getMessageEditHistory(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<MessageEditDto[]> {
+    return this.messagesService.getMessageEditHistory(req.user.sub, id);
   }
 }

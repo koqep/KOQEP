@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { BlocksService } from './blocks.service';
@@ -17,6 +21,11 @@ export interface MessageDto {
 export interface MessagePage {
   messages: MessageDto[];
   nextCursor: string | null;
+}
+
+export interface MessageEditDto {
+  previousContent: string;
+  editedAt: Date;
 }
 
 interface MessageRow {
@@ -89,6 +98,70 @@ export class MessagesService {
       messages: page.reverse().map(toMessageDto),
       nextCursor,
     };
+  }
+
+  async editMessage(
+    userId: string,
+    messageId: string,
+    content: string,
+  ): Promise<MessageDto> {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+    }
+    if (message.authorId !== userId) {
+      throw new ForbiddenException('Sadece kendi mesajını düzenleyebilirsin.');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.messageEdit.create({
+        data: { messageId, previousContent: message.content },
+      });
+      return tx.message.update({
+        where: { id: messageId },
+        data: { content },
+        include: { author: { select: { email: true } } },
+      });
+    });
+
+    return toMessageDto(updated);
+  }
+
+  async getMessageEditHistory(
+    requesterId: string,
+    messageId: string,
+  ): Promise<MessageEditDto[]> {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+    }
+
+    const isAuthor = message.authorId === requesterId;
+    if (!isAuthor) {
+      const requester = await this.prisma.user.findUnique({
+        where: { id: requesterId },
+        select: { role: true },
+      });
+      if (requester?.role !== 'moderator') {
+        throw new ForbiddenException(
+          'Bu mesajın düzenleme geçmişini görme yetkin yok.',
+        );
+      }
+    }
+
+    const edits = await this.prisma.messageEdit.findMany({
+      where: { messageId },
+      orderBy: { editedAt: 'asc' },
+    });
+
+    return edits.map((edit) => ({
+      previousContent: edit.previousContent,
+      editedAt: edit.editedAt,
+    }));
   }
 
   private async findRoomOrThrow(name: string): Promise<Room> {

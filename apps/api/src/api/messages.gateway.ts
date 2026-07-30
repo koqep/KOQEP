@@ -99,17 +99,60 @@ export class MessagesGateway implements OnGatewayConnection {
       return;
     }
 
-    // Blanket oda broadcast'i yerine bilerek tek tek emit ediyoruz: bu
-    // yazarı engellemiş kullanıcıların socket'lerine mesaj hiç ulaşmamalı
-    // (block-user özelliği, M1 Slice D).
+    await this.broadcastToRoom(message, userId, 'message:new');
+  }
+
+  @SubscribeMessage('message:edit')
+  async handleMessageEdit(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { messageId?: unknown; content?: unknown },
+  ): Promise<void> {
+    const { userId } = client.data as SocketData;
+    const messageId = body?.messageId;
+    const content = body?.content;
+
+    if (
+      typeof messageId !== 'string' ||
+      typeof content !== 'string' ||
+      content.trim().length === 0 ||
+      content.length > MAX_MESSAGE_LENGTH
+    ) {
+      return;
+    }
+
+    let message: MessageDto;
+    try {
+      message = await this.messagesService.editMessage(
+        userId,
+        messageId,
+        content,
+      );
+    } catch {
+      // Bilinmeyen mesaj ya da yazar degilsin - sessizce yoksay, ayni
+      // message:send'deki gecersiz-girdi davranisi gibi.
+      return;
+    }
+
+    await this.broadcastToRoom(message, userId, 'message:updated');
+  }
+
+  // Blanket oda broadcast'i yerine bilerek tek tek emit ediyoruz: bu
+  // yazarı engellemiş kullanıcıların socket'lerine mesaj hiç ulaşmamalı
+  // (block-user özelliği, M1 Slice D). message:send ve message:edit
+  // ikisi de bunu kullanıyor.
+  private async broadcastToRoom(
+    message: MessageDto,
+    authorId: string,
+    eventName: string,
+  ): Promise<void> {
     const blockerIds = new Set(
-      await this.blocksService.getBlockerIdsOf(userId),
+      await this.blocksService.getBlockerIdsOf(authorId),
     );
     const socketsInRoom = await this.server.in(message.roomId).fetchSockets();
     for (const socket of socketsInRoom) {
       const socketData = socket.data as SocketData;
       if (!blockerIds.has(socketData.userId)) {
-        socket.emit('message:new', message);
+        socket.emit(eventName, message);
       }
     }
   }

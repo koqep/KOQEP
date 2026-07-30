@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { BlocksService } from './blocks.service';
 import { PrismaService } from '../db/prisma.service';
@@ -245,6 +245,195 @@ describe('MessagesService', () => {
           where: { roomId: room.id },
         }),
       );
+    });
+  });
+
+  describe('editMessage', () => {
+    function buildTransactionalPrismaMock(
+      existingMessage: { id: string; content: string; authorId: string | null },
+      updated: unknown,
+    ): {
+      prismaMock: Partial<PrismaService>;
+      createSpy: jest.Mock;
+      updateSpy: jest.Mock;
+    } {
+      const createSpy = jest.fn().mockResolvedValue({});
+      const updateSpy = jest.fn().mockResolvedValue(updated);
+      const txMock = {
+        messageEdit: { create: createSpy },
+        message: { update: updateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue(existingMessage),
+        } as unknown as PrismaService['message'],
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+      return { prismaMock, createSpy, updateSpy };
+    }
+
+    it('yazari_icerigi_gunceller_ve_eski_icerigi_gecmise_yazar', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'eski icerik',
+        authorId: 'user-1',
+      };
+      const updated = {
+        id: 'msg-1',
+        content: 'yeni icerik',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { email: 'dev@koqep.local' },
+      };
+      const { prismaMock, createSpy, updateSpy } = buildTransactionalPrismaMock(
+        existing,
+        updated,
+      );
+
+      const service = buildService(prismaMock);
+      const result = await service.editMessage(
+        'user-1',
+        'msg-1',
+        'yeni icerik',
+      );
+
+      expect(createSpy).toHaveBeenCalledWith({
+        data: { messageId: 'msg-1', previousContent: 'eski icerik' },
+      });
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'msg-1' },
+          data: { content: 'yeni icerik' },
+        }),
+      );
+      expect(result.content).toBe('yeni icerik');
+    });
+
+    it('reddeder_yazari_olmayan_kullaniciyi', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'eski icerik',
+        authorId: 'user-1',
+      };
+      const { prismaMock } = buildTransactionalPrismaMock(existing, {});
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.editMessage('baska-kullanici', 'msg-1', 'yeni icerik'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('reddeder_bilinmeyen_mesaji', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.editMessage('user-1', 'yok-mesaj', 'yeni icerik'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getMessageEditHistory', () => {
+    const edits = [
+      {
+        id: 'edit-1',
+        previousContent: 'ilk hal',
+        editedAt: new Date('2026-01-01'),
+      },
+      {
+        id: 'edit-2',
+        previousContent: 'ikinci hal',
+        editedAt: new Date('2026-01-02'),
+      },
+    ];
+
+    it('yazarin_kendi_gecmisini_gormesine_izin_verir', async () => {
+      const findManyMock = jest.fn().mockResolvedValue(edits);
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'msg-1', authorId: 'user-1' }),
+        } as unknown as PrismaService['message'],
+        messageEdit: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['messageEdit'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.getMessageEditHistory('user-1', 'msg-1');
+
+      expect(findManyMock).toHaveBeenCalledWith({
+        where: { messageId: 'msg-1' },
+        orderBy: { editedAt: 'asc' },
+      });
+      expect(result).toEqual([
+        { previousContent: 'ilk hal', editedAt: edits[0].editedAt },
+        { previousContent: 'ikinci hal', editedAt: edits[1].editedAt },
+      ]);
+    });
+
+    it('moderatorun_baskasinin_gecmisini_gormesine_izin_verir', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'msg-1', authorId: 'yazar-1' }),
+        } as unknown as PrismaService['message'],
+        user: {
+          findUnique: jest.fn().mockResolvedValue({ role: 'moderator' }),
+        } as unknown as PrismaService['user'],
+        messageEdit: {
+          findMany: jest.fn().mockResolvedValue([]),
+        } as unknown as PrismaService['messageEdit'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getMessageEditHistory('moderator-1', 'msg-1'),
+      ).resolves.toEqual([]);
+    });
+
+    it('reddeder_ne_yazar_ne_moderator_olan_kullaniciyi', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'msg-1', authorId: 'yazar-1' }),
+        } as unknown as PrismaService['message'],
+        user: {
+          findUnique: jest.fn().mockResolvedValue({ role: 'user' }),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getMessageEditHistory('baska-kullanici', 'msg-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('reddeder_bilinmeyen_mesaji', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getMessageEditHistory('user-1', 'yok-mesaj'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

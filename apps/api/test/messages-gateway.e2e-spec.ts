@@ -60,9 +60,25 @@ describe('Messages Gateway (e2e)', () => {
     });
   });
 
+  async function createOtherUserToken(): Promise<string> {
+    const jwtService = app.get(JwtService);
+    const other = await prisma.user.create({
+      data: {
+        email: `other-${randomUUID()}@koqep.local`,
+        passwordHash: 'test-not-a-real-hash',
+      },
+    });
+    return jwtService.signAsync({ sub: other.id, email: other.email });
+  }
+
   afterAll(async () => {
     openSockets.forEach((socket) => socket.close());
     if (createdMessageIds.length > 0) {
+      // MessageEdit -> Message FK'si ON DELETE RESTRICT - mesajdan once
+      // onun duzenleme gecmisi silinmeli (M2 Slice B).
+      await prisma.messageEdit.deleteMany({
+        where: { messageId: { in: createdMessageIds } },
+      });
       await prisma.message.deleteMany({
         where: { id: { in: createdMessageIds } },
       });
@@ -149,5 +165,86 @@ describe('Messages Gateway (e2e)', () => {
       generalHistory.body as { messages: { content: string }[] }
     ).messages.map((m) => m.content);
     expect(generalContents).not.toContain(content);
+  }, 10000);
+
+  it('yazar_mesajini_duzenleyince_diger_baglanti_gercek_zamanli_guncellenmis_halini_alir', async () => {
+    const sender = connect(accessToken);
+    const receiver = connect(accessToken);
+
+    await Promise.all([
+      waitForEvent(sender, 'ready'),
+      waitForEvent(receiver, 'ready'),
+    ]);
+
+    const originalContent = `duzenlenecek-${randomUUID()}`;
+    const createdPromise = waitForEvent<{ id: string; content: string }>(
+      receiver,
+      'message:new',
+    );
+    sender.emit('message:send', { content: originalContent });
+    const created = await createdPromise;
+    createdMessageIds.push(created.id);
+
+    const editedContent = `duzenlendi-${randomUUID()}`;
+    const updatedPromise = waitForEvent<{ id: string; content: string }>(
+      receiver,
+      'message:updated',
+    );
+    sender.emit('message:edit', {
+      messageId: created.id,
+      content: editedContent,
+    });
+
+    const updated = await updatedPromise;
+    expect(updated.id).toBe(created.id);
+    expect(updated.content).toBe(editedContent);
+
+    const row = await prisma.message.findUnique({
+      where: { id: created.id },
+    });
+    expect(row?.content).toBe(editedContent);
+
+    const editRows = await prisma.messageEdit.findMany({
+      where: { messageId: created.id },
+    });
+    expect(editRows).toHaveLength(1);
+    expect(editRows[0].previousContent).toBe(originalContent);
+  }, 10000);
+
+  it('baskasinin_mesajini_duzenleme_denemesi_sessizce_yoksayilir', async () => {
+    const sender = connect(accessToken);
+    const createdPromise = waitForEvent<{ id: string; content: string }>(
+      sender,
+      'message:new',
+    );
+    await waitForEvent(sender, 'ready');
+
+    const originalContent = `sahibi-korunacak-${randomUUID()}`;
+    sender.emit('message:send', { content: originalContent });
+    const created = await createdPromise;
+    createdMessageIds.push(created.id);
+
+    const otherToken = await createOtherUserToken();
+    const intruder = connect(otherToken);
+    await waitForEvent(intruder, 'ready');
+
+    const neverUpdated = new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(true), 500);
+      intruder.once('message:updated', () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
+    intruder.emit('message:edit', {
+      messageId: created.id,
+      content: 'baskasi-yazdi',
+    });
+
+    expect(await neverUpdated).toBe(true);
+
+    const row = await prisma.message.findUnique({
+      where: { id: created.id },
+    });
+    expect(row?.content).toBe(originalContent);
   }, 10000);
 });
