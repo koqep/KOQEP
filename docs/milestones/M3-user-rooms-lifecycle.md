@@ -4,7 +4,7 @@
 
 **Goal:** Let users create their own topic rooms, with the archive/delete lifecycle from `docs/ARCHITECTURE.md`/ADR-0006 enforced automatically.
 **Demo:** A tester creates a room; a second, empty test room that's been silent for 14 days (simulated via a fast-forwarded clock in tests) shows as archived and read-only; an archived room with no views for 60 more days is gone from the DB.
-**Estimated hours:** 25–38h (first-time scheduled/cron job on the chosen platform is the main unknown).
+**Estimated hours:** 25–38h (first-time scheduled/cron job on the chosen platform is the main unknown). Sequencing note (2026-07-30): `docs/milestones/M2.5-identity-reliability.md` runs before this milestone, not after — username and WS reliability are foundational, not room-lifecycle work, so they got their own milestone instead of being folded in here.
 
 ## Out of scope
 - Reputation-gated room creation (any signed-up user can create one, per `docs/PRD.md`).

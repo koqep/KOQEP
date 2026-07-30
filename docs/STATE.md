@@ -4,17 +4,17 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — TAMAMLANDI (backend A-D + frontend E-G), Slice G henüz merge edilmedi.
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — planlandı, henüz implementasyon başlamadı. M2 TAMAMEN BİTTİ.
 
 ## Şu an ne çalışıyor
-- **M0 + M1 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları `apps/web`'de, dev-login koddan tamamen silindi. Merge-sonrası bulunan bir güvenlik açığı (`seed.ts`'in dev fixture'ları production'a da yazması) `SEED_DEV_FIXTURES` opt-in env'iyle kapatıldı; kullanıcı production'da eski test hesaplarını silip **kendi ilk gerçek hesabını elle SQL ile bootstrap etti**. Detaylar `docs/milestones/M1-auth-invites.md`.
-- **M2 TAMAMLANDI.** Backend (Slice A-D: çekirdek odalar, mesaj düzenleme+geçmiş, davet üretme+rate limiting, yük testi) `main`'e MERGE EDİLDİ. Frontend (Slice E: oda değiştirici, F: düzenleme+geçmiş UI, G: davet-üretme UI) de MERGE EDİLDİ — Slice G ile birlikte arayüz metni Türkçe'den İngilizce'ye geçmeye başladı (kullanıcı kararı, sadece görünen metin, kademeli). Her slice'ın kararları/tuzakları `docs/milestones/M2-core-rooms-messaging.md`'nin kendi Plan notları bölümlerinde tam haliyle duruyor — burada tekrar edilmiyor.
+- **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı (Slice E-G). Slice G ile arayüz metni Türkçe'den İngilizce'ye geçmeye başladı (kademeli, kullanıcı kararı). Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
+- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Bu kritere göre (özellik yoksa ürün BOZUK/GÜVENSİZ hissettirir mi) tam bir kod denetimi yapıldı, sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni bulgular: username hiç yok (herkes herkesin emailini görüyor), e-posta doğrulama yok, hesap silme yok, WS bağlantı kopunca mesaj kaybı telafisiz, mobil hiç test edilmemiş. Yeni `M2.5` milestone'ı bunları M3'ten önce kapatıyor. M5/M6 de büyütüldü (davetçi hesap verebilirliği + gerçek a11y/mobil kapsamı).
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2 Slice G kod + test + doküman tamamlandı, `m2/slice-g-invite-ui` branch'inde commit edildi.
-- **Yarım kalan:** Bu branch'in merge edilmesi — M2'nin son parçası.
-- **Sonraki adım:** M2 bitince M3'e geçiş kullanıcının kararı. Kalan Türkçe→İngilizce arayüz çevirisi (Slice G dışındaki bileşenler + testleri) ayrı, kapsamı belirlenmemiş bir görev. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** Kapsam denetimi tamamlandı ve dokümanlara dağıtıldı (BACKLOG.md + yeni M2.5 + M3/M5/M6/THREAT-MODEL güncellemeleri) — sadece planlama, kod yazılmadı.
+- **Yarım kalan:** Toplam saat tahmini (~155–240h, 30h/hafta ile ~5–8 hafta) kullanıcıya raporlandı, gerçekçilik kararı bekleniyor.
+- **Sonraki adım:** Kullanıcı kapsamı onaylarsa `M2.5`'in plan modu turu ilk adım (M3'ten önce). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
