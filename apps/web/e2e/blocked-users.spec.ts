@@ -119,6 +119,25 @@ test("kapat_butonu_sohbet_ekranina_doner", async ({ page }) => {
   await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
 });
 
+test("oda_butonuna_basinca_acik_panel_kapanip_sohbete_doner", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/users/blocked", (route) =>
+    route.fulfill({ json: [] }),
+  );
+
+  await page.getByRole("button", { name: "engellenenler" }).click();
+  await expect(page.getByText("henüz kimseyi engellemedin")).toBeVisible();
+
+  // Panel açıkken zaten aktif olan (tek) odanın butonuna basmak - "geri
+  // dönme" için ilk akla gelen tepki - paneli kapatıp sohbete dönmeli.
+  await page.getByRole("button", { name: "#test-oda" }).click();
+
+  await expect(page.getByText("henüz kimseyi engellemedin")).toHaveCount(0);
+  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+});
+
 test("iki_adimli_dogrulama_paneli_acikken_engellenenlere_gecince_yer_degistirir", async ({
   page,
 }) => {
