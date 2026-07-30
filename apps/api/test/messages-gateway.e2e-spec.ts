@@ -4,16 +4,19 @@ import { JwtService } from '@nestjs/jwt';
 import { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { io, Socket } from 'socket.io-client';
+import request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
-import { DEV_USER_EMAIL, DEV_ROOM_NAME } from './../src/db/dev-seed.constants';
+import { DEV_USER_EMAIL } from './../src/db/dev-seed.constants';
+import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
 }
 
 describe('Messages Gateway (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let accessToken: string;
   let baseUrl: string;
@@ -43,11 +46,13 @@ describe('Messages Gateway (e2e)', () => {
       update: {},
       create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
     });
-    await prisma.room.upsert({
-      where: { name: DEV_ROOM_NAME },
-      update: {},
-      create: { name: DEV_ROOM_NAME },
-    });
+    for (const name of CORE_ROOM_NAMES) {
+      await prisma.room.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      });
+    }
 
     accessToken = await jwtService.signAsync({
       sub: user.id,
@@ -105,5 +110,44 @@ describe('Messages Gateway (e2e)', () => {
     });
     expect(row).not.toBeNull();
     expect(row?.content).toBe(content);
+  }, 10000);
+
+  it('roomName_belirtilince_dogru_odaya_gider_diger_odanin_gecmisine_sizmaz', async () => {
+    const sender = connect(accessToken);
+    const receiver = connect(accessToken);
+
+    await Promise.all([
+      waitForEvent(sender, 'ready'),
+      waitForEvent(receiver, 'ready'),
+    ]);
+
+    const content = `meta-mesaj-${randomUUID()}`;
+    const receivedPromise = waitForEvent<{ id: string; content: string }>(
+      receiver,
+      'message:new',
+    );
+    sender.emit('message:send', { content, roomName: CORE_ROOM_NAMES[1] });
+
+    const message = await receivedPromise;
+    expect(message.content).toBe(content);
+    createdMessageIds.push(message.id);
+
+    const metaHistory = await request(app.getHttpServer())
+      .get(`/rooms/${CORE_ROOM_NAMES[1]}/messages`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const metaContents = (
+      metaHistory.body as { messages: { content: string }[] }
+    ).messages.map((m) => m.content);
+    expect(metaContents).toContain(content);
+
+    const generalHistory = await request(app.getHttpServer())
+      .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const generalContents = (
+      generalHistory.body as { messages: { content: string }[] }
+    ).messages.map((m) => m.content);
+    expect(generalContents).not.toContain(content);
   }, 10000);
 });

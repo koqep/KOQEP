@@ -4,25 +4,24 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-29
-**Aktif milestone:** M1 TAMAMEN BİTTİ. M2 (`docs/milestones/M2-core-rooms-messaging.md`) kapsamı netleşti (7 slice: A-D backend, E-G frontend), henüz implementasyona başlanmadı.
+**Aktif milestone:** M2 (`docs/milestones/M2-core-rooms-messaging.md`) — Slice A bitti, B-G kaldı (7 slice: A-D backend, E-G frontend).
 
 ## Şu an ne çalışıyor
-- **M0 — Walking Skeleton TAMAMLANDI.** Tüm kabul kriterleri karşılandı, bu makinede bağımsız doğrulandı.
-- **M1 — Real Auth: Invite Signup + Login TAMAMEN BİTTİ ve `main`'e MERGE EDİLDİ** (PR #9). Gerçek signup/login/TOTP/şifre-sıfırlama/block akışları `apps/web`'de; dev-login koddan tamamen silindi. Slice-by-slice detaylar `docs/milestones/M1-auth-invites.md`'nin Plan notları bölümlerinde.
-- **Merge-sonrası güvenlik açığı bulunup kapatıldı, PR #10 ile merge edildi:** `seed.ts`'in dev kullanıcı + `DEV_INVITE_CODES` kısmı her deploy'da production'a da yazılıyordu (dev-login'le aynı risk sınıfı). `SEED_DEV_FIXTURES` opt-in env'i eklendi, varsayılan kapalı. Kullanıcı production'da eski test hesabını + `dev@koqep.local`'ı sildi, ardından **kendi ilk gerçek hesabını elle SQL ile bootstrap etti** (bkz. Tuzaklar) ve gerçek bir davet kodu üretti — hepsi doğrulandı, çalışıyor.
+- **M0 + M1 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları `apps/web`'de, dev-login koddan tamamen silindi. Merge-sonrası bulunan bir güvenlik açığı (`seed.ts`'in dev fixture'ları production'a da yazması) `SEED_DEV_FIXTURES` opt-in env'iyle kapatıldı; kullanıcı production'da eski test hesaplarını silip **kendi ilk gerçek hesabını elle SQL ile bootstrap etti**. Detaylar `docs/milestones/M1-auth-invites.md`.
+- **M2 kapsamı netleşti, Slice A TAMAMLANDI ve doğrulandı (henüz merge edilmedi).** Araştırma THREAT-MODEL/ADR-0006/DATA-MODEL'in rate limiting, oda-oluşturma altyapısı ve moderatör kavramını VARMIŞ gibi anlattığını ama hiçbirinin kodda olmadığını ortaya çıkardı (tahmin 28-42h'ten 55-80h'e revize edildi, THREAT-MODEL satır 1/5/6/7/9 düzeltildi). Slice A: 'genel' odası id/geçmişi korunarak 'general'e taşındı, 'meta' eklendi, mesaj gönderme + WS gateway oda-parametreli oldu, `User.role` migration'ı geldi. `apps/web` hiç dokunulmadı (gerçek fullstack testle doğrulandı).
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2 kapsam netleştirme bitti (kod yazılmadı, sadece plan). Araştırma THREAT-MODEL/ADR-0006/DATA-MODEL'in rate limiting, oda-oluşturma altyapısı ve moderatör kavramını VARMIŞ gibi anlattığını ama hiçbirinin kodda olmadığını ortaya çıkardı — tahmin dahi 28-42h'ten 55-80h'e revize edildi. `docs/milestones/M2-core-rooms-messaging.md` 7 slice'a bölünerek yeniden yazıldı; `docs/THREAT-MODEL.md` satır 1/5/6/7/9 gerçeği yansıtacak şekilde düzeltildi (aktif kontrol değil, "M2 Slice C'de geliyor"/satır 6 için "M3'e ertelendi").
-- **Yarım kalan:** Bu güncellemeler `docs/m2-scope-and-threat-model-corrections` branch'inde, henüz commit/push/merge edilmedi.
-- **Sonraki adım:** M2 Slice A (çekirdek odalar + oda-parametreli mesajlaşma + `User.role` migration) kendi plan modu turunu alacak — muhtemelen başka bir bilgisayardan. TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
+- **Görev:** M2 Slice A kod + test + doküman tamamlandı, `m2/slice-a-core-rooms` branch'inde commit edilecek.
+- **Yarım kalan:** Bu branch'in commit/push/merge edilmesi.
+- **Sonraki adım:** M2 Slice B (mesaj düzenleme + geçmiş + erişim kontrolü) kendi plan modu turunu alacak. Founder'ın kendi `User.role`'ünü elle `moderator` yapması gerekiyor (Slice B'nin erişim kontrolünü test edebilmek için). TOTP kurtarma akışını gerçek bir davetten önce şahsen dene (hâlâ geçerli).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
 - Gerçek bir "davet üret" endpoint'i yok — hem founder-invite akışı hem ilk-kullanıcı bootstrap'ı elle SQL'e dayanıyor (bkz. `docs/THREAT-MODEL.md` Open items). M2 Slice C'de kapatılacak.
 - Rate limiting hiçbir yerde implement edilmemiş (kütüphane bile yok) — THREAT-MODEL satır 1/5/6/7/9 bunu aktif kontrolmüş gibi anlatıyordu, düzeltildi. M2 Slice C'de `@nestjs/throttler` ile gelecek (oda-oluşturma kısmı hariç — M3).
-- `User`'da role/moderatör kavramı yok — M2'nin edit-history erişim kontrolü bunsuz yapılamaz. M2 Slice A'da `User.role` migration'ı geliyor; founder'ın kendi satırı elle SQL ile `moderator` yapılacak (bootstrap ile aynı desen).
+- `User.role` alanı artık var (Slice A) ama henüz kimse `moderator` değil — founder'ın kendi satırı elle SQL ile ayarlanmalı, Slice B'nin erişim kontrolü test edilmeden önce.
 
 ## Yakın zamanda alınan kararlar
 - DB hosting: Render Postgres, Internal Database URL — Neon/Supabase değil.
@@ -31,6 +30,7 @@
 - M1'in slice-by-slice kararları (A-D backend, E1-E5 frontend) tekrar buraya taşınmadı — `docs/milestones/M1-auth-invites.md`'nin Plan notları bölümlerinde tam haliyle duruyor.
 - 2026-07-29 — `SEED_DEV_FIXTURES` opt-in env'i: `NODE_ENV`'e bilerek güvenilmedi (kod tabanında hiç kullanılmıyordu, Render'ın set etme davranışı doğrulanamadı). `test-fullstack-e2e` CI job'ı `true` ile açık; `test` job'ı kapalı bırakıldı, testler değişmeden geçti.
 - 2026-07-29 — Sıfır-kullanıcılı DB bootstrap boşluğu koda değil belgeye gitti: `docs/THREAT-MODEL.md` Open items'a somut tetikleyiciyle (M2'nin davet endpoint'i bunu da kapsamalı) eklendi.
+- 2026-07-30 — M2 Slice A: oda adları `dev-seed.constants.ts`'ten yeni `core-rooms.constants.ts`'e taşındı (odalar "dev fixture" değil çekirdek altyapı). Gateway TÜM odalara değil sadece `CORE_ROOM_NAMES`'e join oluyor (paylaşılan test DB'sindeki rastgele-isimli test odalarını kirletmemek için, bilinçli M2-only basitleştirme). `message:send`'deki `roomName` opsiyonel, verilmezse ilk çekirdek odaya düşüyor — Slice E'ye kadar `apps/web`'i bozmamak için.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
@@ -46,3 +46,5 @@
 - `apps/web`'de token bellek-içi (ADR-0002) — reload oturumu düşürür, kasıtlı.
 - Sıfır kullanıcılı bir DB'de `/auth/signup` kendi kendini başlatamaz — davetin `issuedById`'i var olan bir `User`'a FK'lidir. İlk kullanıcı her zaman elle `INSERT INTO "User"` + lokal `argon2.hash` gerektirir — "eksik davet kodu" sanıp Invite tablosuna uğraşma, önce User'ı elle yarat.
 - Bash tool `git push`'u kullanıcının izin ayarları reddedebilir (sessizce "denied" döner, hata değil) — bu olursa kullanıcıdan onaylamasını ya da kendisinin push etmesini iste, sessizce vazgeçme ya da başka bir şey denemeye çalışma.
+- Yerel Postgres Docker container'ı (`docker-compose.yml`) Docker Desktop kapalıyken çalışmaz ve Desktop'ı Bash'ten otomatik başlatmak güvenilir değil (denendi, path bulunamadı) — kullanıcıdan başlatmasını iste.
+- `prisma migrate dev` migration dosyasını hemen uyguluyor — elle SQL eklemek (data-fix gibi) için önce `--create-only` kullan, YOKSA dosyayı sonradan editlemek checksum uyuşmazlığı yaratır. Düzeltmek `prisma migrate reset` gerektirir — bu Prisma'nın kendi "AI agent önce kullanıcıya sor" güvenlik kilidini tetikler (env var + kullanıcının TAM onay metnini ister), sessizce bypass edilemez, doğru davranış.

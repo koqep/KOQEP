@@ -7,7 +7,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
-import { DEV_ROOM_NAME } from './../src/db/dev-seed.constants';
+import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
@@ -50,9 +50,9 @@ describe('Block-user (e2e)', () => {
 
     prisma = moduleFixture.get(PrismaService);
     await prisma.room.upsert({
-      where: { name: DEV_ROOM_NAME },
+      where: { name: CORE_ROOM_NAMES[0] },
       update: {},
-      create: { name: DEV_ROOM_NAME },
+      create: { name: CORE_ROOM_NAMES[0] },
     });
   });
 
@@ -146,7 +146,7 @@ describe('Block-user (e2e)', () => {
 
     // A'nın geçmişinde B'nin mesajı artık yok; C için hâlâ var.
     const historyForA = await request(app.getHttpServer())
-      .get(`/rooms/${DEV_ROOM_NAME}/messages`)
+      .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages`)
       .set('Authorization', `Bearer ${a.accessToken}`)
       .expect(200);
     const historyForABodyContents = (
@@ -155,7 +155,7 @@ describe('Block-user (e2e)', () => {
     expect(historyForABodyContents).not.toContain(beforeBlockContent);
 
     const historyForC = await request(app.getHttpServer())
-      .get(`/rooms/${DEV_ROOM_NAME}/messages`)
+      .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages`)
       .set('Authorization', `Bearer ${c.accessToken}`)
       .expect(200);
     const historyForCBodyContents = (

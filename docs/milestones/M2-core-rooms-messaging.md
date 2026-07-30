@@ -38,10 +38,10 @@ describing these as active controls.
   UI/endpoint is M5 (moderation tooling) scope.
 
 ## Acceptance criteria
-- [ ] #general and #meta exist, are seeded on deploy, and are usable — a user can send
+- [x] #general and #meta exist, are seeded on deploy, and are usable — a user can send
       and receive messages in either (messaging is room-parameterized, not hardcoded to
       one room).
-- [ ] `User.role` exists (`user`/`moderator`, default `user`) and can be set.
+- [x] `User.role` exists (`user`/`moderator`, default `user`) and can be set.
 - [ ] A user can edit their own message; prior content is stored in `MessageEdit`.
 - [ ] Edit history is visible only to the message's author and to users with
       `role: moderator` (`docs/THREAT-MODEL.md` row 3) — enforced at the service layer,
@@ -60,7 +60,7 @@ describing these as active controls.
 ## Tasks
 Backend, each its own plan-mode pass + commit + full verification (same cadence M1 used
 for its Slice A-E split):
-- [ ] **M2 Slice A — Core rooms + room-aware messaging.** Seed #general/#meta (replace
+- [x] **M2 Slice A — Core rooms + room-aware messaging.** Seed #general/#meta (replace
       the single hardcoded room); `MessagesService.sendMessage`/`MessagesGateway` become
       room-parameterized; `User.role` migration (small, unblocks Slice B).
 - [ ] **M2 Slice B — Message editing + history + access control.** `MessageEdit` model +
@@ -91,3 +91,55 @@ end-to-end (same reasoning M1 applied to its own frontend slices):
   real moderator until the founder manually sets their own `User.role = 'moderator'` via
   SQL after Slice A's migration ships — same manual-SQL pattern as this session's
   TOTP-lockout runbook and production user-bootstrap, not a new kind of risk.
+
+---
+
+## Plan notları — Slice A: core rooms + room-aware messaging + User.role
+
+**Görev:** M0'ın tek hardcoded odasını ('genel') gerçek çekirdek odalara ('general',
+'meta') terfi ettirdi; mesaj gönderme + WS gateway artık oda-parametreli;
+`User.role` migration'ı eklendi (Slice B'yi açacak).
+
+**Oda adları `dev-seed.constants.ts`'ten çıkarıldı:** yeni
+`apps/api/src/db/core-rooms.constants.ts` (`CORE_ROOM_NAMES = ['general', 'meta']`) —
+oda artık bir "dev fixture" değil, çekirdek ürün altyapısı, `DEV_` öneki zaten M1
+Slice E5'te yanlış sınıflandırma olarak işaretlenmişti.
+
+**Migration mevcut 'genel' odasını id'sini/mesaj geçmişini koruyarak 'general'e
+yeniden adlandırdı** (boş yeni bir satır açıp eskisini terk etmek yerine) — production'da
+gerçek mesajlar (bu oturumun bootstrap mesajları dahil) zaten bu satırın altında.
+`prisma migrate dev` migration'ı hand-edit'ten ÖNCE lokale uyguladı — checksum
+uyuşmazlığı oluştu, kullanıcı onayıyla `prisma migrate reset` çalıştırılıp (Prisma'nın
+kendi "AI agent önce kullanıcıya sor" güvenlik kılidini tetikleyerek) lokal DB sıfırdan
+düzeltilmiş migration'la yeniden kuruldu. Rename SQL'i izole bir testle ayrıca
+doğrulandı: sahte bir 'genel' satırı oluşturulup UPDATE çalıştırıldı, id korunduğu
+teyit edildi.
+
+**Gateway TÜM odalara değil sadece `CORE_ROOM_NAMES`'e join oluyor** — "tüm odalara
+join ol" düşünüldü ve reddedildi: paylaşılan test DB'sinde başka e2e dosyalarının
+(`messages.e2e-spec.ts`) yarattığı rastgele-isimli odalar socket'leri kirletirdi, ve
+M3'te kullanıcı-oluşturdu odalar geldiğinde "hepsine join ol" zaten yanlış bir model
+olurdu.
+
+**`message:send`'deki `roomName` opsiyonel, verilmezse `CORE_ROOM_NAMES[0]`'a
+('general') düşüyor.** Slice A backend-only — `apps/web` (Slice E'ye kadar) `roomName`
+hiç göndermiyor. Zorunlu yapılsaydı mevcut frontend Slice E'ye kadar mesaj
+gönderemez hale gelirdi. Bu tasarım kararı gerçek fullstack e2e testiyle (`apps/web`,
+frontend hiç dokunulmadan) doğrulandı — hâlâ geçiyor.
+
+**Dokunulan/yeni testler:** `messages.service.spec.ts`'e ikinci çekirdek odaya
+gönderim testi eklendi; `messages-gateway.e2e-spec.ts`'e `roomName` ile açıkça
+hedeflenen bir mesajın doğru odaya gidip diğerinin geçmişine sızmadığını kanıtlayan
+yeni bir test eklendi (sadece WS event'inin ateşlenmesini değil, REST history'nin de
+doğru ayrıştığını doğruluyor). `blocks.e2e-spec.ts`/`messages-gateway.e2e-spec.ts`'in
+mevcut testleri `DEV_ROOM_NAME` yerine `CORE_ROOM_NAMES[0]` kullanacak şekilde
+güncellendi, davranış değişmedi.
+
+### Doğrulama
+`apps/api` lint/typecheck/unit(58)/e2e(19)/build; `apps/web`
+lint/typecheck/build/`test:e2e`(21)/`test:e2e:fullstack`(1, gerçek backend'e karşı) —
+hepsi yeşil. Migration lokal DB'de gerçekten uygulandı (üretilip test edilmeden
+"muhtemelen doğrudur" denmedi).
+
+### Sıradaki
+Slice B (mesaj düzenleme + geçmiş + erişim kontrolü) — ayrı bir plan modu turu alacak.

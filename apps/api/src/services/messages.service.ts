@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
-import { DEV_ROOM_NAME } from '../db/dev-seed.constants';
 import { BlocksService } from './blocks.service';
 
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -12,6 +11,7 @@ export interface MessageDto {
   content: string;
   createdAt: Date;
   authorEmail: string | null;
+  roomId: string;
 }
 
 export interface MessagePage {
@@ -23,6 +23,7 @@ interface MessageRow {
   id: string;
   content: string;
   createdAt: Date;
+  roomId: string;
   author: { email: string } | null;
 }
 
@@ -33,8 +34,12 @@ export class MessagesService {
     private readonly blocksService: BlocksService,
   ) {}
 
-  async sendMessage(userId: string, content: string): Promise<MessageDto> {
-    const room = await this.findRoomOrThrow(DEV_ROOM_NAME);
+  async sendMessage(
+    userId: string,
+    roomName: string,
+    content: string,
+  ): Promise<MessageDto> {
+    const room = await this.findRoomOrThrow(roomName);
 
     const message = await this.prisma.message.create({
       data: { content, roomId: room.id, authorId: userId },
@@ -101,5 +106,6 @@ function toMessageDto(message: MessageRow): MessageDto {
     content: message.content,
     createdAt: message.createdAt,
     authorEmail: message.author?.email ?? null,
+    roomId: message.roomId,
   };
 }
