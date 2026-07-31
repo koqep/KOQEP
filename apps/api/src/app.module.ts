@@ -22,6 +22,7 @@ import { BlocksService } from './services/blocks.service';
 import { UsersService } from './services/users.service';
 import { RoomsService } from './services/rooms.service';
 import { MessagesService } from './services/messages.service';
+import { SocketRegistryService } from './services/socket-registry.service';
 import { PrismaModule } from './db/prisma.module';
 
 const ACCESS_TOKEN_TTL = '15m';
@@ -73,6 +74,7 @@ const DEFAULT_RATE_LIMIT = 100;
     UsersService,
     RoomsService,
     MessagesService,
+    SocketRegistryService,
     MessagesGateway,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

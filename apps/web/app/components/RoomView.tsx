@@ -51,15 +51,20 @@ export default function RoomView({
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [isReady, setIsReady] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
   const [activePanel, setActivePanel] = useState<ActivePanel>("none");
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const activeRoomIdRef = useRef<string | null>(null);
+  const activeRoomRef = useRef<Room | null>(null);
   const fetchGenerationRef = useRef(0);
+  const hasConnectedBeforeRef = useRef(false);
 
   useEffect(() => {
     activeRoomIdRef.current = activeRoom?.id ?? null;
+    activeRoomRef.current = activeRoom;
   }, [activeRoom]);
 
   async function fetchRoomHistory(
@@ -75,6 +80,22 @@ export default function RoomView({
     return page.messages;
   }
 
+  // Yeniden bağlanınca (bkz. "ready" dinleyicisi) mevcut aktif odanın
+  // geçmişini yeniden çekip id'ye göre birleştiriyor - kör bir replace
+  // DEĞİL, çünkü DEFAULT_PAGE_SIZE (50) nedeniyle uzun bir oturumda
+  // gerçek-zamanlı biriken mesajlar görünmez şekilde budanabilir. Aynı
+  // zamanda bağlantı kesikken yapılan düzenlemeleri de yakalıyor (fetch
+  // edilen taze veri kazanıyor).
+  function mergeMessagesById(previous: Message[], fresh: Message[]): Message[] {
+    const byId = new Map(previous.map((message) => [message.id, message]));
+    for (const message of fresh) {
+      byId.set(message.id, message);
+    }
+    return Array.from(byId.values()).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }
+
   useEffect(() => {
     let cancelled = false;
     let socket: Socket | null = null;
@@ -82,6 +103,21 @@ export default function RoomView({
     async function bootstrap() {
       try {
         const authHeaders = { Authorization: `Bearer ${accessToken}` };
+
+        // Sadece burada, "ready" dinleyicisinden kullanılıyor - dışarı
+        // taşımaya gerek yok (fetchRoomHistory'nin aksine, handleRoomSwitch
+        // da onu ayrıca kullanıyor).
+        async function backfillActiveRoom() {
+          const room = activeRoomRef.current;
+          if (!room) return;
+          const generation = ++fetchGenerationRef.current;
+          const fresh = await fetchRoomHistory(room.name, authHeaders);
+          // Geri dolum sırasında kullanıcı elle oda değiştirdiyse (ya da
+          // yeni bir bağlantı kaybı/geri dolum başladıysa) bu artık bayat
+          // sonucu uygulama - handleRoomSwitch'in zaten kullandığı desen.
+          if (!fresh || fetchGenerationRef.current !== generation) return;
+          setMessages((previous) => mergeMessagesById(previous, fresh));
+        }
 
         getCurrentUser(accessToken)
           .then((profile) => {
@@ -109,7 +145,17 @@ export default function RoomView({
         socketRef.current = socket;
 
         socket.on("ready", () => {
-          if (!cancelled) setIsReady(true);
+          if (cancelled) return;
+          setIsReady(true);
+          if (hasConnectedBeforeRef.current) {
+            // İlk bağlantı değil - "ready" bir yeniden bağlanma sonrası
+            // tekrar geldi (handleConnection her gerçek yeniden bağlanmada
+            // yeniden tetikleniyor). Bağlantı kesikken kaçırılan mesajları
+            // geri doldur.
+            void backfillActiveRoom();
+          } else {
+            hasConnectedBeforeRef.current = true;
+          }
         });
         socket.on("message:new", (message: Message) => {
           if (!cancelled && message.roomId === activeRoomIdRef.current) {
@@ -121,6 +167,19 @@ export default function RoomView({
             setMessages((prev) =>
               prev.map((m) => (m.id === message.id ? message : m)),
             );
+          }
+        });
+        socket.on("exception", (payload: { code?: string }) => {
+          if (cancelled) return;
+          setIsSending(false);
+          if (payload?.code === "RATE_LIMITED") {
+            setSendError("Çok hızlı mesaj gönderiyorsun, biraz yavaşla.");
+          } else if (payload?.code === "MESSAGE_TOO_LONG") {
+            setSendError(
+              `Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`,
+            );
+          } else {
+            setSendError("Mesaj gönderilemedi.");
           }
         });
       } catch {
@@ -149,22 +208,34 @@ export default function RoomView({
     setMessages(history ?? []);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = draft.trim();
-    if (
-      !content ||
-      content.length > MAX_MESSAGE_LENGTH ||
-      !socketRef.current ||
-      !activeRoom
-    ) {
+    if (!content || !socketRef.current || !activeRoom || isSending) {
       return;
     }
-    socketRef.current.emit("message:send", {
-      content,
-      roomName: activeRoom.name,
-    });
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      setSendError(`Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`);
+      return;
+    }
+
+    setSendError(null);
+    setIsSending(true);
     setDraft("");
+    try {
+      // .timeout() zorunlu: düz .emit'in ack callback'i disconnect anında
+      // sessizce kaybolur (socket.io-client kaynağında doğrulandı) -
+      // isSending sonsuza kadar takılı kalabilir. exception dinleyicisi
+      // hızlı yol (RATE_LIMITED/MESSAGE_TOO_LONG); bu, garantili-canlılık
+      // yedeği (en kötü ihtimalle 8 saniyede state'i kurtarır).
+      await socketRef.current
+        .timeout(8000)
+        .emitWithAck("message:send", { content, roomName: activeRoom.name });
+    } catch {
+      setSendError("Mesaj gönderilemedi, tekrar dene.");
+    } finally {
+      setIsSending(false);
+    }
   }
 
   function handleMessageEdit(messageId: string, content: string) {
@@ -305,8 +376,9 @@ export default function RoomView({
             )}
           </section>
 
+          {sendError && <p className="text-red-400">{sendError}</p>}
           <form
-            onSubmit={handleSubmit}
+            onSubmit={(event) => void handleSubmit(event)}
             className="flex items-center gap-2 border-t border-neutral-800 pt-2"
           >
             <span className="text-neutral-600">&gt;</span>
@@ -324,10 +396,10 @@ export default function RoomView({
             />
             <button
               type="submit"
-              disabled={!canSend}
+              disabled={!canSend || isSending}
               className="text-neutral-600 disabled:cursor-not-allowed"
             >
-              gönder
+              {isSending ? "gönderiliyor..." : "gönder"}
             </button>
           </form>
         </>

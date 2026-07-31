@@ -9,6 +9,7 @@ import { TotpService } from './totp.service';
 import { PasswordResetService } from './password-reset.service';
 import { EmailVerificationService } from './email-verification.service';
 import { EmailService } from './email.service';
+import { SocketRegistryService } from './socket-registry.service';
 import { PrismaService } from '../db/prisma.service';
 
 describe('AuthService', () => {
@@ -29,6 +30,9 @@ describe('AuthService', () => {
         .mockResolvedValue(undefined),
       sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
     },
+    socketRegistryMock: Partial<SocketRegistryService> = {
+      disconnectUser: jest.fn(),
+    },
   ): AuthService {
     return new AuthService(
       prismaMock as PrismaService,
@@ -38,6 +42,7 @@ describe('AuthService', () => {
       passwordResetMock as PasswordResetService,
       emailVerificationMock as EmailVerificationService,
       emailMock as EmailService,
+      socketRegistryMock as SocketRegistryService,
     );
   }
 
@@ -480,6 +485,34 @@ describe('AuthService', () => {
       await service.deleteAccount('user-1', 'correct-password');
 
       expect(deleteSpy).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    });
+
+    it('silme_basarili_olunca_kullanicinin_soketlerini_koparir', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+          delete: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+      const disconnectUserSpy = jest.fn();
+      const socketRegistryMock: Partial<SocketRegistryService> = {
+        disconnectUser: disconnectUserSpy,
+      };
+
+      const service = buildService(
+        prismaMock,
+        {},
+        undefined,
+        {},
+        undefined,
+        undefined,
+        socketRegistryMock,
+      );
+      await service.deleteAccount('user-1', 'correct-password');
+
+      expect(disconnectUserSpy).toHaveBeenCalledWith('user-1');
     });
 
     it('reddeder_yanlis_sifreyi', async () => {
