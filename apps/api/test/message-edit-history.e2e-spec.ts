@@ -41,6 +41,7 @@ describe('Message edit history access control (e2e)', () => {
     const issuer = await prisma.user.create({
       data: {
         email: `issuer-${randomUUID()}@koqep.local`,
+        username: `issuer-${randomUUID()}`,
         passwordHash: 'test-not-a-real-hash',
       },
     });
@@ -48,9 +49,15 @@ describe('Message edit history access control (e2e)', () => {
     await prisma.invite.create({ data: { code, issuedById: issuer.id } });
 
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
     const response = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password: 'a-strong-password' })
+      .send({
+        inviteCode: code,
+        email,
+        username,
+        password: 'a-strong-password',
+      })
       .expect(201);
 
     const body = response.body as { accessToken: string };

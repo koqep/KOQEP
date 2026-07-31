@@ -28,7 +28,7 @@ interface Message {
   id: string;
   content: string;
   createdAt: string;
-  authorEmail: string | null;
+  authorUsername: string | null;
   roomId: string;
 }
 
@@ -272,8 +272,8 @@ export default function RoomView({
               <ul className="space-y-1">
                 {messages.map((message) => {
                   const isMine =
-                    message.authorEmail !== null &&
-                    message.authorEmail === myProfile?.email;
+                    message.authorUsername !== null &&
+                    message.authorUsername === myProfile?.username;
                   const canViewHistory =
                     isMine || myProfile?.role === "moderator";
                   return (

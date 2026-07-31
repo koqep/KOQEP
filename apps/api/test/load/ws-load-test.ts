@@ -105,8 +105,9 @@ async function main(): Promise<void> {
   const sessions: UserSession[] = [];
   for (let i = 0; i < CONNECTION_COUNT; i++) {
     const email = `load-test-${randomUUID()}@koqep.local`;
+    const username = `load-test-${randomUUID()}`;
     const user = await prisma.user.create({
-      data: { email, passwordHash: 'load-test-not-a-real-hash' },
+      data: { email, username, passwordHash: 'load-test-not-a-real-hash' },
     });
     userIds.push(user.id);
     const token = await jwtService.signAsync({

@@ -6,7 +6,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
-import { DEV_USER_EMAIL } from './../src/db/dev-seed.constants';
+import {
+  DEV_USER_EMAIL,
+  DEV_USER_USERNAME,
+} from './../src/db/dev-seed.constants';
 
 describe('Messages REST (e2e)', () => {
   let app: INestApplication<App>;
@@ -29,7 +32,11 @@ describe('Messages REST (e2e)', () => {
     const user = await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
       update: {},
-      create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
+      create: {
+        email: DEV_USER_EMAIL,
+        username: DEV_USER_USERNAME,
+        passwordHash: 'test-not-a-real-hash',
+      },
     });
     accessToken = await jwtService.signAsync({
       sub: user.id,

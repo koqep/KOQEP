@@ -25,6 +25,7 @@ test("kayit_basarili_olunca_oda_ekranina_gecer", async ({ page }) => {
 
   await page.getByLabel("davet kodu").fill("DEV-INVITE-1");
   await page.getByLabel("e-posta").fill("yeni@koqep.local");
+  await page.getByLabel("kullanıcı adı").fill("yenikullanici");
   await page.getByLabel("şifre").fill("a-strong-password");
   await page.getByRole("button", { name: "kayıt ol" }).click();
 

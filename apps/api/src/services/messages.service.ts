@@ -14,7 +14,7 @@ export interface MessageDto {
   id: string;
   content: string;
   createdAt: Date;
-  authorEmail: string | null;
+  authorUsername: string | null;
   roomId: string;
 }
 
@@ -33,7 +33,7 @@ interface MessageRow {
   content: string;
   createdAt: Date;
   roomId: string;
-  author: { email: string } | null;
+  author: { username: string } | null;
 }
 
 @Injectable()
@@ -52,7 +52,7 @@ export class MessagesService {
 
     const message = await this.prisma.message.create({
       data: { content, roomId: room.id, authorId: userId },
-      include: { author: { select: { email: true } } },
+      include: { author: { select: { username: true } } },
     });
 
     return toMessageDto(message);
@@ -87,7 +87,7 @@ export class MessagesService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: { author: { select: { email: true } } },
+      include: { author: { select: { username: true } } },
     });
 
     const hasMore = rows.length > limit;
@@ -122,7 +122,7 @@ export class MessagesService {
       return tx.message.update({
         where: { id: messageId },
         data: { content },
-        include: { author: { select: { email: true } } },
+        include: { author: { select: { username: true } } },
       });
     });
 
@@ -178,7 +178,7 @@ function toMessageDto(message: MessageRow): MessageDto {
     id: message.id,
     content: message.content,
     createdAt: message.createdAt,
-    authorEmail: message.author?.email ?? null,
+    authorUsername: message.author?.username ?? null,
     roomId: message.roomId,
   };
 }

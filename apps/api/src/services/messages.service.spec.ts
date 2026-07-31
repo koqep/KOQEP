@@ -27,7 +27,7 @@ describe('MessagesService', () => {
         content: 'merhaba',
         createdAt: new Date('2026-01-01'),
         roomId: room.id,
-        author: { email: 'dev@koqep.local' },
+        author: { username: 'dev' },
       };
       const createMock = jest.fn().mockResolvedValue(created);
       const prismaMock: Partial<PrismaService> = {
@@ -55,7 +55,7 @@ describe('MessagesService', () => {
         id: 'msg-1',
         content: 'merhaba',
         createdAt: created.createdAt,
-        authorEmail: 'dev@koqep.local',
+        authorUsername: 'dev',
         roomId: room.id,
       });
     });
@@ -66,7 +66,7 @@ describe('MessagesService', () => {
         content: 'meta selam',
         createdAt: new Date('2026-01-01'),
         roomId: otherRoom.id,
-        author: { email: 'dev@koqep.local' },
+        author: { username: 'dev' },
       };
       const findUniqueMock = jest.fn().mockResolvedValue(otherRoom);
       const createMock = jest.fn().mockResolvedValue(created);
@@ -126,7 +126,7 @@ describe('MessagesService', () => {
           id: `msg-${n}`,
           content: `mesaj ${n}`,
           createdAt: new Date(2026, 0, 1, 0, 0, n),
-          author: { email: 'dev@koqep.local' },
+          author: { username: 'dev' },
         };
       });
       const findManyMock = jest.fn().mockResolvedValue(rows);
@@ -285,7 +285,7 @@ describe('MessagesService', () => {
         content: 'yeni icerik',
         createdAt: new Date('2026-01-01'),
         roomId: room.id,
-        author: { email: 'dev@koqep.local' },
+        author: { username: 'dev' },
       };
       const { prismaMock, createSpy, updateSpy } = buildTransactionalPrismaMock(
         existing,

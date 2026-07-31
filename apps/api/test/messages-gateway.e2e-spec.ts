@@ -8,7 +8,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
-import { DEV_USER_EMAIL } from './../src/db/dev-seed.constants';
+import {
+  DEV_USER_EMAIL,
+  DEV_USER_USERNAME,
+} from './../src/db/dev-seed.constants';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
@@ -44,7 +47,11 @@ describe('Messages Gateway (e2e)', () => {
     const user = await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
       update: {},
-      create: { email: DEV_USER_EMAIL, passwordHash: 'test-not-a-real-hash' },
+      create: {
+        email: DEV_USER_EMAIL,
+        username: DEV_USER_USERNAME,
+        passwordHash: 'test-not-a-real-hash',
+      },
     });
     for (const name of CORE_ROOM_NAMES) {
       await prisma.room.upsert({
@@ -65,6 +72,7 @@ describe('Messages Gateway (e2e)', () => {
     const other = await prisma.user.create({
       data: {
         email: `other-${randomUUID()}@koqep.local`,
+        username: `other-${randomUUID()}`,
         passwordHash: 'test-not-a-real-hash',
       },
     });

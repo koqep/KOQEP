@@ -1,8 +1,10 @@
-import { IsEmail, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Length, Matches } from 'class-validator';
 
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 200;
 const MAX_INVITE_CODE_LENGTH = 100;
+export const MIN_USERNAME_LENGTH = 3;
+export const MAX_USERNAME_LENGTH = 24;
 
 export class SignupDto {
   @IsString()
@@ -11,6 +13,11 @@ export class SignupDto {
 
   @IsEmail()
   email: string;
+
+  @IsString()
+  @Length(MIN_USERNAME_LENGTH, MAX_USERNAME_LENGTH)
+  @Matches(/^[a-zA-Z0-9_-]+$/)
+  username: string;
 
   @IsString()
   @Length(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH)

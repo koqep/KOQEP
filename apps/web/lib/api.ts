@@ -66,6 +66,7 @@ async function authedGetJson<T>(path: string, accessToken: string): Promise<T> {
 export function signup(input: {
   inviteCode: string;
   email: string;
+  username: string;
   password: string;
 }): Promise<TokenPair> {
   return postJson<TokenPair>("/auth/signup", input);
@@ -139,6 +140,7 @@ export function listBlockedUsers(accessToken: string): Promise<string[]> {
 
 export interface UserProfile {
   email: string;
+  username: string;
   role: "user" | "moderator";
 }
 

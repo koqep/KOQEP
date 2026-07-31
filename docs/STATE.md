@@ -4,17 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — planlandı, henüz implementasyon başlamadı. M2 TAMAMEN BİTTİ.
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A (kullanıcı adı) TAMAMLANDI, B-F kaldı. M2 TAMAMEN BİTTİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı (Slice E-G). Slice G ile arayüz metni Türkçe'den İngilizce'ye geçmeye başladı (kademeli, kullanıcı kararı). Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Bu kritere göre (özellik yoksa ürün BOZUK/GÜVENSİZ hissettirir mi) tam bir kod denetimi yapıldı, sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni bulgular: username hiç yok (herkes herkesin emailini görüyor), e-posta doğrulama yok, hesap silme yok, WS bağlantı kopunca mesaj kaybı telafisiz, mobil hiç test edilmemiş. Yeni `M2.5` milestone'ı bunları M3'ten önce kapatıyor. M5/M6 de büyütüldü (davetçi hesap verebilirliği + gerçek a11y/mobil kapsamı).
+- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Bu kritere göre tam bir kod denetimi yapıldı, sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı (username, e-posta doğrulama, hesap silme, WS güvenilirlik, geçmiş sayfalama, kısmi kod bloğu) M3'ten önce bunları kapatıyor. M5/M6 de büyütüldü.
+- **2026-07-31 — M2.5 Slice A (kullanıcı adı) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** `User.username` eklendi (336 satırlık lokal DB'de veri kaybetmeden geriye dönük dolduruldu), mesajlarda artık e-posta değil kullanıcı adı görünüyor, `GET /users/me`/signup formu güncellendi. Detay: milestone dosyasının Plan notları.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Kapsam denetimi tamamlandı ve dokümanlara dağıtıldı (BACKLOG.md + yeni M2.5 + M3/M5/M6/THREAT-MODEL güncellemeleri) — sadece planlama, kod yazılmadı.
-- **Yarım kalan:** Toplam saat tahmini (~155–240h, 30h/hafta ile ~5–8 hafta) kullanıcıya raporlandı, gerçekçilik kararı bekleniyor.
-- **Sonraki adım:** Kullanıcı kapsamı onaylarsa `M2.5`'in plan modu turu ilk adım (M3'ten önce). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M2.5 Slice A kod + test + doküman tamamlandı, `m2.5/slice-a-username` branch'inde commit edildi (henüz merge edilmemiş `docs/1.0-scope-audit` branch'i de bu branch'e merge edildi — M2.5 doküman dosyası oradaydı).
+- **Yarım kalan:** İki branch'in de (`docs/1.0-scope-audit`, `m2.5/slice-a-username`) merge edilmesi.
+- **Sonraki adım:** Slice B (e-posta doğrulama) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -52,3 +53,5 @@
 - Yeni bir tabloya `ON DELETE RESTRICT` FK eklerken (Prisma varsayılanı) mevcut e2e testlerin `afterAll` temizliğini kontrol et — ebeveyn satırı (ör. `Message`) artık çocuk satırı (ör. `MessageEdit`) olmadan silinemez, temizlik sırası tersten olmalı (önce çocuk, sonra ebeveyn). Slice B'de bu gerçek bir test hatası olarak yakalandı.
 - `@nestjs/throttler`: aynı route'ta HEM global (APP_GUARD) HEM route-özel bir `ThrottlerGuard` alt sınıfı varsa, ikisi de AYNI `@Throttle()` metadata'sını okuyup birbirinden habersiz AYRI sayaç tutar (IP-bazlı + kullanıcı-bazlı gibi) — beklenmedik erken 429'lara yol açar, gerçek testte yakalandı. Farklı tracking mantığı gereken route'lar için `ThrottlerGuard`'ı extend etmek yerine `ThrottlerStorage`'ı doğrudan kullanan bağımsız bir `CanActivate` yaz.
 - `@nestjs/throttler`'ın `storageService.increment()`'ine `blockDuration=0` vermek bloğu AYNI çağrı içinde sessizce sıfırlıyor (kaynak kodda doğrulandı) — limit aşılsa bile hep izin veriyormuş gibi görünür. `blockDuration` hep `ttl` (ya da üstü) olmalı, base `ThrottlerGuard` da belirtilmediğinde buna düşüyor.
+- `prisma migrate dev --create-only` mevcut satırları olan bir tabloya varsayılansız zorunlu kolon eklerken ("nasıl doldurulsun" sorusu insan girdisi gerektirdiğinde) non-interactive ortamda tamamen REDDEDİYOR, dosya bile üretmiyor. Çözüm: migration klasörünü/`migration.sql`'i elle oluştur (nullable ekle → veri koru şekilde doldur → NOT NULL/UNIQUE'e sıkılaştır, tek dosyada), sonra `prisma migrate dev` (dosya zaten varsa sadece uygular). M2.5 Slice A'da `User.username` için kullanıldı.
+- M2.5 gibi ayrı bir docs-only branch'in (`docs/1.0-scope-audit`) hemen ardından gelen bir slice, o dokümana referans veriyorsa `main`'den değil O BRANCH'TEN dallanmalı — yoksa milestone dosyası bile yok olur (Slice A'da olduğu gibi, sonradan `git merge` ile düzeltildi).

@@ -27,7 +27,7 @@ test("oda_degistirince_mesaj_listesi_yeni_odaya_gore_guncellenir", async ({
             id: `msg-${roomName}`,
             content: isMeta ? "meta odasindaki mesaj" : "genel odasindaki mesaj",
             createdAt: new Date().toISOString(),
-            authorEmail: null,
+            authorUsername: null,
             roomId: isMeta ? "room-meta" : "room-general",
           },
         ],
