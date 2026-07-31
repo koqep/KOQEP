@@ -27,6 +27,7 @@ export default function AuthView({ onAuthenticated }: Props) {
   const [totpCode, setTotpCode] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
+  const [signupComplete, setSignupComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,6 +37,7 @@ export default function AuthView({ onAuthenticated }: Props) {
     setTotpRequired(false);
     setTotpCode("");
     setResetRequested(false);
+    setSignupComplete(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -53,15 +55,21 @@ export default function AuthView({ onAuthenticated }: Props) {
         return;
       }
 
-      const tokens =
-        mode === "signup"
-          ? await signup({ inviteCode, email, username, password })
-          : await login({
-              email,
-              password,
-              ...(totpRequired ? { totpCode } : {}),
-            });
-      onAuthenticated(tokens, mode === "signup" ? false : totpRequired);
+      if (mode === "signup") {
+        await signup({ inviteCode, email, username, password });
+        // Signup artık giriş yapmıyor - hesap e-postayı doğrulayana kadar
+        // kullanılamaz (M2.5 Slice B). "şifremi unuttum" ile aynı nötr
+        // mesaj deseni.
+        setSignupComplete(true);
+        return;
+      }
+
+      const tokens = await login({
+        email,
+        password,
+        ...(totpRequired ? { totpCode } : {}),
+      });
+      onAuthenticated(tokens, totpRequired);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TOTP_REQUIRED") {
@@ -86,6 +94,10 @@ export default function AuthView({ onAuthenticated }: Props) {
       {mode === "forgot-password" && resetRequested ? (
         <p className="text-neutral-400">
           Bu e-posta kayıtlıysa bir sıfırlama bağlantısı gönderildi.
+        </p>
+      ) : mode === "signup" && signupComplete ? (
+        <p className="text-neutral-400">
+          Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">

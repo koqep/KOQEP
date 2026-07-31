@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { io, Socket } from 'socket.io-client';
@@ -30,6 +31,7 @@ function neverReceives(
 describe('Block-user (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let jwtService: JwtService;
   let baseUrl: string;
   const openSockets: Socket[] = [];
 
@@ -49,6 +51,7 @@ describe('Block-user (e2e)', () => {
     baseUrl = `http://localhost:${address.port}`;
 
     prisma = moduleFixture.get(PrismaService);
+    jwtService = moduleFixture.get(JwtService);
     await prisma.room.upsert({
       where: { name: CORE_ROOM_NAMES[0] },
       update: {},
@@ -71,39 +74,35 @@ describe('Block-user (e2e)', () => {
     return socket;
   }
 
-  async function signUpFreshUser(): Promise<{
+  // Bu dosya signup/e-posta doğrulama davranışını test etmiyor, sadece
+  // kimlik doğrulanmış test kullanıcılarına ihtiyaç duyuyor - gerçek
+  // /auth/signup + /auth/verify-email + /auth/login akışından geçmek
+  // yerine doğrudan doğrulanmış bir kullanıcı oluşturup token imzalıyoruz
+  // (messages-gateway.e2e-spec.ts'in dev-user deseniyle aynı, M2.5 Slice B).
+  async function createTestUser(): Promise<{
     email: string;
     username: string;
     accessToken: string;
   }> {
-    const issuer = await prisma.user.create({
-      data: {
-        email: `issuer-${randomUUID()}@koqep.local`,
-        username: `issuer-${randomUUID()}`,
-        passwordHash: 'test-not-a-real-hash',
-      },
-    });
-    const code = `INVITE-${randomUUID()}`;
-    await prisma.invite.create({ data: { code, issuedById: issuer.id } });
-
     const email = `user-${randomUUID()}@koqep.local`;
     const username = `user-${randomUUID()}`;
-    const response = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send({
-        inviteCode: code,
+    const user = await prisma.user.create({
+      data: {
         email,
         username,
-        password: 'a-strong-password',
-      })
-      .expect(201);
-
-    const body = response.body as { accessToken: string };
-    return { email, username, accessToken: body.accessToken };
+        passwordHash: 'test-not-a-real-hash',
+        emailVerifiedAt: new Date(),
+      },
+    });
+    const accessToken = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+    return { email, username, accessToken };
   }
 
   it('doner_kendi_email_kullanici_adi_ve_rolunu', async () => {
-    const a = await signUpFreshUser();
+    const a = await createTestUser();
 
     const response = await request(app.getHttpServer())
       .get('/users/me')
@@ -118,7 +117,7 @@ describe('Block-user (e2e)', () => {
   });
 
   it('reddeder_kendini_engellemeyi', async () => {
-    const a = await signUpFreshUser();
+    const a = await createTestUser();
 
     await request(app.getHttpServer())
       .post('/users/block')
@@ -128,7 +127,7 @@ describe('Block-user (e2e)', () => {
   });
 
   it('reddeder_bulunamayan_e_postayi', async () => {
-    const a = await signUpFreshUser();
+    const a = await createTestUser();
 
     await request(app.getHttpServer())
       .post('/users/block')
@@ -138,9 +137,9 @@ describe('Block-user (e2e)', () => {
   });
 
   it('tam_akis_gecmis_ve_gercek_zamanli_filtreleme_ve_engel_kaldirma', async () => {
-    const a = await signUpFreshUser();
-    const b = await signUpFreshUser();
-    const c = await signUpFreshUser();
+    const a = await createTestUser();
+    const b = await createTestUser();
+    const c = await createTestUser();
 
     const socketA = connectSocket(a.accessToken);
     const socketB = connectSocket(b.accessToken);

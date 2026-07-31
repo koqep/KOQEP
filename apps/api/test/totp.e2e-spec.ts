@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
+import * as argon2 from 'argon2';
 import { Secret, TOTP } from 'otpauth';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
@@ -10,6 +12,7 @@ import { PrismaService } from './../src/db/prisma.service';
 describe('TOTP setup/enable/login/disable (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let jwtService: JwtService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -20,41 +23,43 @@ describe('TOTP setup/enable/login/disable (e2e)', () => {
     await app.init();
 
     prisma = moduleFixture.get(PrismaService);
+    jwtService = moduleFixture.get(JwtService);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  async function signUpFreshUser(): Promise<{
+  // Bu dosya signup/e-posta doğrulama akışını değil TOTP'yi test ediyor -
+  // doğrulanmış bir kullanıcıyı doğrudan oluşturup token imzalıyoruz
+  // (M2.5 Slice B). Şifre gerçek argon2 hash'i olmalı çünkü test daha
+  // sonra gerçek /auth/login çağrıları yapıyor.
+  async function createTestUser(): Promise<{
     email: string;
     password: string;
     accessToken: string;
   }> {
-    const issuer = await prisma.user.create({
-      data: {
-        email: `issuer-${randomUUID()}@koqep.local`,
-        username: `issuer-${randomUUID()}`,
-        passwordHash: 'test-not-a-real-hash',
-      },
-    });
-    const code = `INVITE-${randomUUID()}`;
-    await prisma.invite.create({ data: { code, issuedById: issuer.id } });
-
     const email = `user-${randomUUID()}@koqep.local`;
     const username = `user-${randomUUID()}`;
     const password = 'a-strong-password';
-    const response = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send({ inviteCode: code, email, username, password })
-      .expect(201);
-
-    const body = response.body as { accessToken: string };
-    return { email, password, accessToken: body.accessToken };
+    const passwordHash = await argon2.hash(password);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        passwordHash,
+        emailVerifiedAt: new Date(),
+      },
+    });
+    const accessToken = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+    return { email, password, accessToken };
   }
 
   it('tam_akis_kurulum_etkinlestirme_giris_ve_kapatma', async () => {
-    const { email, password, accessToken } = await signUpFreshUser();
+    const { email, password, accessToken } = await createTestUser();
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     const setupResponse = await request(app.getHttpServer())

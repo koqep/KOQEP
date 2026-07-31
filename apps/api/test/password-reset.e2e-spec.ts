@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
+import * as argon2 from 'argon2';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { EmailService } from './../src/services/email.service';
@@ -40,27 +41,31 @@ describe('Password reset request/confirm (e2e)', () => {
     emailServiceMock.sendPasswordChangedNotificationEmail.mockClear();
   });
 
-  async function signUpFreshUser(): Promise<{
+  // Bu dosya signup/e-posta doğrulama akışını değil şifre sıfırlamayı test
+  // ediyor - doğrulanmış bir kullanıcıyı doğrudan oluşturup gerçek
+  // /auth/login ile gerçek bir refreshToken alıyoruz (M2.5 Slice B).
+  // Şifre gerçek argon2 hash'i olmalı çünkü login gerçekten çağrılıyor.
+  async function createLoggedInTestUser(): Promise<{
     email: string;
     password: string;
     refreshToken: string;
   }> {
-    const issuer = await prisma.user.create({
-      data: {
-        email: `issuer-${randomUUID()}@koqep.local`,
-        username: `issuer-${randomUUID()}`,
-        passwordHash: 'test-not-a-real-hash',
-      },
-    });
-    const code = `INVITE-${randomUUID()}`;
-    await prisma.invite.create({ data: { code, issuedById: issuer.id } });
-
     const email = `user-${randomUUID()}@koqep.local`;
     const username = `user-${randomUUID()}`;
     const password = 'a-strong-password';
+    const passwordHash = await argon2.hash(password);
+    await prisma.user.create({
+      data: {
+        email,
+        username,
+        passwordHash,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
     const response = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send({ inviteCode: code, email, username, password })
+      .post('/auth/login')
+      .send({ email, password })
       .expect(201);
 
     const body = response.body as { refreshToken: string };
@@ -79,7 +84,7 @@ describe('Password reset request/confirm (e2e)', () => {
   }
 
   it('tam_akis_talep_dogrulama_ve_oturum_iptali', async () => {
-    const { email, password, refreshToken } = await signUpFreshUser();
+    const { email, password, refreshToken } = await createLoggedInTestUser();
 
     await request(app.getHttpServer())
       .post('/auth/password-reset/request')

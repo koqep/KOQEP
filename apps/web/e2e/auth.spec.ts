@@ -9,16 +9,12 @@ async function mockRoomEndpoints(page: import("@playwright/test").Page) {
   );
 }
 
-test("kayit_basarili_olunca_oda_ekranina_gecer", async ({ page }) => {
+test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", async ({
+  page,
+}) => {
   await page.route("**/auth/signup", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
+    route.fulfill({ json: { ok: true } }),
   );
-  await mockRoomEndpoints(page);
 
   await page.goto("/");
   await page.getByRole("button", { name: "hesabın yok mu? kayıt ol" }).click();
@@ -29,7 +25,35 @@ test("kayit_basarili_olunca_oda_ekranina_gecer", async ({ page }) => {
   await page.getByLabel("şifre").fill("a-strong-password");
   await page.getByRole("button", { name: "kayıt ol" }).click();
 
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  // Signup artık giriş yapmıyor (M2.5 Slice B) - e-postayı doğrulaman
+  // gerektiğini söyleyen nötr bir mesaj görünür, sohbet ekranına geçmez.
+  await expect(
+    page.getByText(
+      "Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByPlaceholder("mesaj yaz...")).toHaveCount(0);
+});
+
+test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {
+  await page.route("**/auth/login", (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        code: "EMAIL_NOT_VERIFIED",
+        message: "E-postanı doğrulaman gerekiyor.",
+      },
+    }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel("e-posta").fill("dogrulanmamis@koqep.local");
+  await page.getByLabel("şifre").fill("a-strong-password");
+  await page.getByRole("button", { name: "giriş yap" }).click();
+
+  await expect(
+    page.getByText("E-postanı doğrulaman gerekiyor."),
+  ).toBeVisible();
 });
 
 test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({

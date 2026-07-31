@@ -4,18 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A (kullanıcı adı) TAMAMLANDI, B-F kaldı. M2 TAMAMEN BİTTİ.
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B TAMAMLANDI, C-F kaldı. M2 TAMAMEN BİTTİ.
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı (Slice E-G). Slice G ile arayüz metni Türkçe'den İngilizce'ye geçmeye başladı (kademeli, kullanıcı kararı). Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Bu kritere göre tam bir kod denetimi yapıldı, sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı (username, e-posta doğrulama, hesap silme, WS güvenilirlik, geçmiş sayfalama, kısmi kod bloğu) M3'ten önce bunları kapatıyor. M5/M6 de büyütüldü.
-- **2026-07-31 — M2.5 Slice A (kullanıcı adı) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** `User.username` eklendi (336 satırlık lokal DB'de veri kaybetmeden geriye dönük dolduruldu), mesajlarda artık e-posta değil kullanıcı adı görünüyor, `GET /users/me`/signup formu güncellendi. Detay: milestone dosyasının Plan notları.
+- **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı. Slice G'den beri arayüz metni Türkçe'den İngilizce'ye kademeli geçiyor. Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
+- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapatıyor.
+- **2026-07-31 — M2.5 Slice A (kullanıcı adı) `main`'e MERGE EDİLDİ. Slice B (e-posta doğrulama) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: `User.username`, mesajlarda artık email değil kullanıcı adı. Slice B: `User.emailVerifiedAt` + `EmailVerificationToken`, signup artık doğrulanana kadar giriş yapılamıyor, gerçek Resend ile gerçek e-posta gönderiliyor. Resend-verification endpoint'i bilerek ertelendi (somut tetikleyici: BACKLOG.md). İki ayrı CI düzeltmesi gerekti (aynı belirti, farklı kök sebep — detay Tuzaklar + milestone Plan notları): (1) `EmailService`'e `EMAIL_TRANSPORT=fake` kapısı, (2) `seed.ts`'in dev kullanıcısına `emailVerifiedAt` eklenmesi.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2.5 Slice A kod + test + doküman tamamlandı, `m2.5/slice-a-username` branch'inde commit edildi (henüz merge edilmemiş `docs/1.0-scope-audit` branch'i de bu branch'e merge edildi — M2.5 doküman dosyası oradaydı).
-- **Yarım kalan:** İki branch'in de (`docs/1.0-scope-audit`, `m2.5/slice-a-username`) merge edilmesi.
-- **Sonraki adım:** Slice B (e-posta doğrulama) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M2.5 Slice B + iki CI düzeltmesi `m2.5/slice-b-email-verification` branch'inde commit edildi (3 commit).
+- **Yarım kalan:** Bu branch'in push/merge edilmesi, CI'ın yeşile dönmesi kullanıcı tarafından teyit edilecek.
+- **Sonraki adım:** Slice C (hesap silme) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -30,9 +30,7 @@
 - M1'in slice-by-slice kararları (A-D backend, E1-E5 frontend) tekrar buraya taşınmadı — `docs/milestones/M1-auth-invites.md`'nin Plan notları bölümlerinde tam haliyle duruyor.
 - 2026-07-29 — `SEED_DEV_FIXTURES` opt-in env'i: `NODE_ENV`'e bilerek güvenilmedi (kod tabanında hiç kullanılmıyordu, Render'ın set etme davranışı doğrulanamadı). `test-fullstack-e2e` CI job'ı `true` ile açık; `test` job'ı kapalı bırakıldı, testler değişmeden geçti.
 - 2026-07-29 — Sıfır-kullanıcılı DB bootstrap boşluğu koda değil belgeye gitti: `docs/THREAT-MODEL.md` Open items'a somut tetikleyiciyle (M2'nin davet endpoint'i bunu da kapsamalı) eklendi.
-- 2026-07-30 — M2 Slice A-F kararları (oda-parametreli mesajlaşma, `message:updated`, rate limiting tuzakları, yük testi, oda değiştirici, `GET /users/me` + düzenleme/geçmiş UI) tekrar buraya taşınmadı — `docs/milestones/M2-core-rooms-messaging.md`'nin ilgili Plan notları bölümlerinde tam haliyle duruyor.
-- 2026-07-30 — `apps/web/AGENTS.md`/`CLAUDE.md` kaldırıldı: kullanıcı hiç yazmadı, muhtemelen önceki bir Claude Code oturumunun uydurduğu sahte bir "agent kuralları" dosyasıydı (var olmayan bir yol okumayı istiyordu). Talimat hiç çalıştırılmadı.
-- 2026-07-30 — M2 Slice G: `ApiError`'a `status: number` eklendi (429'u ham `ThrottlerException` string'i yerine dostane mesajla göstermek için) — mevcut hiçbir çağrı yeri değişmedi. Davet kodları session-only listede birikiyor (silinmiyor), panoya kopyalama yok (hiç precedent'i yoktu). Bu slice'tan itibaren arayüz metni İngilizce (kullanıcı kararı) — geri kalan Türkçe bileşenlerin çevirisi ayrı bir görev.
+- 2026-07-30 — M2 Slice A-G kararları (oda-parametreli mesajlaşma, `message:updated`, rate limiting tuzakları, yük testi, oda değiştirici, düzenleme/geçmiş + davet UI, `ApiError.status`, sahte `apps/web/AGENTS.md`/`CLAUDE.md` kaldırma, arayüzün kademeli İngilizceye geçişi) tekrar buraya taşınmadı — `docs/milestones/M2-core-rooms-messaging.md`'nin Plan notları bölümlerinde tam haliyle duruyor.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
@@ -55,3 +53,5 @@
 - `@nestjs/throttler`'ın `storageService.increment()`'ine `blockDuration=0` vermek bloğu AYNI çağrı içinde sessizce sıfırlıyor (kaynak kodda doğrulandı) — limit aşılsa bile hep izin veriyormuş gibi görünür. `blockDuration` hep `ttl` (ya da üstü) olmalı, base `ThrottlerGuard` da belirtilmediğinde buna düşüyor.
 - `prisma migrate dev --create-only` mevcut satırları olan bir tabloya varsayılansız zorunlu kolon eklerken ("nasıl doldurulsun" sorusu insan girdisi gerektirdiğinde) non-interactive ortamda tamamen REDDEDİYOR, dosya bile üretmiyor. Çözüm: migration klasörünü/`migration.sql`'i elle oluştur (nullable ekle → veri koru şekilde doldur → NOT NULL/UNIQUE'e sıkılaştır, tek dosyada), sonra `prisma migrate dev` (dosya zaten varsa sadece uygular). M2.5 Slice A'da `User.username` için kullanıldı.
 - M2.5 gibi ayrı bir docs-only branch'in (`docs/1.0-scope-audit`) hemen ardından gelen bir slice, o dokümana referans veriyorsa `main`'den değil O BRANCH'TEN dallanmalı — yoksa milestone dosyası bile yok olur (Slice A'da olduğu gibi, sonradan `git merge` ile düzeltildi).
+- Sahte/placeholder CI env değerleri (ör. eski `RESEND_API_KEY: ci-only-test-key`) sadece o değeri kullanan TÜM kod yolları hatayı sessizce yutuyorsa güvenlidir — bir yol sessizce yutmayı bırakınca aynı sahte değer aniden CI'ı kırar. Dış servisi DI ile override edilemeyen canlı süreçlerde (fullstack e2e'nin `start:prod`'u gibi) sahte'lemek gerekirse: kesin string eşitliği kullan (`=== 'fake'`, TRUTHY DEĞİL), SADECE ihtiyaç duyan job'a ekle, production sızmasını `render.yaml`'ı statik tarayan bir testle koru (`NODE_ENV`'e güvenme — `SEED_DEV_FIXTURES` kararında da reddedildi).
+- `SEED_DEV_FIXTURES`'ın seed'lediği dev kullanıcı Slice B'den beri `emailVerifiedAt` olmadan giriş yapamıyordu (`seed.ts` bunu set etmiyordu) — lokal DB'de migration backfill'i eski satırı zaten doğrulamış olduğu için GÖRÜNMEDİ, CI'ın her koşuda kurduğu SIFIR satırlı taze DB'de create dalı ilk kez çalışıp açığa çıktı. Ders: "CI'da kırmızı, lokalde yeşil" bir e2e/seed sorununu gerçekten doğrulamak için kalıcı lokal DB'ye değil, taze bir throwaway Postgres container'ına karşı test et.

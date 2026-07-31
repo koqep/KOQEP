@@ -16,6 +16,7 @@ import { AuthService } from './services/auth.service';
 import { InvitesService } from './services/invites.service';
 import { TotpService } from './services/totp.service';
 import { PasswordResetService } from './services/password-reset.service';
+import { EmailVerificationService } from './services/email-verification.service';
 import { EmailService } from './services/email.service';
 import { BlocksService } from './services/blocks.service';
 import { UsersService } from './services/users.service';
@@ -66,6 +67,7 @@ const DEFAULT_RATE_LIMIT = 100;
     InvitesService,
     TotpService,
     PasswordResetService,
+    EmailVerificationService,
     EmailService,
     BlocksService,
     UsersService,

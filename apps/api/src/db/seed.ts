@@ -43,6 +43,13 @@ async function main(): Promise<void> {
       email: DEV_USER_EMAIL,
       username: DEV_USER_USERNAME,
       passwordHash,
+      // M2.5 Slice B'den beri login() emailVerifiedAt olmayan kullanıcıyı
+      // reddediyor. Mevcut satırlar migration'ın backfill'iyle doğrulandı
+      // ama TAZE bir DB'de (CI'ın her koşuda sıfırdan kurduğu Postgres
+      // container'ı gibi) bu upsert'in create dalı ilk kez çalışıyor - o
+      // yüzden burada da açıkça set edilmeli, yoksa dev kullanıcı hep
+      // EMAIL_NOT_VERIFIED ile giriş yapamaz.
+      emailVerifiedAt: new Date(),
     },
   });
 

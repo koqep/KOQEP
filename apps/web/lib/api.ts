@@ -63,13 +63,17 @@ async function authedGetJson<T>(path: string, accessToken: string): Promise<T> {
   });
 }
 
-export function signup(input: {
+export async function signup(input: {
   inviteCode: string;
   email: string;
   username: string;
   password: string;
-}): Promise<TokenPair> {
-  return postJson<TokenPair>("/auth/signup", input);
+}): Promise<void> {
+  await postJson("/auth/signup", input);
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+  await postJson("/auth/verify-email", { token });
 }
 
 export function login(input: {

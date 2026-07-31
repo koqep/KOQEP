@@ -5,15 +5,26 @@ import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
+import { EmailService } from './../src/services/email.service';
 
-describe('Auth signup/login/refresh/logout (e2e)', () => {
+describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  const emailServiceMock = {
+    sendPasswordResetRequestEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordChangedNotificationEmail: jest
+      .fn()
+      .mockResolvedValue(undefined),
+    sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(EmailService)
+      .useValue(emailServiceMock)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -23,6 +34,10 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  beforeEach(() => {
+    emailServiceMock.sendEmailVerificationEmail.mockClear();
   });
 
   async function seedInvite(): Promise<{ code: string; issuerId: string }> {
@@ -38,7 +53,59 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
     return { code, issuerId: issuer.id };
   }
 
-  it('kayit_daveti_talep_eder_ve_dogru_davetciyi_baglar', async () => {
+  function extractVerificationToken(): string {
+    const calls = emailServiceMock.sendEmailVerificationEmail.mock.calls as [
+      string,
+      string,
+    ][];
+    const verifyLink = calls[calls.length - 1][1];
+    const token = new URL(verifyLink).searchParams.get('token');
+    if (!token) {
+      throw new Error('e2e test: doğrulama bağlantısında token bulunamadı.');
+    }
+    return token;
+  }
+
+  async function signUpVerifyAndLogin(): Promise<{
+    email: string;
+    password: string;
+    accessToken: string;
+    refreshToken: string;
+  }> {
+    const { code } = await seedInvite();
+    const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
+    const password = 'a-strong-password';
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({ inviteCode: code, email, username, password })
+      .expect(201);
+
+    const token = extractVerificationToken();
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token })
+      .expect(201);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(201);
+
+    const body = loginResponse.body as {
+      accessToken: string;
+      refreshToken: string;
+    };
+    return {
+      email,
+      password,
+      accessToken: body.accessToken,
+      refreshToken: body.refreshToken,
+    };
+  }
+
+  it('kayit_daveti_talep_eder_dogru_davetciyi_baglar_dogrulama_e_postasi_gonderir', async () => {
     const { code, issuerId } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
     const username = `user-${randomUUID()}`;
@@ -53,17 +120,17 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
       })
       .expect(201);
 
-    const body = response.body as {
-      accessToken: string;
-      refreshToken: string;
-    };
-    expect(typeof body.accessToken).toBe('string');
-    expect(typeof body.refreshToken).toBe('string');
+    expect(response.body).toEqual({ ok: true });
+    expect(emailServiceMock.sendEmailVerificationEmail).toHaveBeenCalledWith(
+      email,
+      expect.stringContaining('verify-email?token=') as string,
+    );
 
     const createdUser = await prisma.user.findUniqueOrThrow({
       where: { email },
     });
     expect(createdUser.inviterId).toBe(issuerId);
+    expect(createdUser.emailVerifiedAt).toBeNull();
 
     const invite = await prisma.invite.findUniqueOrThrow({
       where: { code },
@@ -121,7 +188,7 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
       .expect(409);
   });
 
-  it('giris_yapar_dogru_sifreyle_ve_reddeder_yanlisini', async () => {
+  it('dogrulanmadan_giris_engellenir_dogrulaninca_calisir_yanlis_sifre_durumunu_sizdirmaz', async () => {
     const { code } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
     const username = `user-${randomUUID()}`;
@@ -132,33 +199,53 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
       .send({ inviteCode: code, email, username, password })
       .expect(201);
 
-    await request(app.getHttpServer())
+    // Doğrulanmadan doğru şifreyle bile giriş engellenir.
+    const unverifiedAttempt = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email, password })
+      .expect(401);
+    expect((unverifiedAttempt.body as { code?: string }).code).toBe(
+      'EMAIL_NOT_VERIFIED',
+    );
+
+    // Doğrulanmamışken yanlış şifre de aynı şekilde 401 - hangi sebepten
+    // reddedildiği (şifre mi, doğrulama mı) sızdırılmıyor, şifre kontrolü
+    // doğrulama kontrolünden önce çalışıyor.
+    const wrongPasswordAttempt = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password: 'wrong-password' })
+      .expect(401);
+    expect((wrongPasswordAttempt.body as { code?: string }).code).toBe(
+      'INVALID_CREDENTIALS',
+    );
+
+    const token = extractVerificationToken();
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token: 'wrong-token' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token })
       .expect(201);
 
+    // Doğrulandıktan sonra yanlış şifre hâlâ reddedilir.
     await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email, password: 'wrong-password' })
       .expect(401);
+
+    // Doğru şifreyle artık gerçekten giriş yapılabiliyor.
+    const successResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(201);
+    const body = successResponse.body as { accessToken: string };
+    expect(typeof body.accessToken).toBe('string');
   });
 
   it('yeniler_refresh_tokeni_ve_eskisini_gecersiz_kilar', async () => {
-    const { code } = await seedInvite();
-    const email = `user-${randomUUID()}@koqep.local`;
-    const username = `user-${randomUUID()}`;
-
-    const signupResponse = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send({
-        inviteCode: code,
-        email,
-        username,
-        password: 'a-strong-password',
-      })
-      .expect(201);
-
-    const { refreshToken } = signupResponse.body as { refreshToken: string };
+    const { refreshToken } = await signUpVerifyAndLogin();
 
     const refreshResponse = await request(app.getHttpServer())
       .post('/auth/refresh')
@@ -175,21 +262,7 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
   });
 
   it('cikis_yapinca_refresh_tokeni_gecersiz_kilar', async () => {
-    const { code } = await seedInvite();
-    const email = `user-${randomUUID()}@koqep.local`;
-    const username = `user-${randomUUID()}`;
-
-    const signupResponse = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send({
-        inviteCode: code,
-        email,
-        username,
-        password: 'a-strong-password',
-      })
-      .expect(201);
-
-    const { refreshToken } = signupResponse.body as { refreshToken: string };
+    const { refreshToken } = await signUpVerifyAndLogin();
 
     await request(app.getHttpServer())
       .post('/auth/logout')

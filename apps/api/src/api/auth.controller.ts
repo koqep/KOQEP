@@ -4,6 +4,7 @@ import { AuthService, TokenPair } from '../services/auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 
 // Davet kodu tahmin etme denemelerine karşı ikincil katman (THREAT-MODEL
 // satır 9) - asıl savunma kodun entropisi, bu sadece otomatik/hızlı
@@ -19,13 +20,20 @@ export class AuthController {
   @Throttle({
     default: { limit: SIGNUP_ATTEMPT_LIMIT, ttl: SIGNUP_ATTEMPT_TTL_MS },
   })
-  signup(@Body() dto: SignupDto): Promise<TokenPair> {
-    return this.authService.signup(dto);
+  async signup(@Body() dto: SignupDto): Promise<{ ok: true }> {
+    await this.authService.signup(dto);
+    return { ok: true };
   }
 
   @Post('login')
   login(@Body() dto: LoginDto): Promise<TokenPair> {
     return this.authService.login(dto);
+  }
+
+  @Post('verify-email')
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<{ ok: true }> {
+    await this.authService.confirmEmailVerification(dto.token);
+    return { ok: true };
   }
 
   @Post('refresh')
