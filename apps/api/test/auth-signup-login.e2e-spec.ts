@@ -6,17 +6,12 @@ import { randomUUID } from 'crypto';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { EmailService } from './../src/services/email.service';
+import { buildEmailServiceMock } from './support/email-service-mock';
 
 describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
-  const emailServiceMock = {
-    sendPasswordResetRequestEmail: jest.fn().mockResolvedValue(undefined),
-    sendPasswordChangedNotificationEmail: jest
-      .fn()
-      .mockResolvedValue(undefined),
-    sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
-  };
+  const emailServiceMock = buildEmailServiceMock();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

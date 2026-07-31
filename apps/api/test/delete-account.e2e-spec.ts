@@ -9,6 +9,8 @@ import { Secret, TOTP } from 'otpauth';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
+import { EmailService } from './../src/services/email.service';
+import { buildEmailServiceMock } from './support/email-service-mock';
 
 describe('Account deletion (e2e)', () => {
   let app: INestApplication<App>;
@@ -16,9 +18,15 @@ describe('Account deletion (e2e)', () => {
   let jwtService: JwtService;
 
   beforeAll(async () => {
+    // Aşağıdaki "invite hâlâ kullanılabilir" testi gerçek /auth/signup
+    // çağırıyor - EmailService mock'lanmazsa CI'daki sahte RESEND_API_KEY
+    // ile gerçek Resend çağrısı 401 döner (bkz. support/email-service-mock.ts).
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(EmailService)
+      .useValue(buildEmailServiceMock())
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
