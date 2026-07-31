@@ -13,6 +13,7 @@ import {
   DEV_USER_USERNAME,
 } from './../src/db/dev-seed.constants';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
+import { MAX_MESSAGE_LENGTH } from './../src/services/messages.service';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
@@ -275,16 +276,61 @@ describe('Messages Gateway (e2e)', () => {
       createdMessageIds.push(message.id);
     }
 
-    const exceptionPromise = waitForEvent<{ status: string }>(
+    const exceptionPromise = waitForEvent<{ status: string; code: string }>(
       client,
       'exception',
     );
     client.emit('message:send', { content: 'siniri-asan-mesaj' });
-    await exceptionPromise;
+    const exception = await exceptionPromise;
+    expect(exception.code).toBe('RATE_LIMITED');
 
     const row = await prisma.message.findFirst({
       where: { content: 'siniri-asan-mesaj' },
     });
     expect(row).toBeNull();
   }, 15000);
+
+  it('mesaj_uzunluk_sinirini_asinca_yapisal_hata_gonderilir_kaydedilmez', async () => {
+    const token = await createOtherUserToken();
+    const client = connect(token);
+    await waitForEvent(client, 'ready');
+
+    const tooLong = 'x'.repeat(MAX_MESSAGE_LENGTH + 1);
+    const exceptionPromise = waitForEvent<{ status: string; code: string }>(
+      client,
+      'exception',
+    );
+    client.emit('message:send', { content: tooLong });
+    const exception = await exceptionPromise;
+    expect(exception.code).toBe('MESSAGE_TOO_LONG');
+
+    const row = await prisma.message.findFirst({ where: { content: tooLong } });
+    expect(row).toBeNull();
+  }, 10000);
+
+  it('basarili_gonderimde_ve_duzenlemede_ack_doner', async () => {
+    const client = connect(accessToken);
+    await waitForEvent(client, 'ready');
+
+    const content = `ack-testi-${randomUUID()}`;
+    const sendAck = await new Promise<{ status: string }>((resolve) => {
+      client.emit('message:send', { content }, resolve);
+    });
+    expect(sendAck).toEqual({ status: 'ok' });
+
+    const createdRow = await prisma.message.findFirst({
+      where: { content },
+    });
+    expect(createdRow).not.toBeNull();
+    if (createdRow) createdMessageIds.push(createdRow.id);
+
+    const editAck = await new Promise<{ status: string }>((resolve) => {
+      client.emit(
+        'message:edit',
+        { messageId: createdRow?.id, content: `${content}-duzenlendi` },
+        resolve,
+      );
+    });
+    expect(editAck).toEqual({ status: 'ok' });
+  }, 10000);
 });

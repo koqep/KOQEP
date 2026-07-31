@@ -4,19 +4,19 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-31
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B+C TAMAMLANDI, D-F kaldı. M2 TAMAMEN BİTTİ.
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B+C+D TAMAMLANDI, E-F kaldı. M2 TAMAMEN BİTTİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı. Slice G'den beri arayüz metni Türkçe'den İngilizce'ye kademeli geçiyor. Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapatıyor.
-- **2026-07-31 — M2.5 Slice A+B `main`'e MERGE EDİLDİ.** Slice A: `User.username`. Slice B: e-posta doğrulama zorunlu, iki CI düzeltmesi gerekti (`EMAIL_TRANSPORT=fake` kapısı + seed'in dev kullanıcısına `emailVerifiedAt`). Detay: milestone Plan notları.
-- **2026-07-31 — M2.5 Slice C (hesap silme) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** `POST /auth/delete-account` (şifre/TOTP re-auth), `User` satırı gerçekten hard-delete (ADR-0005) — 6 FK `RESTRICT`→`CASCADE`/`SET NULL` migration'ı bunu mümkün kıldı. Mesaj içeriği kalır, yazar "silinmiş kullanıcı" olur (zaten hazır bekleyen bir yol, ilk kez kullanıldı). Detay: milestone Plan notları.
+- **M2.5 Slice A (kullanıcı adı)/B (e-posta doğrulama)/C (hesap silme) `main`'e MERGE EDİLDİ** — detaylar kendi Plan notları bölümlerinde.
+- **2026-07-31 — M2.5 Slice D (WS güvenilirlik paketi) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Reconnect-backfill (`ready` yeniden kullanıldı, id'ye göre upsert-merge), WS `exception` dinleyicisi + yapısal `code` (`RATE_LIMITED`/`MESSAGE_TOO_LONG`), "gönderiliyor" çift-gönderim koruması (`.timeout()`+ack). Asıl kazanım: yeni `SocketRegistryService` — hesap silinince o kullanıcının açık soketleri gerçekten kapanıyor (Slice C'nin bıraktığı sorunun gerçek çözümü, e2e'de kanıtlandı). Detay: milestone Plan notları.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2.5 Slice C kod + test + doküman tamamlandı, `m2.5/slice-c-account-deletion` branch'inde commit edildi.
+- **Görev:** M2.5 Slice D kod + test + doküman tamamlandı, `m2.5/slice-d-ws-reliability` branch'inde commit edildi.
 - **Yarım kalan:** Bu branch'in push/merge edilmesi.
-- **Sonraki adım:** Slice D (WS güvenilirlik paketi) — ayrı plan modu turu. Slice C'nin bıraktığı hatırlatma: silinmiş kullanıcının hâlâ açık soketi mesaj göndermeyi denerse sessizce yutuluyor, Slice D'de gerçekten görünür hataya çevrildiği kontrol edilmeli. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Sonraki adım:** Slice E (geçmiş sayfalama) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -57,3 +57,4 @@
 - Sahte/placeholder CI env değerleri (ör. eski `RESEND_API_KEY: ci-only-test-key`) sadece o değeri kullanan TÜM kod yolları hatayı sessizce yutuyorsa güvenlidir — bir yol sessizce yutmayı bırakınca aynı sahte değer aniden CI'ı kırar. Dış servisi DI ile override edilemeyen canlı süreçlerde (fullstack e2e'nin `start:prod`'u gibi) sahte'lemek gerekirse: kesin string eşitliği kullan (`=== 'fake'`, TRUTHY DEĞİL), SADECE ihtiyaç duyan job'a ekle, production sızmasını `render.yaml`'ı statik tarayan bir testle koru (`NODE_ENV`'e güvenme — `SEED_DEV_FIXTURES` kararında da reddedildi).
 - `SEED_DEV_FIXTURES`'ın seed'lediği dev kullanıcı Slice B'den beri `emailVerifiedAt` olmadan giriş yapamıyordu (`seed.ts` bunu set etmiyordu) — lokal DB'de migration backfill'i eski satırı zaten doğrulamış olduğu için GÖRÜNMEDİ, CI'ın her koşuda kurduğu SIFIR satırlı taze DB'de create dalı ilk kez çalışıp açığa çıktı. Ders: "CI'da kırmızı, lokalde yeşil" bir e2e/seed sorununu gerçekten doğrulamak için kalıcı lokal DB'ye değil, taze bir throwaway Postgres container'ına karşı test et.
 - Bir e2e testinde YENİ bir `Room` oluşturma (`prisma.room.create`) — odalar alfabetik sıralanıyor ve `RoomView.tsx` ilk odayı otomatik seçiyor, rastgele isimli bir test odası "general"den önce sıralanıp fullstack testlerin varsaydığı varsayılan odayı sessizce değiştirir. Slice C'de bu gerçek bir regresyon olarak yakalandı (3 fullstack test kırıldı). Test bir odaya ihtiyaç duyarsa mevcut çekirdek odayı (`CORE_ROOM_NAMES[0]`) upsert ile kullan.
+- NestJS WS gateway'lerinde: varsayılan exception filtresi `WsException` DIŞINDAKİ her şeyi jenerik "Internal server error"a çeviriyor (kaynak kodda doğrulandı) — yapısal bir hata sinyali (`code` alanlı) istiyorsan `WsException({code:...})` fırlat. Ayrıca handler `Promise<void>` dönerse ack callback'i (başarıda bile) hiç tetiklenmiyor — gerçek bir değer dönmesi şart; client'ta da düz `.emit(event,payload,cb)` disconnect'te ack'i sessizce kaybeder, `.timeout()` şart. M2.5 Slice D'de üçü de kaynak okunarak doğrulandı, sonra e2e'de kanıtlandı.

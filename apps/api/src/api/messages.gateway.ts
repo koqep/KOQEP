@@ -2,11 +2,17 @@ import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
 } from '@nestjs/websockets';
-import { UseGuards } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../db/prisma.service';
@@ -19,6 +25,7 @@ import {
 import type { MessageDto } from '../services/messages.service';
 import { BlocksService } from '../services/blocks.service';
 import { WsThrottlerGuard } from './ws-throttler.guard';
+import { SocketRegistryService } from '../services/socket-registry.service';
 
 const MESSAGE_SEND_LIMIT = 10;
 const MESSAGE_SEND_TTL_MS = 10 * 1000;
@@ -27,10 +34,16 @@ interface SocketData {
   userId: string;
 }
 
+interface AckResponse {
+  status: 'ok';
+}
+
 @WebSocketGateway({
   cors: { origin: process.env.WEB_ORIGIN },
 })
-export class MessagesGateway implements OnGatewayConnection {
+export class MessagesGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -39,6 +52,7 @@ export class MessagesGateway implements OnGatewayConnection {
     private readonly messagesService: MessagesService,
     private readonly blocksService: BlocksService,
     private readonly prisma: PrismaService,
+    private readonly socketRegistry: SocketRegistryService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -62,6 +76,7 @@ export class MessagesGateway implements OnGatewayConnection {
 
       const data: SocketData = { userId: payload.sub };
       client.data = data;
+      this.socketRegistry.register(payload.sub, client);
       for (const room of rooms) {
         await client.join(room.id);
       }
@@ -74,6 +89,16 @@ export class MessagesGateway implements OnGatewayConnection {
     }
   }
 
+  // Normal disconnect'lerde (sekme kapatma, ağ kopması) SocketRegistryService
+  // Map'inin sınırsız büyümesini önler. Hesap silindiğinde
+  // SocketRegistryService.disconnectUser zaten kendi kaydını temizliyor -
+  // burası o durumda zararsız bir no-op.
+  handleDisconnect(client: Socket): void {
+    const data = client.data as SocketData | undefined;
+    if (!data?.userId) return;
+    this.socketRegistry.unregister(data.userId, client);
+  }
+
   @SubscribeMessage('message:send')
   @UseGuards(WsThrottlerGuard)
   @Throttle({
@@ -82,18 +107,22 @@ export class MessagesGateway implements OnGatewayConnection {
   async handleMessageSend(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { content?: unknown; roomName?: unknown },
-  ): Promise<void> {
+  ): Promise<AckResponse | void> {
     const { userId } = client.data as SocketData;
     const content = body?.content;
     const roomName =
       typeof body?.roomName === 'string' ? body.roomName : CORE_ROOM_NAMES[0];
 
-    if (
-      typeof content !== 'string' ||
-      content.trim().length === 0 ||
-      content.length > MAX_MESSAGE_LENGTH
-    ) {
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      // Bos/gecersiz icerik gercek arayuzden hic ulasilamiyor (canSend
+      // zaten engelliyor) - sessizce yoksay, client'i guvenilir kabul etme.
       return;
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      // Asil kontrol client-side (RoomView.tsx) - bu, o kontrolu atlayan
+      // elle hazirlanmis bir client'a karsi ucuz bir yedek (ayni exception
+      // altyapisi RATE_LIMITED icin zaten var).
+      throw new WsException({ status: 'error', code: 'MESSAGE_TOO_LONG' });
     }
 
     let message: MessageDto;
@@ -103,13 +132,22 @@ export class MessagesGateway implements OnGatewayConnection {
         roomName,
         content,
       );
-    } catch {
-      // Bilinmeyen/gecersiz roomName - sessizce yoksay, ayni icerik
-      // dogrulamasindaki gibi (client'i guvenilir kabul etme).
-      return;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // Bilinmeyen/gecersiz roomName - sessizce yoksay, client'i
+        // guvenilir kabul etme.
+        return;
+      }
+      // Beklenmeyen (ornegin yazarin User satiri artik yok - silinmis
+      // kullanicinin soketi SocketRegistryService tarafindan proaktif
+      // kapatildigi icin pratikte ulasilamaz olmasi hedefleniyor) -
+      // varsayilan WS exception handler'ina dussun: loglanir VE client'a
+      // 'exception' emit edilir, artik sessizce kaybolmaz.
+      throw error;
     }
 
     await this.broadcastToRoom(message, userId, 'message:new');
+    return { status: 'ok' };
   }
 
   @SubscribeMessage('message:edit')
@@ -120,7 +158,7 @@ export class MessagesGateway implements OnGatewayConnection {
   async handleMessageEdit(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { messageId?: unknown; content?: unknown },
-  ): Promise<void> {
+  ): Promise<AckResponse | void> {
     const { userId } = client.data as SocketData;
     const messageId = body?.messageId;
     const content = body?.content;
@@ -128,10 +166,12 @@ export class MessagesGateway implements OnGatewayConnection {
     if (
       typeof messageId !== 'string' ||
       typeof content !== 'string' ||
-      content.trim().length === 0 ||
-      content.length > MAX_MESSAGE_LENGTH
+      content.trim().length === 0
     ) {
       return;
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      throw new WsException({ status: 'error', code: 'MESSAGE_TOO_LONG' });
     }
 
     let message: MessageDto;
@@ -141,13 +181,20 @@ export class MessagesGateway implements OnGatewayConnection {
         messageId,
         content,
       );
-    } catch {
-      // Bilinmeyen mesaj ya da yazar degilsin - sessizce yoksay, ayni
-      // message:send'deki gecersiz-girdi davranisi gibi.
-      return;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        // Bilinmeyen mesaj ya da yazar degilsin - sessizce yoksay, ayni
+        // message:send'deki gecersiz-girdi davranisi gibi.
+        return;
+      }
+      throw error;
     }
 
     await this.broadcastToRoom(message, userId, 'message:updated');
+    return { status: 'ok' };
   }
 
   // Blanket oda broadcast'i yerine bilerek tek tek emit ediyoruz: bu

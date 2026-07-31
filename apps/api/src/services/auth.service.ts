@@ -14,6 +14,7 @@ import { TotpService } from './totp.service';
 import { PasswordResetService } from './password-reset.service';
 import { EmailVerificationService } from './email-verification.service';
 import { EmailService } from './email.service';
+import { SocketRegistryService } from './socket-registry.service';
 import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
@@ -38,6 +39,7 @@ export class AuthService {
     private readonly passwordResetService: PasswordResetService,
     private readonly emailVerificationService: EmailVerificationService,
     private readonly emailService: EmailService,
+    private readonly socketRegistry: SocketRegistryService,
   ) {}
 
   async verifyAccessToken(
@@ -245,6 +247,12 @@ export class AuthService {
       }
       throw error;
     }
+
+    // Hesap gerçekten silindi - hâlâ açık olabilecek soketleri (15 dk'lık
+    // JWT TTL'i içinde) hemen kapat. M2.5 Slice D: Slice C'nin
+    // ertelediği "silinmiş kullanıcının soketi sessizce yutuluyor"
+    // sorununun asıl çözümü burası.
+    this.socketRegistry.disconnectUser(userId);
   }
 
   // Kasıtlı olarak her zaman "başarılı" davranır (istisnası: e-posta
