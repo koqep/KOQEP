@@ -6,16 +6,32 @@ import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
+import { EmailService } from './../src/services/email.service';
 
 describe('Invite issuance + rate limiting (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let jwtService: JwtService;
+  // Bu dosyanın odağı /invites, e-posta gönderimi değil - ama aşağıdaki ilk
+  // test gerçek /auth/signup'ı tetikliyor (bkz. üstteki yorum), o da
+  // EmailService'e dokunuyor. testing.md'nin "mock'u sadece dış sınırlarda
+  // kullan" kuralı gereği Resend'e gerçek bir ağ çağrısı yapılmasın diye
+  // mock'landı (auth-signup-login.e2e-spec.ts'deki aynı desen).
+  const emailServiceMock = {
+    sendPasswordResetRequestEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordChangedNotificationEmail: jest
+      .fn()
+      .mockResolvedValue(undefined),
+    sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(EmailService)
+      .useValue(emailServiceMock)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();

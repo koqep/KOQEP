@@ -80,6 +80,13 @@ jobs:
       WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3001
       SEED_DEV_FIXTURES: 'true'
+      # Gerçek /auth/signup çağıran fullstack testler (invite-issuance.spec.ts)
+      # gerçek bir sunucu sürecine (start:prod) karşı koşuyor - DI seviyesinde
+      # EmailService override edilemez, bu yüzden EmailService kendi içinde
+      # kesin string eşitliğiyle (=== 'fake') gerçek Resend çağrısını atlıyor.
+      # SADECE bu job'da set edilir - production'a asla sızmamalı (bkz.
+      # apps/api/src/render-config.spec.ts).
+      EMAIL_TRANSPORT: 'fake'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

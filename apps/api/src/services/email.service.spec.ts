@@ -82,4 +82,25 @@ describe('EmailService', () => {
       );
     });
   });
+
+  describe('EMAIL_TRANSPORT=fake', () => {
+    it('gercek_resend_cagrisi_yapmadan_sessizce_doner', async () => {
+      const service = buildService({ EMAIL_TRANSPORT: 'fake' });
+
+      await service.sendPasswordResetRequestEmail('a@koqep.local', 'link');
+      await service.sendPasswordChangedNotificationEmail('a@koqep.local');
+      await service.sendEmailVerificationEmail('a@koqep.local', 'link');
+
+      expect(sendMock).not.toHaveBeenCalled();
+    });
+
+    it('tam_esit_olmayan_degerlerde_gercek_transporta_devam_eder', async () => {
+      sendMock.mockResolvedValue({ data: { id: 'x' }, error: null });
+      const service = buildService({ EMAIL_TRANSPORT: 'false' });
+
+      await service.sendPasswordResetRequestEmail('a@koqep.local', 'link');
+
+      expect(sendMock).toHaveBeenCalled();
+    });
+  });
 });

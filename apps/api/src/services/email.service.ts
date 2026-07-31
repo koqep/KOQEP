@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
@@ -6,8 +6,10 @@ const DEFAULT_FROM_ADDRESS = 'onboarding@resend.dev';
 
 @Injectable()
 export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
   private readonly resend: Resend;
   private readonly fromAddress: string;
+  private readonly useFakeTransport: boolean;
 
   constructor(config: ConfigService) {
     // Konstrüktör asla fırlatmamalı — RESEND_API_KEY yerelde/CI'da hiç
@@ -20,12 +22,31 @@ export class EmailService {
     );
     this.fromAddress =
       config.get<string>('EMAIL_FROM_ADDRESS') ?? DEFAULT_FROM_ADDRESS;
+    // Kesin string eşitliği — `'false'` gibi boş olmayan herhangi bir
+    // string'in truthy davranmasına izin verme (ENABLE_DEV_LOGIN'de
+    // yaşanan sınıfın aynısı). Sadece test-fullstack-e2e CI job'ında
+    // set edilir: o job gerçek bir sunucu süreci başlattığı için
+    // (`start:prod`) diğer e2e dosyalarındaki gibi DI seviyesinde
+    // `overrideProvider(EmailService)` mümkün değil. Production'da BU
+    // ASLA set edilmemeli — render.yaml'a bilerek eklenmedi (bkz.
+    // render-config.spec.ts, ki bunu statik olarak doğruluyor).
+    this.useFakeTransport = config.get<string>('EMAIL_TRANSPORT') === 'fake';
+    if (this.useFakeTransport) {
+      this.logger.warn(
+        'EMAIL_TRANSPORT=fake aktif — gerçek Resend çağrısı YAPILMAYACAK. ' +
+          'Bu satır production loglarında görünüyorsa acilen render.yaml / ' +
+          'Render dashboard kontrol edilmeli.',
+      );
+    }
   }
 
   async sendPasswordResetRequestEmail(
     to: string,
     resetLink: string,
   ): Promise<void> {
+    if (this.useFakeTransport) {
+      return;
+    }
     const { error } = await this.resend.emails.send({
       from: this.fromAddress,
       to,
@@ -39,6 +60,9 @@ export class EmailService {
   }
 
   async sendPasswordChangedNotificationEmail(to: string): Promise<void> {
+    if (this.useFakeTransport) {
+      return;
+    }
     const { error } = await this.resend.emails.send({
       from: this.fromAddress,
       to,
@@ -55,6 +79,9 @@ export class EmailService {
     to: string,
     verifyLink: string,
   ): Promise<void> {
+    if (this.useFakeTransport) {
+      return;
+    }
     const { error } = await this.resend.emails.send({
       from: this.fromAddress,
       to,
