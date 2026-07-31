@@ -124,6 +124,17 @@ export async function disableTotp(
   await authedPostJson("/auth/totp/disable", accessToken, { totpCode });
 }
 
+export async function deleteAccount(
+  accessToken: string,
+  password: string,
+  totpCode?: string,
+): Promise<void> {
+  await authedPostJson("/auth/delete-account", accessToken, {
+    password,
+    totpCode,
+  });
+}
+
 export async function blockUser(
   accessToken: string,
   email: string,

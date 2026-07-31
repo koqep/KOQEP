@@ -464,6 +464,119 @@ describe('AuthService', () => {
     });
   });
 
+  describe('deleteAccount', () => {
+    it('siler_dogru_sifreyle', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const deleteSpy = jest.fn().mockResolvedValue(user);
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+          delete: deleteSpy,
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+      await service.deleteAccount('user-1', 'correct-password');
+
+      expect(deleteSpy).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    });
+
+    it('reddeder_yanlis_sifreyi', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.deleteAccount('user-1', 'wrong'),
+      ).rejects.toMatchObject({
+        response: { code: 'INVALID_CREDENTIALS' },
+      });
+    });
+
+    it('reddeder_bulunamayan_kullaniciyi', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.deleteAccount('yok-1', 'x')).rejects.toMatchObject({
+        response: { code: 'INVALID_CREDENTIALS' },
+      });
+    });
+
+    describe('TOTP etkinken', () => {
+      it('reddeder_totp_kodu_verilmezse', async () => {
+        const passwordHash = await argon2.hash('correct-password');
+        const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+          } as unknown as PrismaService['user'],
+        };
+        const totpMock: Partial<TotpService> = { isEnabled: () => true };
+        const service = buildService(prismaMock, {}, totpMock);
+
+        await expect(
+          service.deleteAccount('user-1', 'correct-password'),
+        ).rejects.toMatchObject({
+          response: { code: 'TOTP_REQUIRED' },
+        });
+      });
+
+      it('siler_gecerli_totp_koduyla', async () => {
+        const passwordHash = await argon2.hash('correct-password');
+        const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+        const deleteSpy = jest.fn().mockResolvedValue(user);
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            delete: deleteSpy,
+          } as unknown as PrismaService['user'],
+        };
+        const totpMock: Partial<TotpService> = {
+          isEnabled: () => true,
+          verifyDuringLogin: jest.fn().mockResolvedValue(true),
+        };
+        const service = buildService(prismaMock, {}, totpMock);
+
+        await service.deleteAccount('user-1', 'correct-password', '123456');
+
+        expect(deleteSpy).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+      });
+    });
+
+    it('reddeder_p2025_yarisinda_temiz_401le', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const p2025 = new Prisma.PrismaClientKnownRequestError('gone', {
+        code: 'P2025',
+        clientVersion: 'test',
+      });
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+          delete: jest.fn().mockRejectedValue(p2025),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.deleteAccount('user-1', 'correct-password'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
   describe('requestPasswordReset', () => {
     it('bulunan_kullanici_icin_token_uretir_ve_e_posta_gonderir', async () => {
       const user = { id: 'user-1', email: 'a@koqep.local' };

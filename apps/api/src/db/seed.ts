@@ -4,6 +4,9 @@ import {
   DEV_USER_EMAIL,
   DEV_USER_USERNAME,
   DEV_USER_PASSWORD,
+  DEV_USER_2_EMAIL,
+  DEV_USER_2_USERNAME,
+  DEV_USER_2_PASSWORD,
   DEV_INVITE_CODES,
 } from './dev-seed.constants';
 import { CORE_ROOM_NAMES } from './core-rooms.constants';
@@ -60,6 +63,22 @@ async function main(): Promise<void> {
       create: { code, issuedById: devUser.id },
     });
   }
+
+  // Sarf edilebilir ikinci dev kullanıcı - sadece
+  // apps/web/e2e-fullstack/delete-account.spec.ts bunu gerçekten siliyor.
+  // upsert olduğu için bir önceki koşuda silinmişse burada kendiliğinden
+  // yeniden oluşur (M2.5 Slice C).
+  const passwordHash2 = await argon2.hash(DEV_USER_2_PASSWORD);
+  await prisma.user.upsert({
+    where: { email: DEV_USER_2_EMAIL },
+    update: { passwordHash: passwordHash2 },
+    create: {
+      email: DEV_USER_2_EMAIL,
+      username: DEV_USER_2_USERNAME,
+      passwordHash: passwordHash2,
+      emailVerifiedAt: new Date(),
+    },
+  });
 
   console.log(
     `Seed tamam. Deneme daveti: ${DEV_INVITE_CODES[0]} (dev kullanıcı: ${DEV_USER_EMAIL} / ${DEV_USER_PASSWORD})`,

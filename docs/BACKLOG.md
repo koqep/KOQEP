@@ -133,9 +133,16 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
   `apps/web` tarafında başka bir test daha gerçek DB bağlantısına ihtiyaç
   duyarsa, o zaman `pg` bağımlılığını ekleyip ikisini birden çözeriz —
   tek testlik bir bağımlılık eklemeye değmez.
-- **Hesap silme akışı:** YOK — `ADR-0005` anonimleştirme kararını zaten
-  tanımlamış ama kullanıcının kendi tetikleyebileceği bir endpoint yok.
-  KVKK/GDPR zorunluluğu. **1.0 ZORUNLU.** → `M2.5`.
+- **Hesap silme akışı:** → `M2.5` Slice C'de yapıldı (2026-07-31):
+  `POST /auth/delete-account`, şifre/TOTP re-auth, `User` satırı gerçekten
+  hard-delete ediliyor (ADR-0005), mesaj içeriği kalıyor yazar bağlantısı
+  anonimleşiyor. Detay: milestone Plan notları.
+  **Ertelenen — somut tetikleyicilerle:** (a) Invite-issuance audit tablosu
+  (`User` FK'sinden bağımsız, silinen davetçileri geriye dönük izlemek
+  için) — sadece M5'in davetçi hesap-verebilirliği tasarımı bunu gerçekten
+  gerektirirse inşa edilir. (b) Silme onay e-postası — sadece kullanıcı
+  yanlışlıkla silme şikayeti/talebi bir kez gerçekleşirse (`EmailService`'e
+  eklemek trivial, şu an istenmiyor).
 - **Oturum/cihaz yönetimi:** YOK (liste UI'ı/endpoint'i), ama KISMİ koruma
   zaten var — `RefreshToken.revokedAt` alanı var ve şifre değişince tüm
   oturumlar iptal ediliyor (`docs/THREAT-MODEL.md` satır 11). Tam "hangi

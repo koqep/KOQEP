@@ -1,10 +1,13 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService, TokenPair } from '../services/auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AuthenticatedRequest } from './jwt-auth.guard';
 
 // Davet kodu tahmin etme denemelerine karşı ikincil katman (THREAT-MODEL
 // satır 9) - asıl savunma kodun entropisi, bu sadece otomatik/hızlı
@@ -44,6 +47,20 @@ export class AuthController {
   @Post('logout')
   async logout(@Body() dto: RefreshDto): Promise<{ ok: true }> {
     await this.authService.logout(dto.refreshToken);
+    return { ok: true };
+  }
+
+  @Post('delete-account')
+  @UseGuards(JwtAuthGuard)
+  async deleteAccount(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: DeleteAccountDto,
+  ): Promise<{ ok: true }> {
+    await this.authService.deleteAccount(
+      req.user.sub,
+      dto.password,
+      dto.totpCode,
+    );
     return { ok: true };
   }
 }
