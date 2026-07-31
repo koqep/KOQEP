@@ -64,7 +64,17 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
   platformda düz-metin-yapıştırılmış-kod gerçekten "eksik" hissettirir —
   ucuz bir orta yol var: sadece \`\`\` bloklarını monospace+arkaplan ile
   ayırmak (syntax highlighting yok, link/bold yok). **KISMİ 1.0** (sadece bu
-  ucuz kısım), tam markdown → V1.1. → `M2.5` ya da `M4`.
+  ucuz kısım), tam markdown → V1.1. → `M2.5` Slice F'de yapıldı
+  (2026-07-31): `MessageContent.tsx`, split-tabanlı basit bir parser.
+  **Bulunan gerçek kısıt:** gönderme/düzenleme kutuları `<input
+  type="text">` — tek satırlı, hiçbir tuş kombinasyonuyla newline
+  tutamaz. Bugün kimse gerçek çok-satırlı bir \`\`\` bloğu YAZAMIYOR
+  (sadece tek satırlık, ör. \`\`\`npm install\`\`\`). Composer'ı
+  `<textarea>`'ya yükseltmek bilerek bu slice'ın kapsamı DIŞINDA
+  tutuldu (kullanıcıya soruldu, onaylandı) — milestone görevi zaten
+  sadece "render etmek" diyordu. Somut tetikleyici: gerçek bir
+  çok-satırlı kod yapıştırma isteği gelirse, ya da M3 şipse — hangisi
+  önce gelirse.
 - **Terminal komutları (`/help`, `/join`, `/whoami`, `/clear`):** YOK. Oda
   değiştirme zaten buton ile çalışıyor (Slice E) — komutlar bir UX cilası,
   fonksiyonel eksiklik değil. → **V1.1.**

@@ -4,19 +4,19 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-31
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B+C+D+E TAMAMLANDI, F kaldı (son dilim). M2 TAMAMEN BİTTİ.
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — TÜM 6 DİLİM (A-F) TAMAMLANDI. Sıradaki: M3.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı. Slice G'den beri arayüz metni Türkçe'den İngilizce'ye kademeli geçiyor. Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapatıyor.
-- **M2.5 Slice A (kullanıcı adı)/B (e-posta doğrulama)/C (hesap silme)/D (WS güvenilirlik — `SocketRegistryService`, reconnect-backfill, yapısal WS hataları) `main`'e MERGE EDİLDİ** — detaylar kendi Plan notları bölümlerinde.
-- **2026-07-31 — M2.5 Slice E (geçmiş sayfalama) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Backend'in zaten hazır cursor sayfalaması artık frontend'de kullanılıyor — "daha eski mesajları yükle" butonu, scroll pozisyonu korunarak başa ekleniyor. Yolda backend'in cursor round-trip'ini gerçek DB'ye karşı hiç kanıtlamayan bir test boşluğu bulundu, kapatıldı. Detay: milestone Plan notları.
+- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapattı.
+- **M2.5 Slice A-E (kullanıcı adı/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama) `main`'e MERGE EDİLDİ.**
+- **2026-07-31 — M2.5 Slice F (kısmi kod bloğu gösterimi) TAMAMLANDI ve doğrulandı, henüz merge edilmedi — M2.5'in SON dilimi.** \`\`\` bloklarını `<pre>` ile ayırıyor, sıfır backend değişikliği. Bulunan gerçek kısıt (composer `<input type="text">`, çok satırlı yazılamıyor) kullanıcıya soruldu, bilerek kapsam dışı bırakıldı, BACKLOG'a somut tetikleyicili not düşüldü. Detay: milestone Plan notları.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2.5 Slice E kod + test + doküman tamamlandı, `m2.5/slice-e-history-pagination` branch'inde commit edildi.
-- **Yarım kalan:** Bu branch'in push/merge edilmesi.
-- **Sonraki adım:** Slice F (kısmi kod bloğu gösterimi) — M2.5'in SON dilimi, ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M2.5 Slice F kod + test + doküman tamamlandı, `m2.5/slice-f-code-blocks` branch'inde commit edildi.
+- **Yarım kalan:** Bu branch'in push/merge edilmesi — sonrasında M2.5 TAMAMEN kapanmış olacak.
+- **Sonraki adım:** M3 (kullanıcı odaları) — henüz plan modu başlamadı, kendi milestone dosyası okunmalı. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { MAX_MESSAGE_LENGTH } from "./RoomView";
+import MessageContent from "./MessageContent";
 import type { MessageEdit } from "../../lib/api";
 
 interface Message {
@@ -111,7 +112,9 @@ export default function MessageItem({
       ) : (
         <div className="flex items-baseline gap-2">
           <span className="text-neutral-500">{authorLabel}:</span>
-          <span className="flex-1">{message.content}</span>
+          <span className="flex-1">
+            <MessageContent content={message.content} />
+          </span>
           {isMine && (
             <button
               type="button"
@@ -145,7 +148,8 @@ export default function MessageItem({
             <ul className="space-y-0.5">
               {historyEntries.map((entry, index) => (
                 <li key={index} className="text-neutral-600">
-                  {formatTime(entry.editedAt)} — {entry.previousContent}
+                  {formatTime(entry.editedAt)} —{" "}
+                  <MessageContent content={entry.previousContent} />
                 </li>
               ))}
             </ul>
