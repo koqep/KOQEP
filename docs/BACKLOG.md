@@ -122,6 +122,17 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
   tetikleyici (TOTP-kilitlenme kararındaki gibi belirsiz bırakılmadı): bu
   elle-düzeltme **(a)** ikinci kez gerekirse, ya da **(b)** M3 şipse —
   hangisi önce gelirse.
+  **Eksik test kapsamı:** `apps/web`'den gerçek DB'ye bağlanan bir
+  fullstack `email-verification.spec.ts` yok — sadece mocklu
+  `apps/web/e2e/verify-email.spec.ts` var (`VerifyEmailView`'ın üç
+  durumu). Gerçek signup→verify→login döngüsü `apps/api`'nin e2e testinde
+  kanıtlanıyor ama tarayıcı üzerinden uçtan uca değil. Bunu eklemek
+  `apps/web`'e yeni bir bağımlılık (`pg` gibi) gerektiriyor, tek başına
+  bu eksikliği kapatmak için eklenmedi (`code-style.md`/CLAUDE.md'nin
+  "yeni bağımlılık eklemeden önce sor" kuralı). Somut tetikleyici:
+  `apps/web` tarafında başka bir test daha gerçek DB bağlantısına ihtiyaç
+  duyarsa, o zaman `pg` bağımlılığını ekleyip ikisini birden çözeriz —
+  tek testlik bir bağımlılık eklemeye değmez.
 - **Hesap silme akışı:** YOK — `ADR-0005` anonimleştirme kararını zaten
   tanımlamış ama kullanıcının kendi tetikleyebileceği bir endpoint yok.
   KVKK/GDPR zorunluluğu. **1.0 ZORUNLU.** → `M2.5`.
