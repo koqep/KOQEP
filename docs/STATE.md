@@ -3,19 +3,20 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B TAMAMLANDI, C-F kaldı. M2 TAMAMEN BİTTİ.
+**Son güncelleme:** 2026-07-31
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B+C TAMAMLANDI, D-F kaldı. M2 TAMAMEN BİTTİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı. Slice G'den beri arayüz metni Türkçe'den İngilizce'ye kademeli geçiyor. Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapatıyor.
-- **2026-07-31 — M2.5 Slice A (kullanıcı adı) `main`'e MERGE EDİLDİ. Slice B (e-posta doğrulama) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: `User.username`, mesajlarda artık email değil kullanıcı adı. Slice B: `User.emailVerifiedAt` + `EmailVerificationToken`, signup artık doğrulanana kadar giriş yapılamıyor, gerçek Resend ile gerçek e-posta gönderiliyor. Resend-verification endpoint'i bilerek ertelendi (somut tetikleyici: BACKLOG.md). İki ayrı CI düzeltmesi gerekti (aynı belirti, farklı kök sebep — detay Tuzaklar + milestone Plan notları): (1) `EmailService`'e `EMAIL_TRANSPORT=fake` kapısı, (2) `seed.ts`'in dev kullanıcısına `emailVerifiedAt` eklenmesi.
+- **2026-07-31 — M2.5 Slice A+B `main`'e MERGE EDİLDİ.** Slice A: `User.username`. Slice B: e-posta doğrulama zorunlu, iki CI düzeltmesi gerekti (`EMAIL_TRANSPORT=fake` kapısı + seed'in dev kullanıcısına `emailVerifiedAt`). Detay: milestone Plan notları.
+- **2026-07-31 — M2.5 Slice C (hesap silme) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** `POST /auth/delete-account` (şifre/TOTP re-auth), `User` satırı gerçekten hard-delete (ADR-0005) — 6 FK `RESTRICT`→`CASCADE`/`SET NULL` migration'ı bunu mümkün kıldı. Mesaj içeriği kalır, yazar "silinmiş kullanıcı" olur (zaten hazır bekleyen bir yol, ilk kez kullanıldı). Detay: milestone Plan notları.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2.5 Slice B + iki CI düzeltmesi `m2.5/slice-b-email-verification` branch'inde commit edildi (3 commit).
-- **Yarım kalan:** Bu branch'in push/merge edilmesi, CI'ın yeşile dönmesi kullanıcı tarafından teyit edilecek.
-- **Sonraki adım:** Slice C (hesap silme) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M2.5 Slice C kod + test + doküman tamamlandı, `m2.5/slice-c-account-deletion` branch'inde commit edildi.
+- **Yarım kalan:** Bu branch'in push/merge edilmesi.
+- **Sonraki adım:** Slice D (WS güvenilirlik paketi) — ayrı plan modu turu. Slice C'nin bıraktığı hatırlatma: silinmiş kullanıcının hâlâ açık soketi mesaj göndermeyi denerse sessizce yutuluyor, Slice D'de gerçekten görünür hataya çevrildiği kontrol edilmeli. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -55,3 +56,4 @@
 - M2.5 gibi ayrı bir docs-only branch'in (`docs/1.0-scope-audit`) hemen ardından gelen bir slice, o dokümana referans veriyorsa `main`'den değil O BRANCH'TEN dallanmalı — yoksa milestone dosyası bile yok olur (Slice A'da olduğu gibi, sonradan `git merge` ile düzeltildi).
 - Sahte/placeholder CI env değerleri (ör. eski `RESEND_API_KEY: ci-only-test-key`) sadece o değeri kullanan TÜM kod yolları hatayı sessizce yutuyorsa güvenlidir — bir yol sessizce yutmayı bırakınca aynı sahte değer aniden CI'ı kırar. Dış servisi DI ile override edilemeyen canlı süreçlerde (fullstack e2e'nin `start:prod`'u gibi) sahte'lemek gerekirse: kesin string eşitliği kullan (`=== 'fake'`, TRUTHY DEĞİL), SADECE ihtiyaç duyan job'a ekle, production sızmasını `render.yaml`'ı statik tarayan bir testle koru (`NODE_ENV`'e güvenme — `SEED_DEV_FIXTURES` kararında da reddedildi).
 - `SEED_DEV_FIXTURES`'ın seed'lediği dev kullanıcı Slice B'den beri `emailVerifiedAt` olmadan giriş yapamıyordu (`seed.ts` bunu set etmiyordu) — lokal DB'de migration backfill'i eski satırı zaten doğrulamış olduğu için GÖRÜNMEDİ, CI'ın her koşuda kurduğu SIFIR satırlı taze DB'de create dalı ilk kez çalışıp açığa çıktı. Ders: "CI'da kırmızı, lokalde yeşil" bir e2e/seed sorununu gerçekten doğrulamak için kalıcı lokal DB'ye değil, taze bir throwaway Postgres container'ına karşı test et.
+- Bir e2e testinde YENİ bir `Room` oluşturma (`prisma.room.create`) — odalar alfabetik sıralanıyor ve `RoomView.tsx` ilk odayı otomatik seçiyor, rastgele isimli bir test odası "general"den önce sıralanıp fullstack testlerin varsaydığı varsayılan odayı sessizce değiştirir. Slice C'de bu gerçek bir regresyon olarak yakalandı (3 fullstack test kırıldı). Test bir odaya ihtiyaç duyarsa mevcut çekirdek odayı (`CORE_ROOM_NAMES[0]`) upsert ile kullan.
