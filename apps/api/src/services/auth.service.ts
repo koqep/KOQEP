@@ -52,6 +52,18 @@ export class AuthService {
     const invite = await this.invitesService.findRedeemableInvite(
       dto.inviteCode,
     );
+
+    // Case-insensitive ön kontrol - DB'deki unique index case-sensitive,
+    // bu yüzden "Alice" ve "alice" birbirini engellemez tek başına. Bu
+    // sadece yaygın durumu ucuza yakalar; asıl yarış-durumu koruması
+    // aşağıdaki P2002 backstop'u (bkz. isUniqueConstraintError).
+    const existingUsername = await this.prisma.user.findFirst({
+      where: { username: { equals: dto.username, mode: 'insensitive' } },
+    });
+    if (existingUsername) {
+      throw new ConflictException('Bu kullanıcı adı zaten alınmış.');
+    }
+
     const passwordHash = await argon2.hash(dto.password);
     const userId = randomUUID();
 
@@ -65,6 +77,7 @@ export class AuthService {
           data: {
             id: userId,
             email: dto.email,
+            username: dto.username,
             passwordHash,
             inviterId: invite.issuedById,
           },
@@ -81,6 +94,9 @@ export class AuthService {
     } catch (error) {
       if (isUniqueConstraintError(error, 'email')) {
         throw new ConflictException('Bu e-posta zaten kayıtlı.');
+      }
+      if (isUniqueConstraintError(error, 'username')) {
+        throw new ConflictException('Bu kullanıcı adı zaten alınmış.');
       }
       throw error;
     }

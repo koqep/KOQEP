@@ -22,6 +22,7 @@ export default function AuthView({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<Mode>("login");
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
@@ -54,7 +55,7 @@ export default function AuthView({ onAuthenticated }: Props) {
 
       const tokens =
         mode === "signup"
-          ? await signup({ inviteCode, email, password })
+          ? await signup({ inviteCode, email, username, password })
           : await login({
               email,
               password,
@@ -111,6 +112,22 @@ export default function AuthView({ onAuthenticated }: Props) {
               className={inputClassName}
             />
           </label>
+
+          {mode === "signup" && (
+            <label className="flex flex-col gap-1 text-neutral-500">
+              kullanıcı adı
+              <input
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+                minLength={3}
+                maxLength={24}
+                pattern="[a-zA-Z0-9_-]+"
+                className={inputClassName}
+              />
+            </label>
+          )}
 
           {mode !== "forgot-password" && (
             <label className="flex flex-col gap-1 text-neutral-500">

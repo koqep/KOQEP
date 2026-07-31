@@ -73,11 +73,13 @@ describe('Block-user (e2e)', () => {
 
   async function signUpFreshUser(): Promise<{
     email: string;
+    username: string;
     accessToken: string;
   }> {
     const issuer = await prisma.user.create({
       data: {
         email: `issuer-${randomUUID()}@koqep.local`,
+        username: `issuer-${randomUUID()}`,
         passwordHash: 'test-not-a-real-hash',
       },
     });
@@ -85,16 +87,22 @@ describe('Block-user (e2e)', () => {
     await prisma.invite.create({ data: { code, issuedById: issuer.id } });
 
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
     const response = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password: 'a-strong-password' })
+      .send({
+        inviteCode: code,
+        email,
+        username,
+        password: 'a-strong-password',
+      })
       .expect(201);
 
     const body = response.body as { accessToken: string };
-    return { email, accessToken: body.accessToken };
+    return { email, username, accessToken: body.accessToken };
   }
 
-  it('doner_kendi_email_ve_rolunu', async () => {
+  it('doner_kendi_email_kullanici_adi_ve_rolunu', async () => {
     const a = await signUpFreshUser();
 
     const response = await request(app.getHttpServer())
@@ -102,7 +110,11 @@ describe('Block-user (e2e)', () => {
       .set('Authorization', `Bearer ${a.accessToken}`)
       .expect(200);
 
-    expect(response.body).toEqual({ email: a.email, role: 'user' });
+    expect(response.body).toEqual({
+      email: a.email,
+      username: a.username,
+      role: 'user',
+    });
   });
 
   it('reddeder_kendini_engellemeyi', async () => {

@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import {
   DEV_USER_EMAIL,
+  DEV_USER_USERNAME,
   DEV_USER_PASSWORD,
   DEV_INVITE_CODES,
 } from './dev-seed.constants';
@@ -38,7 +39,11 @@ async function main(): Promise<void> {
   const devUser = await prisma.user.upsert({
     where: { email: DEV_USER_EMAIL },
     update: { passwordHash },
-    create: { email: DEV_USER_EMAIL, passwordHash },
+    create: {
+      email: DEV_USER_EMAIL,
+      username: DEV_USER_USERNAME,
+      passwordHash,
+    },
   });
 
   for (const code of DEV_INVITE_CODES) {

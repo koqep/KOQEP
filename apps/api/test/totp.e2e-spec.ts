@@ -34,6 +34,7 @@ describe('TOTP setup/enable/login/disable (e2e)', () => {
     const issuer = await prisma.user.create({
       data: {
         email: `issuer-${randomUUID()}@koqep.local`,
+        username: `issuer-${randomUUID()}`,
         passwordHash: 'test-not-a-real-hash',
       },
     });
@@ -41,10 +42,11 @@ describe('TOTP setup/enable/login/disable (e2e)', () => {
     await prisma.invite.create({ data: { code, issuedById: issuer.id } });
 
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
     const password = 'a-strong-password';
     const response = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password })
+      .send({ inviteCode: code, email, username, password })
       .expect(201);
 
     const body = response.body as { accessToken: string };

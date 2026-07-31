@@ -1,4 +1,5 @@
 export const DEV_USER_EMAIL = 'dev@koqep.local';
+export const DEV_USER_USERNAME = 'dev';
 export const DEV_USER_PASSWORD = 'dev-local-only-password';
 
 export const DEV_INVITE_CODES = [

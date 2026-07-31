@@ -29,6 +29,7 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
     const issuer = await prisma.user.create({
       data: {
         email: `issuer-${randomUUID()}@koqep.local`,
+        username: `issuer-${randomUUID()}`,
         passwordHash: 'test-not-a-real-hash',
       },
     });
@@ -40,10 +41,16 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
   it('kayit_daveti_talep_eder_ve_dogru_davetciyi_baglar', async () => {
     const { code, issuerId } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
 
     const response = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password: 'a-strong-password' })
+      .send({
+        inviteCode: code,
+        email,
+        username,
+        password: 'a-strong-password',
+      })
       .expect(201);
 
     const body = response.body as {
@@ -72,6 +79,7 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
       .send({
         inviteCode: code,
         email: `user-${randomUUID()}@koqep.local`,
+        username: `user-${randomUUID()}`,
         password: 'a-strong-password',
       })
       .expect(201);
@@ -81,6 +89,33 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
       .send({
         inviteCode: code,
         email: `user-${randomUUID()}@koqep.local`,
+        username: `user-${randomUUID()}`,
+        password: 'a-strong-password',
+      })
+      .expect(409);
+  });
+
+  it('reddeder_buyuk_kucuk_harf_farkli_ama_ayni_kullanici_adini', async () => {
+    const { code: firstCode } = await seedInvite();
+    const { code: secondCode } = await seedInvite();
+    const takenUsername = `TakenName-${randomUUID()}`;
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: firstCode,
+        email: `user-${randomUUID()}@koqep.local`,
+        username: takenUsername,
+        password: 'a-strong-password',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: secondCode,
+        email: `user-${randomUUID()}@koqep.local`,
+        username: takenUsername.toLowerCase(),
         password: 'a-strong-password',
       })
       .expect(409);
@@ -89,11 +124,12 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
   it('giris_yapar_dogru_sifreyle_ve_reddeder_yanlisini', async () => {
     const { code } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
     const password = 'a-strong-password';
 
     await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password })
+      .send({ inviteCode: code, email, username, password })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -110,10 +146,16 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
   it('yeniler_refresh_tokeni_ve_eskisini_gecersiz_kilar', async () => {
     const { code } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
 
     const signupResponse = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password: 'a-strong-password' })
+      .send({
+        inviteCode: code,
+        email,
+        username,
+        password: 'a-strong-password',
+      })
       .expect(201);
 
     const { refreshToken } = signupResponse.body as { refreshToken: string };
@@ -135,10 +177,16 @@ describe('Auth signup/login/refresh/logout (e2e)', () => {
   it('cikis_yapinca_refresh_tokeni_gecersiz_kilar', async () => {
     const { code } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
 
     const signupResponse = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ inviteCode: code, email, password: 'a-strong-password' })
+      .send({
+        inviteCode: code,
+        email,
+        username,
+        password: 'a-strong-password',
+      })
       .expect(201);
 
     const { refreshToken } = signupResponse.body as { refreshToken: string };

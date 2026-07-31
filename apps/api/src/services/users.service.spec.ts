@@ -7,12 +7,14 @@ describe('UsersService', () => {
     return new UsersService(prismaMock as PrismaService);
   }
 
-  it('doner_kendi_email_ve_rolunu', async () => {
+  it('doner_kendi_email_kullanici_adi_ve_rolunu', async () => {
     const prismaMock: Partial<PrismaService> = {
       user: {
-        findUnique: jest
-          .fn()
-          .mockResolvedValue({ email: 'test@koqep.local', role: 'user' }),
+        findUnique: jest.fn().mockResolvedValue({
+          email: 'test@koqep.local',
+          username: 'test',
+          role: 'user',
+        }),
       } as unknown as PrismaService['user'],
     };
 
@@ -20,6 +22,7 @@ describe('UsersService', () => {
 
     await expect(service.getProfile('user-1')).resolves.toEqual({
       email: 'test@koqep.local',
+      username: 'test',
       role: 'user',
     });
   });

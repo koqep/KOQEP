@@ -36,6 +36,7 @@ test("davet_kodu_uretilir_ve_yeni_kullanici_kaydinda_gercekten_calisir", async (
   await newUserPage
     .getByLabel("e-posta")
     .fill(`invited-${Date.now()}@koqep.local`);
+  await newUserPage.getByLabel("kullanıcı adı").fill(`invited${Date.now()}`);
   await newUserPage.getByLabel("şifre").fill("a-strong-new-password");
   await newUserPage.getByRole("button", { name: "kayıt ol" }).click();
 

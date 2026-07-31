@@ -40,12 +40,14 @@ describe('AuthService', () => {
     const dto = {
       inviteCode: 'ABC123',
       email: 'new@koqep.local',
+      username: 'newuser',
       password: 'a-strong-password',
     };
 
     function buildTransactionalPrismaMock(
       updateManyResult: { count: number },
       createImpl?: () => unknown,
+      existingUsername: unknown = null,
     ): Partial<PrismaService> {
       const txMock = {
         invite: { updateMany: jest.fn().mockResolvedValue(updateManyResult) },
@@ -56,6 +58,9 @@ describe('AuthService', () => {
         },
       };
       return {
+        user: {
+          findFirst: jest.fn().mockResolvedValue(existingUsername),
+        } as unknown as PrismaService['user'],
         $transaction: jest
           .fn()
           .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
@@ -109,6 +114,40 @@ describe('AuthService', () => {
       );
       const prismaMock = buildTransactionalPrismaMock({ count: 1 }, () => {
         throw uniqueError;
+      });
+      const invitesMock: Partial<InvitesService> = {
+        findRedeemableInvite: jest.fn().mockResolvedValue(invite),
+      };
+
+      const service = buildService(prismaMock, invitesMock);
+
+      await expect(service.signup(dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('reddeder_zaten_kayitli_kullanici_adini_yarisi_durumunda', async () => {
+      const uniqueError = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['username'] },
+        },
+      );
+      const prismaMock = buildTransactionalPrismaMock({ count: 1 }, () => {
+        throw uniqueError;
+      });
+      const invitesMock: Partial<InvitesService> = {
+        findRedeemableInvite: jest.fn().mockResolvedValue(invite),
+      };
+
+      const service = buildService(prismaMock, invitesMock);
+
+      await expect(service.signup(dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('reddeder_buyuk_kucuk_harf_farkli_ama_ayni_kullanici_adini_on_kontrolde', async () => {
+      const prismaMock = buildTransactionalPrismaMock({ count: 1 }, undefined, {
+        id: 'existing-user',
       });
       const invitesMock: Partial<InvitesService> = {
         findRedeemableInvite: jest.fn().mockResolvedValue(invite),

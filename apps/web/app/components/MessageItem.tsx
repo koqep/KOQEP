@@ -8,7 +8,7 @@ interface Message {
   id: string;
   content: string;
   createdAt: string;
-  authorEmail: string | null;
+  authorUsername: string | null;
   roomId: string;
 }
 
@@ -77,7 +77,7 @@ export default function MessageItem({
 
   const authorLabel = isMine
     ? "sen"
-    : (message.authorEmail ?? "silinmiş kullanıcı");
+    : (message.authorUsername ?? "silinmiş kullanıcı");
 
   return (
     <li className="text-neutral-200">
