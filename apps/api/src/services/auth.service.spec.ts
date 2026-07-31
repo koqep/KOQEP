@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { InvitesService } from './invites.service';
 import { TotpService } from './totp.service';
 import { PasswordResetService } from './password-reset.service';
+import { EmailVerificationService } from './email-verification.service';
 import { EmailService } from './email.service';
 import { PrismaService } from '../db/prisma.service';
 
@@ -18,11 +19,15 @@ describe('AuthService', () => {
     invitesMock: Partial<InvitesService> = {},
     totpMock: Partial<TotpService> = { isEnabled: () => false },
     passwordResetMock: Partial<PasswordResetService> = {},
+    emailVerificationMock: Partial<EmailVerificationService> = {
+      createVerificationToken: jest.fn().mockResolvedValue('verify-token'),
+    },
     emailMock: Partial<EmailService> = {
       sendPasswordResetRequestEmail: jest.fn().mockResolvedValue(undefined),
       sendPasswordChangedNotificationEmail: jest
         .fn()
         .mockResolvedValue(undefined),
+      sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
     },
   ): AuthService {
     return new AuthService(
@@ -31,6 +36,7 @@ describe('AuthService', () => {
       invitesMock as InvitesService,
       totpMock as TotpService,
       passwordResetMock as PasswordResetService,
+      emailVerificationMock as EmailVerificationService,
       emailMock as EmailService,
     );
   }
@@ -70,17 +76,57 @@ describe('AuthService', () => {
       };
     }
 
-    it('doner_token_cifti_ve_daveti_talep_edileni_isaretler', async () => {
+    it('token_dondurmez_daveti_isaretler_dogrulama_e_postasi_gonderir', async () => {
       const prismaMock = buildTransactionalPrismaMock({ count: 1 });
       const invitesMock: Partial<InvitesService> = {
         findRedeemableInvite: jest.fn().mockResolvedValue(invite),
       };
+      const emailVerificationMock: Partial<EmailVerificationService> = {
+        createVerificationToken: jest.fn().mockResolvedValue('verify-token'),
+      };
+      const sendSpy = jest.fn().mockResolvedValue(undefined);
+      const emailMock: Partial<EmailService> = {
+        sendEmailVerificationEmail: sendSpy,
+      };
 
-      const service = buildService(prismaMock, invitesMock);
-      const { accessToken } = await service.signup(dto);
+      const service = buildService(
+        prismaMock,
+        invitesMock,
+        undefined,
+        undefined,
+        emailVerificationMock,
+        emailMock,
+      );
+      const result = await service.signup(dto);
 
-      const payload = jwt.verify<{ sub: string; email: string }>(accessToken);
-      expect(payload.email).toBe(dto.email);
+      expect(result).toBeUndefined();
+      expect(sendSpy).toHaveBeenCalledWith(
+        dto.email,
+        expect.stringContaining('verify-token') as string,
+      );
+    });
+
+    it('e_posta_gonderim_hatasini_yutmaz_firlatir', async () => {
+      const prismaMock = buildTransactionalPrismaMock({ count: 1 });
+      const invitesMock: Partial<InvitesService> = {
+        findRedeemableInvite: jest.fn().mockResolvedValue(invite),
+      };
+      const emailMock: Partial<EmailService> = {
+        sendEmailVerificationEmail: jest
+          .fn()
+          .mockRejectedValue(new Error('resend patladı')),
+      };
+
+      const service = buildService(
+        prismaMock,
+        invitesMock,
+        undefined,
+        undefined,
+        undefined,
+        emailMock,
+      );
+
+      await expect(service.signup(dto)).rejects.toThrow('resend patladı');
     });
 
     it('reddeder_gecersiz_davet_kodunu_invites_servisine_delegasyonla', async () => {
@@ -162,7 +208,12 @@ describe('AuthService', () => {
   describe('login', () => {
     it('doner_token_cifti_dogru_sifrede', async () => {
       const passwordHash = await argon2.hash('correct-password');
-      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const user = {
+        id: 'user-1',
+        email: 'a@koqep.local',
+        passwordHash,
+        emailVerifiedAt: new Date(),
+      };
       const prismaMock: Partial<PrismaService> = {
         user: {
           findUnique: jest.fn().mockResolvedValue(user),
@@ -214,13 +265,41 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
+    it('reddeder_dogrulanmamis_e_postayi', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = {
+        id: 'user-1',
+        email: 'a@koqep.local',
+        passwordHash,
+        emailVerifiedAt: null,
+      };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.login({ email: user.email, password: 'correct-password' }),
+      ).rejects.toMatchObject({
+        response: { code: 'EMAIL_NOT_VERIFIED' },
+      });
+    });
+
     describe('TOTP etkinken', () => {
       async function buildTotpEnabledUser(): Promise<{
         user: { id: string; email: string; passwordHash: string };
         prismaMock: Partial<PrismaService>;
       }> {
         const passwordHash = await argon2.hash('correct-password');
-        const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+        const user = {
+          id: 'user-1',
+          email: 'a@koqep.local',
+          passwordHash,
+          emailVerifiedAt: new Date(),
+        };
         const prismaMock: Partial<PrismaService> = {
           user: {
             findUnique: jest.fn().mockResolvedValue(user),
@@ -406,6 +485,7 @@ describe('AuthService', () => {
         {},
         { isEnabled: () => false },
         passwordResetMock,
+        {},
         emailMock,
       );
       await service.requestPasswordReset('a@koqep.local');
@@ -432,6 +512,7 @@ describe('AuthService', () => {
         prismaMock,
         {},
         { isEnabled: () => false },
+        {},
         {},
         emailMock,
       );
@@ -463,6 +544,7 @@ describe('AuthService', () => {
         {},
         { isEnabled: () => false },
         passwordResetMock,
+        {},
         emailMock,
       );
 
@@ -609,6 +691,137 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmPasswordReset('raw-token', 'a-new-password'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('confirmEmailVerification', () => {
+    function buildTransactionalPrismaMock(updateManyResult: {
+      count: number;
+    }): {
+      prismaMock: Partial<PrismaService>;
+      userUpdateSpy: jest.Mock;
+    } {
+      const userUpdateSpy = jest.fn().mockResolvedValue({});
+      const txMock = {
+        emailVerificationToken: {
+          updateMany: jest.fn().mockResolvedValue(updateManyResult),
+        },
+        user: { update: userUpdateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+      return { prismaMock, userUpdateSpy };
+    }
+
+    it('gecerli_tokenle_emailVerifiedAt_alanini_gunceller', async () => {
+      const stored = {
+        id: 'evt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const { prismaMock, userUpdateSpy } = buildTransactionalPrismaMock({
+        count: 1,
+      });
+      (
+        prismaMock as unknown as {
+          emailVerificationToken: { findUnique: jest.Mock };
+        }
+      ).emailVerificationToken = {
+        findUnique: jest.fn().mockResolvedValue(stored),
+      };
+
+      const service = buildService(prismaMock);
+      await service.confirmEmailVerification('raw-token');
+
+      expect(userUpdateSpy).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { emailVerifiedAt: expect.any(Date) as Date },
+      });
+    });
+
+    it('reddeder_bulunamayan_tokeni', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        emailVerificationToken: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['emailVerificationToken'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.confirmEmailVerification('raw-token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('reddeder_kullanilmis_tokeni', async () => {
+      const stored = {
+        id: 'evt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        usedAt: new Date(),
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        emailVerificationToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+        } as unknown as PrismaService['emailVerificationToken'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.confirmEmailVerification('raw-token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('reddeder_suresi_dolmus_tokeni', async () => {
+      const stored = {
+        id: 'evt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() - 1000),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        emailVerificationToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+        } as unknown as PrismaService['emailVerificationToken'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.confirmEmailVerification('raw-token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('reddeder_yarisi_kaybedilen_talebi', async () => {
+      const stored = {
+        id: 'evt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const { prismaMock } = buildTransactionalPrismaMock({ count: 0 });
+      (
+        prismaMock as unknown as {
+          emailVerificationToken: { findUnique: jest.Mock };
+        }
+      ).emailVerificationToken = {
+        findUnique: jest.fn().mockResolvedValue(stored),
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.confirmEmailVerification('raw-token'),
       ).rejects.toThrow(UnauthorizedException);
     });
   });

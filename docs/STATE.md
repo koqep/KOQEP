@@ -4,18 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-30
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A (kullanıcı adı) TAMAMLANDI, B-F kaldı. M2 TAMAMEN BİTTİ.
+**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — Slice A+B TAMAMLANDI, C-F kaldı. M2 TAMAMEN BİTTİ.
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı (Slice E-G). Slice G ile arayüz metni Türkçe'den İngilizce'ye geçmeye başladı (kademeli, kullanıcı kararı). Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Bu kritere göre tam bir kod denetimi yapıldı, sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı (username, e-posta doğrulama, hesap silme, WS güvenilirlik, geçmiş sayfalama, kısmi kod bloğu) M3'ten önce bunları kapatıyor. M5/M6 de büyütüldü.
-- **2026-07-31 — M2.5 Slice A (kullanıcı adı) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** `User.username` eklendi (336 satırlık lokal DB'de veri kaybetmeden geriye dönük dolduruldu), mesajlarda artık e-posta değil kullanıcı adı görünüyor, `GET /users/me`/signup formu güncellendi. Detay: milestone dosyasının Plan notları.
+- **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı. Slice G'den beri arayüz metni Türkçe'den İngilizce'ye kademeli geçiyor. Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
+- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapatıyor.
+- **2026-07-31 — M2.5 Slice A (kullanıcı adı) `main`'e MERGE EDİLDİ. Slice B (e-posta doğrulama) TAMAMLANDI ve doğrulandı, henüz merge edilmedi.** Slice A: `User.username`, mesajlarda artık email değil kullanıcı adı. Slice B: `User.emailVerifiedAt` + `EmailVerificationToken`, signup artık doğrulanana kadar giriş yapılamıyor, gerçek Resend ile gerçek e-posta gönderiliyor. Resend-verification endpoint'i bilerek ertelendi (somut tetikleyici: BACKLOG.md). Detay: milestone dosyasının Plan notları.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2.5 Slice A kod + test + doküman tamamlandı, `m2.5/slice-a-username` branch'inde commit edildi (henüz merge edilmemiş `docs/1.0-scope-audit` branch'i de bu branch'e merge edildi — M2.5 doküman dosyası oradaydı).
-- **Yarım kalan:** İki branch'in de (`docs/1.0-scope-audit`, `m2.5/slice-a-username`) merge edilmesi.
-- **Sonraki adım:** Slice B (e-posta doğrulama) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M2.5 Slice B kod + test + doküman tamamlandı, `m2.5/slice-b-email-verification` branch'inde commit edildi.
+- **Yarım kalan:** Bu branch'in merge edilmesi.
+- **Sonraki adım:** Slice C (hesap silme) — ayrı plan modu turu. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

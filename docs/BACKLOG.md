@@ -114,7 +114,14 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
 - **E-posta doğrulama:** YOK (`auth.service.ts`'de doğrulama/token mantığı
   yok, doğrulandı). Gerçek risk: davet kodu kimin elindeyse herhangi bir
   email ile kayıt olunabiliyor, sahiplik kontrol edilmiyor. **1.0 ZORUNLU.**
-  → `M2.5`.
+  → `M2.5` Slice B'de yapıldı (2026-07-31): `User.emailVerifiedAt` +
+  `EmailVerificationToken`, signup artık doğrulanana kadar giriş
+  yapılamıyor. **Resend-verification-email endpoint'i bilerek bu slice'a
+  dahil edilmedi** — e-posta hiç ulaşmazsa founder Postgres konsolundan elle
+  düzeltiyor (TOTP tam-kilitlenme kurtarmasıyla aynı desen). Somut
+  tetikleyici (TOTP-kilitlenme kararındaki gibi belirsiz bırakılmadı): bu
+  elle-düzeltme **(a)** ikinci kez gerekirse, ya da **(b)** M3 şipse —
+  hangisi önce gelirse.
 - **Hesap silme akışı:** YOK — `ADR-0005` anonimleştirme kararını zaten
   tanımlamış ama kullanıcının kendi tetikleyebileceği bir endpoint yok.
   KVKK/GDPR zorunluluğu. **1.0 ZORUNLU.** → `M2.5`.

@@ -40,9 +40,14 @@ test("davet_kodu_uretilir_ve_yeni_kullanici_kaydinda_gercekten_calisir", async (
   await newUserPage.getByLabel("şifre").fill("a-strong-new-password");
   await newUserPage.getByRole("button", { name: "kayıt ol" }).click();
 
-  await expect(newUserPage.getByPlaceholder("mesaj yaz...")).toBeEnabled({
-    timeout: 15000,
-  });
+  // Signup artık giriş yapmıyor (M2.5 Slice B) - bu testin kanıtladığı şey
+  // "gerçek üretilen kod signup'ta gerçekten işe yarıyor mu", giriş akışı
+  // ayrı bir testte (email-verification.spec.ts) kanıtlanıyor.
+  await expect(
+    newUserPage.getByText(
+      "Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.",
+    ),
+  ).toBeVisible({ timeout: 15000 });
 
   await inviterContext.close();
   await newUserContext.close();

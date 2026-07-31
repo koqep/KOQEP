@@ -12,6 +12,7 @@ import { PrismaService } from '../db/prisma.service';
 import { InvitesService } from './invites.service';
 import { TotpService } from './totp.service';
 import { PasswordResetService } from './password-reset.service';
+import { EmailVerificationService } from './email-verification.service';
 import { EmailService } from './email.service';
 import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
@@ -35,6 +36,7 @@ export class AuthService {
     private readonly invitesService: InvitesService,
     private readonly totpService: TotpService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly emailVerificationService: EmailVerificationService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -48,7 +50,7 @@ export class AuthService {
     }
   }
 
-  async signup(dto: SignupDto): Promise<TokenPair> {
+  async signup(dto: SignupDto): Promise<void> {
     const invite = await this.invitesService.findRedeemableInvite(
       dto.inviteCode,
     );
@@ -101,7 +103,18 @@ export class AuthService {
       throw error;
     }
 
-    return this.issueTokenPair(userId, dto.email);
+    // M2.5 Slice B: signup artık token döndürmüyor - hesap doğrulanana
+    // kadar giriş yapılamıyor. E-posta gönderim hatası burada BİLEREK
+    // yutulmuyor (code-style.md'nin "hata yutma" kuralı) - bu noktada
+    // gerçek bir hesap oluşturuldu ve gerçek bir davet tüketildi;
+    // gönderim sessizce başarısız olursa kullanıcı asla doğrulayamayan
+    // bir hesapla baş başa kalır. requestPasswordReset'in enumeration'a
+    // karşı bilinçli sessiz yutma davranışıyla KARIŞTIRILMASIN - o farklı
+    // bir tehdit modeline cevap veriyor.
+    const rawToken =
+      await this.emailVerificationService.createVerificationToken(userId);
+    const verifyLink = `${process.env.WEB_ORIGIN}/verify-email?token=${rawToken}`;
+    await this.emailService.sendEmailVerificationEmail(dto.email, verifyLink);
   }
 
   async login(dto: LoginDto): Promise<TokenPair> {
@@ -116,6 +129,13 @@ export class AuthService {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: 'E-posta veya şifre hatalı.',
+      });
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'E-postanı doğrulaman gerekiyor.',
       });
     }
 
@@ -252,6 +272,41 @@ export class AuthService {
         `Şifre değişikliği bildirimi gönderilemedi: ${(error as Error).message}`,
       );
     }
+  }
+
+  async confirmEmailVerification(rawToken: string): Promise<void> {
+    const tokenHash = sha256Hex(rawToken);
+    const stored = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException(
+        'Geçersiz veya süresi dolmuş doğrulama bağlantısı.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.emailVerificationToken.updateMany({
+        where: { id: stored.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        throw new UnauthorizedException(
+          'Geçersiz veya süresi dolmuş doğrulama bağlantısı.',
+        );
+      }
+
+      // Şifre sıfırlamanın aksine burada oturum iptali/token yayını YOK -
+      // doğrulama sadece giriş kapısını açıyor, kendisi giriş sağlamıyor
+      // (confirmPasswordReset'in "sıfırlama tek başına giriş sağlamaz"
+      // ilkesiyle aynı, buradaki karşılığı "doğrulama tek başına giriş
+      // sağlamaz").
+      await tx.user.update({
+        where: { id: stored.userId },
+        data: { emailVerifiedAt: new Date() },
+      });
+    });
   }
 
   private async issueTokenPair(

@@ -50,4 +50,20 @@ export class EmailService {
       throw new Error(`Resend gönderim hatası: ${error.message}`);
     }
   }
+
+  async sendEmailVerificationEmail(
+    to: string,
+    verifyLink: string,
+  ): Promise<void> {
+    const { error } = await this.resend.emails.send({
+      from: this.fromAddress,
+      to,
+      subject: 'KOQEP — E-postanı doğrula',
+      html: `<p>Hesabını etkinleştirmek için bağlantıya tıkla (24 saat geçerli):</p><p><a href="${verifyLink}">${verifyLink}</a></p><p>Bu kaydı sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
+    });
+
+    if (error) {
+      throw new Error(`Resend gönderim hatası: ${error.message}`);
+    }
+  }
 }

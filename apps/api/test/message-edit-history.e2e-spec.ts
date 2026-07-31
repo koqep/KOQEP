@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
@@ -10,6 +11,7 @@ import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 describe('Message edit history access control (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let jwtService: JwtService;
   let roomId: string;
 
   beforeAll(async () => {
@@ -21,6 +23,7 @@ describe('Message edit history access control (e2e)', () => {
     await app.init();
 
     prisma = moduleFixture.get(PrismaService);
+    jwtService = moduleFixture.get(JwtService);
     const room = await prisma.room.upsert({
       where: { name: CORE_ROOM_NAMES[0] },
       update: {},
@@ -33,36 +36,29 @@ describe('Message edit history access control (e2e)', () => {
     await app.close();
   });
 
-  async function signUpFreshUser(): Promise<{
+  // Bu dosya signup/e-posta doğrulama akışını değil düzenleme geçmişi
+  // erişim kontrolünü test ediyor - doğrulanmış bir kullanıcıyı doğrudan
+  // oluşturup token imzalıyoruz (M2.5 Slice B).
+  async function createTestUser(): Promise<{
     id: string;
     email: string;
     accessToken: string;
   }> {
-    const issuer = await prisma.user.create({
-      data: {
-        email: `issuer-${randomUUID()}@koqep.local`,
-        username: `issuer-${randomUUID()}`,
-        passwordHash: 'test-not-a-real-hash',
-      },
-    });
-    const code = `INVITE-${randomUUID()}`;
-    await prisma.invite.create({ data: { code, issuedById: issuer.id } });
-
     const email = `user-${randomUUID()}@koqep.local`;
     const username = `user-${randomUUID()}`;
-    const response = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send({
-        inviteCode: code,
+    const user = await prisma.user.create({
+      data: {
         email,
         username,
-        password: 'a-strong-password',
-      })
-      .expect(201);
-
-    const body = response.body as { accessToken: string };
-    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
-    return { id: user.id, email, accessToken: body.accessToken };
+        passwordHash: 'test-not-a-real-hash',
+        emailVerifiedAt: new Date(),
+      },
+    });
+    const accessToken = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+    return { id: user.id, email, accessToken };
   }
 
   async function createMessageWithEditHistory(authorId: string): Promise<{
@@ -80,7 +76,7 @@ describe('Message edit history access control (e2e)', () => {
   }
 
   it('yazar_kendi_mesajinin_duzenleme_gecmisini_gorebilir', async () => {
-    const author = await signUpFreshUser();
+    const author = await createTestUser();
     const { messageId, previousContent } = await createMessageWithEditHistory(
       author.id,
     );
@@ -95,8 +91,8 @@ describe('Message edit history access control (e2e)', () => {
   });
 
   it('moderator_baskasinin_mesajinin_gecmisini_gorebilir', async () => {
-    const author = await signUpFreshUser();
-    const moderator = await signUpFreshUser();
+    const author = await createTestUser();
+    const moderator = await createTestUser();
     await prisma.user.update({
       where: { id: moderator.id },
       data: { role: 'moderator' },
@@ -115,8 +111,8 @@ describe('Message edit history access control (e2e)', () => {
   });
 
   it('ne_yazar_ne_moderator_olan_kullanici_reddedilir', async () => {
-    const author = await signUpFreshUser();
-    const bystander = await signUpFreshUser();
+    const author = await createTestUser();
+    const bystander = await createTestUser();
     const { messageId } = await createMessageWithEditHistory(author.id);
 
     await request(app.getHttpServer())
@@ -126,7 +122,7 @@ describe('Message edit history access control (e2e)', () => {
   });
 
   it('bilinmeyen_mesaj_icin_404_doner', async () => {
-    const author = await signUpFreshUser();
+    const author = await createTestUser();
 
     await request(app.getHttpServer())
       .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${randomUUID()}/edits`)

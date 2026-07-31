@@ -19,27 +19,29 @@ enum UserRole {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  username      String    @unique
-  passwordHash  String
-  createdAt     DateTime  @default(now())
-  role          UserRole  @default(user)
-  totpSecret    String?
-  totpEnabledAt DateTime?
+  id              String    @id @default(uuid())
+  email           String    @unique
+  username        String    @unique
+  passwordHash    String
+  createdAt       DateTime  @default(now())
+  role            UserRole  @default(user)
+  totpSecret      String?
+  totpEnabledAt   DateTime?
+  emailVerifiedAt DateTime?
 
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
   invitees  User[]  @relation("UserInvitedBy")
 
-  messages            Message[]
-  issuedInvites       Invite[]             @relation("InviteIssuer")
-  usedInvite          Invite?              @relation("InviteRedeemer")
-  refreshTokens       RefreshToken[]
-  totpRecoveryCodes   TotpRecoveryCode[]
-  passwordResetTokens PasswordResetToken[]
-  blocksMade          Block[]              @relation("Blocker")
-  blocksReceived      Block[]              @relation("Blocked")
+  messages                Message[]
+  issuedInvites           Invite[]                 @relation("InviteIssuer")
+  usedInvite              Invite?                  @relation("InviteRedeemer")
+  refreshTokens           RefreshToken[]
+  totpRecoveryCodes       TotpRecoveryCode[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  blocksMade              Block[]                  @relation("Blocker")
+  blocksReceived          Block[]                  @relation("Blocked")
 }
 
 model Invite {
@@ -81,6 +83,19 @@ model TotpRecoveryCode {
 }
 
 model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
   id        String    @id @default(uuid())
   tokenHash String    @unique
   createdAt DateTime  @default(now())
