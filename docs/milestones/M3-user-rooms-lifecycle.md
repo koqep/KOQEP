@@ -8,20 +8,85 @@
 
 ## Out of scope
 - Reputation-gated room creation (any signed-up user can create one, per `docs/PRD.md`).
+- Live WS updates to the room list on creation/archival — low value at 20-30 users, "next reload" is acceptable.
+- Un-archive / moderator override — `CLAUDE.md`'s "Oda durumu tek yönlü ilerler" rule forbids a reverse path by design, not a time cut.
+- View-count exposed in the UI — an internal signal for the delete sweep only.
 
 ## Acceptance criteria
 - [ ] A user can create a room with a free-form topic; creation is capped at 1 per user per 24h (`docs/THREAT-MODEL.md` row 6).
 - [ ] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable.
-- [ ] An archived room with zero views for a further 60 days is hard-deleted.
+- [ ] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule).
 - [ ] The browse list excludes archived and deleted rooms by default.
+- [ ] A newly created room's messages actually reach other connected users in real time (not in the original spec's task list — found by reading the code, see Plan notları).
 - [ ] Tests cover both lifecycle transitions (archive and delete) and the creation rate limit.
 
 ## Tasks
-- [ ] Room creation endpoint + per-user 24h rate limit.
-- [ ] Scheduled job: archive rooms past the 14-day silence threshold (simple cron-triggered endpoint, not a queue system — per ADR-0003's monolith-first decision).
-- [ ] Scheduled job: hard-delete archived rooms past the 60-day zero-view threshold.
-- [ ] Browse-list query excluding archived/deleted.
-- [ ] Tests, including both scheduled jobs run against a controllable clock.
+Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü (aşağıdaki Plan notları):
+- [ ] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId` şema eki, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
+- [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Cron-tetiklemeli `POST /internal/rooms/lifecycle-sweep` (yeni bağımlılık yok, dış bir tetikleyici çağırıyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (`sendMessage`'ın hiç kontrol etmediği bir başka açık), çekirdek oda istisnası, `GET /rooms` filtresi.
+- [ ] **M3 Slice C — Silme yaşam döngüsü.** Görüntülenme takibi (`Room.lastViewedAt`), 60-gün-sıfır-görüntülenme → hard-delete, mesajların da odayla birlikte silinmesi (kayıtlı istisna, aşağıya bakın).
 
 ## Risks
 - Background job reliability on a $50/mo host — mitigation: keep both jobs as simple, idempotent, cron-triggered HTTP endpoints rather than introducing a separate queue/worker system, consistent with the monolith-first decision.
+- Render servisi Blueprint'e bağlı değil (STATE.md tuzağı) — `render.yaml`'a bir cron bloğu eklemek tek başına yeterli değil, dış tetikleyici (GitHub Actions scheduled workflow önerildi, ücretsiz) dashboard'dan/ayrıca elle kurulmalı.
+
+---
+
+## Plan notları — 2026-07-31 kapsam gözden geçirmesi (Slice A-C tasarımı)
+
+M2.5 bitince "taze bir gözle" bir kapsam turu istendi — M2/M2.5'in
+derslerinin (gerçek kod okumadan plan yapmama, rate limiting tuzakları,
+WS güvenilirlik desenleri) M3'e nasıl uygulanacağı düşünülüp, sonra
+A/B/C'ye bölündü. Bir Plan agent'ın ikinci geçişiyle çapraz kontrol
+edildi.
+
+**Milestone'un kendi Tasks listesinin atladığı, kod okuyarak bulunan iki
+kritik açık:**
+1. `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`
+   (`general`, `meta`) adlı odaları sorgulayıp `client.join()` ediyor —
+   kullanıcı odaları hiç katılmıyor. Oda oluşturma tek başına inşa
+   edilirse, o odada gönderilen hiçbir mesaj hiç kimseye gerçek zamanlı
+   ulaşmaz. Slice A'ya dahil edildi, ayrı bir "detay" değil.
+2. `MessagesService.sendMessage` oda durumunu hiç kontrol etmiyor —
+   "arşivlenince salt okunur" acceptance kriterinin arkasında bugün hiç
+   kod yok. Slice B'ye dahil edildi.
+
+**Gerçek bir kural çatışması bulundu, kullanıcıya soruldu, karar
+verildi:** `CLAUDE.md`'nin "Mesaj içeriği asla hard-delete edilmez"
+kuralı (ADR-0005, hesap silme bağlamında) ile ADR-0006'nın oda
+hard-delete'inin "storage cost stays bounded" hedefi çelişiyordu.
+**Karar (onaylandı): oda hard-delete edilince mesajları da onunla
+birlikte hard-delete ediliyor** — hesap silmedeki (tek kişinin katkısını
+canlı thread'lerden silme) durumdan kategorik farklı (bütün oda ve
+HERKESİN mesajı birlikte ölüyor), ADR-0006'nın asıl amacını
+(depolama geri kazanımı) gerçekten sağlıyor. `CLAUDE.md`'ye ve
+ADR-0006'ya kayıtlı bir istisna notu eklendi (ayrı commit'ler, bkz.
+aşağıdaki dosya listesi) — sessizce çiğnenmedi.
+
+**Rate limiting:** `apps/api/src/api/user-throttler.guard.ts` (davet
+üretimi için zaten var, 5/saat per-user) neredeyse birebir aynı ihtiyaç
+(1/gün per-user, oda oluşturma). Slice A yeni bir `RoomCreationThrottlerGuard`
+kuracak — aynı iki tuzak (global `APP_GUARD` ile çift sayım,
+`blockDuration=0`) tekrar tetiklenmeyecek şekilde, `UserThrottlerGuard`'ın
+birebir yapısal kopyası.
+
+**WS altyapısı yeniden kullanılıyor:** `SocketRegistryService` (Slice D)
+tam da bu kesişen-endişe problemi için var — yeni oluşturulan bir odaya,
+oluşturan kullanıcının zaten bağlı soketini `MessagesGateway`'e hiç
+dokunmadan katmak için kullanılacak. `WsException({status,code})` deseni
+(RATE_LIMITED/MESSAGE_TOO_LONG) Slice B'de yeni bir `ROOM_ARCHIVED` kodu
+için genişletilecek.
+
+**Cron:** proje kökünde hiç scheduling bağımlılığı kurulu değil (kontrol
+edildi) — yeni bir bağımlılık eklemek yerine (CLAUDE.md'nin "önce sor"
+kuralı), dış bir tetikleyicinin çağıracağı korumalı bir HTTP endpoint'i
+(`POST /internal/rooms/lifecycle-sweep`, yeni `CronSecretGuard`) tasarlandı
+— milestone'un kendi "cron-triggered endpoint, not a queue system"
+ifadesiyle zaten örtüşüyordu. Dış tetikleyici seçimi (Render Cron Job vs.
+ücretsiz bir GitHub Actions scheduled workflow) kod dışı, kullanıcının
+kararı — Slice B'nin Plan notlarında somutlaştırılacak.
+
+### Sıradaki
+Slice A — ayrı bir dal, ayrı bir commit, tam doğrulama. Tasarımı bu
+dokümanda zaten yeterince detaylı (bkz. üstteki Tasks maddesi) — ayrı bir
+plan-modu turu gerekmedi.

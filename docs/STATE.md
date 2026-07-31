@@ -4,19 +4,17 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-07-31
-**Aktif milestone:** M2.5 (`docs/milestones/M2.5-identity-reliability.md`) — TÜM 6 DİLİM (A-F) TAMAMLANDI. Sıradaki: M3.
+**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A-C'ye bölündü, Slice A başlıyor. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** M1: gerçek signup/login/TOTP/şifre-sıfırlama/block akışları. M2: çekirdek odalar + mesaj düzenleme/geçmiş + davet üretme/rate limiting + tüm bunların UI'ı. Slice G'den beri arayüz metni Türkçe'den İngilizce'ye kademeli geçiyor. Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde. Yeni `M2.5` milestone'ı M3'ten önce zorunlu boşlukları kapattı.
-- **M2.5 Slice A-E (kullanıcı adı/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama) `main`'e MERGE EDİLDİ.**
-- **2026-07-31 — M2.5 Slice F (kısmi kod bloğu gösterimi) TAMAMLANDI ve doğrulandı, henüz merge edilmedi — M2.5'in SON dilimi.** \`\`\` bloklarını `<pre>` ile ayırıyor, sıfır backend değişikliği. Bulunan gerçek kısıt (composer `<input type="text">`, çok satırlı yazılamıyor) kullanıcıya soruldu, bilerek kapsam dışı bırakıldı, BACKLOG'a somut tetikleyicili not düşüldü. Detay: milestone Plan notları.
+- **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
+- **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
+- **2026-07-31 — M3 kapsam gözden geçirmesi: A/B/C dilimlerine bölündü.** Kod okuyarak iki kritik açık bulundu (milestone'un Tasks listesinde hiç yoktu): WS gateway sadece çekirdek odaları katılıyor (kullanıcı odaları gerçek zamanlı hiç ulaşmaz — Slice A'ya dahil), `sendMessage` oda durumunu hiç kontrol etmiyor (Slice B'ye dahil). Gerçek bir kural çatışması bulundu: `CLAUDE.md`'nin "mesaj asla hard-delete edilmez" kuralı ile ADR-0006'nın oda hard-delete'i — kullanıcıya soruldu, oda silinince mesajları da siliniyor kararı verildi, `CLAUDE.md`+ADR-0006'ya kayıtlı istisna eklendi. Detay: milestone Plan notları.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M2.5 Slice F kod + test + doküman tamamlandı, `m2.5/slice-f-code-blocks` branch'inde commit edildi.
-- **Yarım kalan:** Bu branch'in push/merge edilmesi — sonrasında M2.5 TAMAMEN kapanmış olacak.
-- **Sonraki adım:** M3 (kullanıcı odaları) — henüz plan modu başlamadı, kendi milestone dosyası okunmalı. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M3 Slice A (oda oluşturma + rate limit + WS join-set düzeltmesi) uygulanıyor.
+- **Sonraki adım:** Slice A bitince Slice B (arşiv yaşam döngüsü), sonra Slice C (silme). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -58,3 +56,4 @@
 - `SEED_DEV_FIXTURES`'ın seed'lediği dev kullanıcı Slice B'den beri `emailVerifiedAt` olmadan giriş yapamıyordu (`seed.ts` bunu set etmiyordu) — lokal DB'de migration backfill'i eski satırı zaten doğrulamış olduğu için GÖRÜNMEDİ, CI'ın her koşuda kurduğu SIFIR satırlı taze DB'de create dalı ilk kez çalışıp açığa çıktı. Ders: "CI'da kırmızı, lokalde yeşil" bir e2e/seed sorununu gerçekten doğrulamak için kalıcı lokal DB'ye değil, taze bir throwaway Postgres container'ına karşı test et.
 - Bir e2e testinde YENİ bir `Room` oluşturma (`prisma.room.create`) — odalar alfabetik sıralanıyor ve `RoomView.tsx` ilk odayı otomatik seçiyor, rastgele isimli bir test odası "general"den önce sıralanıp fullstack testlerin varsaydığı varsayılan odayı sessizce değiştirir. Slice C'de bu gerçek bir regresyon olarak yakalandı (3 fullstack test kırıldı). Test bir odaya ihtiyaç duyarsa mevcut çekirdek odayı (`CORE_ROOM_NAMES[0]`) upsert ile kullan.
 - NestJS WS gateway'lerinde: varsayılan exception filtresi `WsException` DIŞINDAKİ her şeyi jenerik "Internal server error"a çeviriyor (kaynak kodda doğrulandı) — yapısal bir hata sinyali (`code` alanlı) istiyorsan `WsException({code:...})` fırlat. Ayrıca handler `Promise<void>` dönerse ack callback'i (başarıda bile) hiç tetiklenmiyor — gerçek bir değer dönmesi şart; client'ta da düz `.emit(event,payload,cb)` disconnect'te ack'i sessizce kaybeder, `.timeout()` şart. M2.5 Slice D'de üçü de kaynak okunarak doğrulandı, sonra e2e'de kanıtlandı.
+- `messages.gateway.ts`'in `handleConnection`'ı bağlantıda hangi odalara `client.join()` edileceğini SABİT bir listeden (`CORE_ROOM_NAMES`) alıyordu — dinamik/kullanıcı-üretimi kaynaklar (M3'te oda) eklerken bu tür "bağlantı anında sabit bir listeye katıl" desenlerini MUTLAKA ara: yeni kaynak var olsa bile hiçbir soket ona hiç katılmaz, gerçek zamanlı teslimat sessizce kırılır. Milestone dokümanının Tasks listesi bunu hiç anmıyordu, sadece kod okuyarak bulundu.
