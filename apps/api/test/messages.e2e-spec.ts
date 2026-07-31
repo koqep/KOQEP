@@ -103,6 +103,33 @@ describe('Messages REST (e2e)', () => {
     expect(body.nextCursor).not.toBeNull();
   });
 
+  it('donen_nextCursor_gercekten_bir_sonraki_daha_eski_sayfayi_getirir', async () => {
+    const firstPage = await request(app.getHttpServer())
+      .get(`/rooms/${roomName}/messages?limit=2`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const firstBody = firstPage.body as {
+      messages: { content: string }[];
+      nextCursor: string | null;
+    };
+    expect(firstBody.messages.map((m) => m.content)).toEqual([
+      'mesaj-1',
+      'mesaj-2',
+    ]);
+    expect(firstBody.nextCursor).not.toBeNull();
+
+    const secondPage = await request(app.getHttpServer())
+      .get(`/rooms/${roomName}/messages?limit=2&cursor=${firstBody.nextCursor}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const secondBody = secondPage.body as {
+      messages: { content: string }[];
+      nextCursor: string | null;
+    };
+    expect(secondBody.messages.map((m) => m.content)).toEqual(['mesaj-0']);
+    expect(secondBody.nextCursor).toBeNull();
+  });
+
   it('doner_404_var_olmayan_oda_icin', async () => {
     await request(app.getHttpServer())
       .get(`/rooms/hic-yok-${randomUUID()}/messages`)

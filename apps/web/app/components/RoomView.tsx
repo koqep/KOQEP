@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { io, Socket } from "socket.io-client";
 import {
   logout,
@@ -33,6 +39,11 @@ interface Message {
   roomId: string;
 }
 
+interface MessagePage {
+  messages: Message[];
+  nextCursor: string | null;
+}
+
 interface Props {
   accessToken: string;
   refreshToken: string;
@@ -53,6 +64,8 @@ export default function RoomView({
   const [isReady, setIsReady] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
   const [activePanel, setActivePanel] = useState<ActivePanel>("none");
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
@@ -61,6 +74,22 @@ export default function RoomView({
   const activeRoomRef = useRef<Room | null>(null);
   const fetchGenerationRef = useRef(0);
   const hasConnectedBeforeRef = useRef(false);
+  const messagesSectionRef = useRef<HTMLElement | null>(null);
+  const pendingScrollAdjustmentRef = useRef<number | null>(null);
+
+  // handleLoadOlder mesajları listenin BAŞINA ekliyor - hiçbir şey
+  // yapılmazsa scroll görsel olarak aşağı "zıplar" (yeni içerik üstte
+  // açılınca). scrollHeight farkını scrollTop'a ekleyip aynı mesajı
+  // görünür tutuyor. Sadece pendingScrollAdjustmentRef set edildiğinde
+  // çalışıyor - yeni mesaj/düzenleme gibi diğer `messages` güncellemeleri
+  // için no-op.
+  useLayoutEffect(() => {
+    const section = messagesSectionRef.current;
+    if (pendingScrollAdjustmentRef.current !== null && section) {
+      section.scrollTop += section.scrollHeight - pendingScrollAdjustmentRef.current;
+    }
+    pendingScrollAdjustmentRef.current = null;
+  }, [messages]);
 
   useEffect(() => {
     activeRoomIdRef.current = activeRoom?.id ?? null;
@@ -70,14 +99,15 @@ export default function RoomView({
   async function fetchRoomHistory(
     roomName: string,
     authHeaders: HeadersInit,
-  ): Promise<Message[] | null> {
+    cursor?: string,
+  ): Promise<MessagePage | null> {
+    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
     const historyResponse = await fetch(
-      `${API_URL}/rooms/${roomName}/messages`,
+      `${API_URL}/rooms/${roomName}/messages${query}`,
       { headers: authHeaders },
     );
     if (!historyResponse.ok) return null;
-    const page = (await historyResponse.json()) as { messages: Message[] };
-    return page.messages;
+    return (await historyResponse.json()) as MessagePage;
   }
 
   // Yeniden bağlanınca (bkz. "ready" dinleyicisi) mevcut aktif odanın
@@ -115,8 +145,12 @@ export default function RoomView({
           // Geri dolum sırasında kullanıcı elle oda değiştirdiyse (ya da
           // yeni bir bağlantı kaybı/geri dolum başladıysa) bu artık bayat
           // sonucu uygulama - handleRoomSwitch'in zaten kullandığı desen.
+          // nextCursor'a BİLEREK dokunmuyor - bu, geçmiş sayfalama değil,
+          // bağlantı kesikken kaçırılan canlı mesajları yakalama amaçlı.
           if (!fresh || fetchGenerationRef.current !== generation) return;
-          setMessages((previous) => mergeMessagesById(previous, fresh));
+          setMessages((previous) =>
+            mergeMessagesById(previous, fresh.messages),
+          );
         }
 
         getCurrentUser(accessToken)
@@ -139,7 +173,10 @@ export default function RoomView({
         setActiveRoom(firstRoom);
 
         const history = await fetchRoomHistory(firstRoom.name, authHeaders);
-        if (history && !cancelled) setMessages(history);
+        if (history && !cancelled) {
+          setMessages(history.messages);
+          setNextCursor(history.nextCursor);
+        }
 
         socket = io(API_URL, { auth: { token: accessToken } });
         socketRef.current = socket;
@@ -205,7 +242,23 @@ export default function RoomView({
     const authHeaders = { Authorization: `Bearer ${accessToken}` };
     const history = await fetchRoomHistory(next.name, authHeaders);
     if (fetchGenerationRef.current !== generation) return;
-    setMessages(history ?? []);
+    setMessages(history?.messages ?? []);
+    setNextCursor(history?.nextCursor ?? null);
+  }
+
+  async function handleLoadOlder() {
+    if (!activeRoom || !nextCursor || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    const generation = ++fetchGenerationRef.current;
+    const authHeaders = { Authorization: `Bearer ${accessToken}` };
+    const page = await fetchRoomHistory(activeRoom.name, authHeaders, nextCursor);
+    setIsLoadingOlder(false);
+    if (!page || fetchGenerationRef.current !== generation) return;
+    if (messagesSectionRef.current) {
+      pendingScrollAdjustmentRef.current = messagesSectionRef.current.scrollHeight;
+    }
+    setMessages((previous) => [...page.messages, ...previous]);
+    setNextCursor(page.nextCursor);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -350,7 +403,22 @@ export default function RoomView({
         />
       ) : (
         <>
-          <section className="flex-1 overflow-y-auto py-4 text-neutral-500">
+          <section
+            ref={messagesSectionRef}
+            className="flex-1 overflow-y-auto py-4 text-neutral-500"
+          >
+            {nextCursor && (
+              <button
+                type="button"
+                onClick={() => void handleLoadOlder()}
+                disabled={isLoadingOlder}
+                className="mb-2 text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+              >
+                {isLoadingOlder
+                  ? "yükleniyor..."
+                  : "daha eski mesajları yükle"}
+              </button>
+            )}
             {messages.length === 0 ? (
               <p>henüz mesaj yok</p>
             ) : (
