@@ -173,14 +173,19 @@ DIŞINDA halihazırda bağlı kullanıcılar o odaya otomatik katılmıyor —
 of scope) zaten bu kullanıcılar odanın var olduğunu sayfayı yenilemeden
 bilmiyor; tutarlı bir sınır, ayrı bir bug değil.
 
-**Küçük bir yan not (aksiyon gerekmiyor, kayıt için):**
+**`RoomView.tsx` bölünmesi — ayrı bir refactor dilimi olarak planlandı:**
 `apps/web/app/components/RoomView.tsx` bu slice'tan önce zaten 477 satırdı
 (M2.5 Slice D/E/F birikimi), Slice A'nın eklerinden sonra 516'ya çıktı —
 CLAUDE.md'nin "400 satırı geçtiyse bölünmesi konuşulur" eşiği zaten
-aşılmıştı, bu slice onu daha da aştı. Bölme (ör. header/nav'ı ayrı bir
-`RoomHeader.tsx`'e çıkarmak) Slice A'nın kapsamına girmiyordu, bilerek
-ertelendi — sıradaki bir slice'ta (ör. Slice B) ele alınması önerilir.
+aşılmıştı, bu slice onu daha da aştı. Kullanıcının kararı (2026-08-01):
+bölme işi Slice B'ye GÖMÜLMEYECEK — Slice B zaten arşiv mantığı +
+salt-okunur + arşiv-göster toggle'ıyla dolu, ikisi karıştırılmayacak.
+Bölme, kendi başına küçük bir "refactor" dilimi (M3'ün Slice B/C'sinden
+bağımsız, sırası kullanıcının tercihine kalmış — Slice B'den önce ya da
+sonra olabilir).
 
 ### Sıradaki
-Slice A tamamlandı, commit'e hazır. Sırada Slice B (arşiv yaşam döngüsü)
-— ayrı dal, ayrı plan-modu turu.
+Slice A tamamlandı, push edildi. Sırada iki bağımsız iş: `RoomView.tsx`
+bölme refactor'ü (küçük, ayrı dilim) ve Slice B (arşiv yaşam döngüsü) —
+ikisi de ayrı dal, ayrı plan-modu turu, sırası kullanıcının tercihine
+kalmış.

@@ -14,8 +14,8 @@
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M3 Slice A tamamlandı, `m3/slice-a-room-creation` dalında commit'e hazır — henüz push/merge edilmedi.
-- **Sonraki adım:** Slice A commit + kullanıcı review/merge, sonra Slice B (arşiv yaşam döngüsü), sonra Slice C (silme). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M3 Slice A commit edildi (`m3/slice-a-room-creation`), kullanıcı push'u onayladı — Bash'in `git push` izni ortamda reddedildi, kullanıcının kendisinin push etmesi gerekiyor.
+- **Sonraki adım:** İki bağımsız, sırası kullanıcının tercihine kalmış iş: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim — Slice B'ye GÖMÜLMEYECEK, kullanıcının 2026-08-01 kararı) ve Slice B (arşiv yaşam döngüsü). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
