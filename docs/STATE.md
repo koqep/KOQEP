@@ -4,7 +4,7 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-01
-**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A-C'ye bölündü, Slice A TAMAMLANDI (commit'e hazır, henüz push/merge edilmedi). M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A-C'ye bölündü, Slice A TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29). Slice B (arşiv yaşam döngüsü) plan modu onaylandı, uygulama henüz başlamadı. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
@@ -14,8 +14,8 @@
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M3 Slice A commit edildi (`m3/slice-a-room-creation`), kullanıcı push'u onayladı — Bash'in `git push` izni ortamda reddedildi, kullanıcının kendisinin push etmesi gerekiyor.
-- **Sonraki adım:** İki bağımsız, sırası kullanıcının tercihine kalmış iş: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim — Slice B'ye GÖMÜLMEYECEK, kullanıcının 2026-08-01 kararı) ve Slice B (arşiv yaşam döngüsü). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M3 Slice B (arşiv yaşam döngüsü) plan modu onaylandı (2026-08-01) — tasarım milestone dosyasının "Plan notları — Slice B tasarımı" bölümünde tam haliyle duruyor. Oturum limiti nedeniyle UYGULAMA HENÜZ BAŞLAMADI, sadece plan dokümante edildi.
+- **Sonraki adım:** Bir sonraki oturumda `m3/slice-b-archive-lifecycle` dalı açılıp Slice B'nin onaylı tasarımı uygulanacak. Ayrıca bağımsız, sırası kullanıcının tercihine kalmış bir iş var: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim — Slice B'ye GÖMÜLMEYECEK, kullanıcının 2026-08-01 kararı). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

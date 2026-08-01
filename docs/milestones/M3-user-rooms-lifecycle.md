@@ -24,7 +24,7 @@
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü, aynı gün ikinci bir tur (kullanıcının 8 maddelik gözden geçirmesi) tasarımı revize etti (aşağıdaki Plan notları):
 - [x] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId`/`description` şema eki, oda adı için slug doğrulaması + case-insensitive ön-kontrol (username deseniyle aynı disiplin), `lastActivityAt`'in `sendMessage`'da güncellenmesi (ikinci turda bulunan bir açık — güncellenmezse her oda tam 14 günde arşivlenir), oda butonlarında tooltip seviyesinde canlılık sinyali, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
-- [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Cron-tetiklemeli `POST /internal/rooms/lifecycle-sweep` (yeni bağımlılık yok, dış bir tetikleyici çağırıyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (`sendMessage`'ın hiç kontrol etmediği bir başka açık), çekirdek oda istisnası, `GET /rooms` filtresi + arşivlenmiş odaların ADR-0006'nın "hâlâ linkable" gereksinimini karşılaması için `includeArchived` parametresi (ikinci turda bulunan bir gerileme — filtre eklenince switcher'da arşivlenmiş bir odaya ulaşacak hiçbir yol kalmıyordu).
+- [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Plan modu onaylandı (2026-08-01), uygulama henüz başlamadı — tasarımın tam haliyle detayı için aşağıdaki "Plan notları — Slice B tasarımı" bölümüne bakın. Özet: `POST /internal/rooms/lifecycle-sweep` (`CronSecretGuard`, GitHub Actions scheduled workflow tetikleyecek), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (hem `sendMessage` HEM `editMessage` — ikincisi ilk taslakta atlanmıştı), çekirdek oda istisnası, `GET /rooms?includeArchived=true`, `Room.archivedAt` şema eki (Slice C'nin 60-gün hesaplaması için gereken, bilerek Slice C'ye değil buraya eklendi).
 - [ ] **M3 Slice C — Silme yaşam döngüsü.** Görüntülenme takibi (`Room.lastViewedAt`), 60-gün-sıfır-görüntülenme → hard-delete, mesajların da odayla birlikte silinmesi (kayıtlı istisna, aşağıya bakın).
 
 ## Risks
@@ -189,3 +189,87 @@ Slice A tamamlandı, push edildi. Sırada iki bağımsız iş: `RoomView.tsx`
 bölme refactor'ü (küçük, ayrı dilim) ve Slice B (arşiv yaşam döngüsü) —
 ikisi de ayrı dal, ayrı plan-modu turu, sırası kullanıcının tercihine
 kalmış.
+
+## Plan notları — Slice B tasarımı (2026-08-01, onaylandı — uygulama henüz başlamadı)
+
+Plan modunda tasarlandı, bir Plan agent'ın ikinci geçişiyle çapraz
+kontrol edildi (gerçek kod okunarak — `now: Date` enjeksiyonunun bu kod
+tabanında hiç kullanılmayan YENİ bir desen olduğu, `editMessage`'ın oda
+durumunu hiç kontrol etmediği, `handleMessageSend`'in bugün hiç
+`ForbiddenException` dalı olmadığı gibi noktalar agent doğrulamasıyla
+netleşti). Kullanıcının kararı: dış tetikleyici GitHub Actions scheduled
+workflow (ücretsiz, repo zaten CI için kullanıyor).
+
+**Şema:** `Room.archivedAt DateTime?` (nullable, tek migration) — ilk
+taslakta Slice C'ye planlanmıştı, bilerek Slice B'ye taşındı: Slice C'nin
+60-gün-sıfır-görüntülenme hesaplaması bir başlangıç noktasına ihtiyaç
+duyuyor, Slice B arşivlerken damgalamazsa Slice C'de geriye dönük
+doldurma imkânı olmaz.
+
+**Backend:**
+- `RoomsService.archiveSilentRooms(now: Date = new Date())` — `status:
+  'active'`, `lastActivityAt < now - 14 gün` (adlandırılmış sabit), `name
+  notIn CORE_ROOM_NAMES` olan odaları `archived`'a çevirir, `archivedAt`
+  damgalar. `now` parametresi bu kod tabanında ilk kez kullanılan bir
+  desen (grep ile doğrulandı, "kurulu convention" değil) — sadece birim
+  testte kesim matematiğini kontrol etmek için.
+- Salt-okunur uygulaması İKİ yazma yolunda: `MessagesService.sendMessage`
+  VE `MessagesService.editMessage` (ikincisi ilk taslakta atlanmıştı —
+  bugün `editMessage` `Room`'a hiç join etmiyor, sadece `sendMessage`'ı
+  engellemek "yeni mesaj yasak ama düzenleme serbest" bırakırdı). İkisi
+  de `GoneException` (410, Nest built-in) fırlatır — özel bir
+  `ForbiddenException` alt sınıfı YOK (bu kod tabanında hiç özel exception
+  alt sınıfı yok, gereksiz bir ilk-örnek olurdu).
+- `messages.gateway.ts`: `handleMessageSend`'in bugün `ForbiddenException`
+  dalı hiç yok (sadece `NotFoundException`) — `GoneException` kontrolü
+  tamamen yeni bir dal. `handleMessageEdit`'in bugünkü
+  `NotFoundException || ForbiddenException` sessiz-yutma dalından
+  BAĞIMSIZ, ayrı bir `GoneException` dalı (alt sınıf değil, sıralama
+  sorunu yok) `WsException({status:'error', code:'ROOM_ARCHIVED'})`
+  fırlatır.
+- `GET /rooms?includeArchived=true` — `messages.controller.ts`'nin
+  cursor/limit desenini izler (DTO yok, elle parse, kesin string eşitliği
+  `=== 'true'`). `RoomSummary`'ye `status: RoomStatus` eklenir
+  (`@prisma/client`'tan doğrudan import, `users.service.ts`'in `UserRole`
+  deseni).
+- `POST /internal/rooms/lifecycle-sweep` — yeni `RoomsLifecycleController`
+  (`HealthController` gibi `JwtAuthGuard` yok), yeni `CronSecretGuard`
+  (`x-cron-secret` header, `ConfigService.get('CRON_SECRET')`'e karşı
+  kesin eşitlik — `EmailService`'in `ConfigService` deseni). `app.module.ts`'e
+  sadece controller eklenmesi yeterli (guard'lar bu kod tabanında
+  `providers`'a ayrıca kaydedilmiyor). `{archived: number}` döner (Slice
+  C'de `{archived, deleted}`'a genişleyecek, şimdiden stub eklenmiyor).
+
+**Dış tetikleyici:** yeni `.github/workflows/lifecycle-sweep.yml`
+(`on: schedule`, saatlik), iki yeni GitHub repo secret/variable —
+**kod dışı, kullanıcının kendisi ekleyecek**: `CRON_SECRET` (Render'daki
+değerle birebir aynı) ve `API_BASE_URL` (repoda hiçbir yerde prod domain'i
+yok, tahmin edilmeyecek). `render.yaml`'a `CRON_SECRET` `sync: false`
+eklenir (dokümantasyon amaçlı — STATE.md'nin bilinen tuzağı gereği gerçek
+değer yine de Render dashboard'undan elle girilmek zorunda).
+
+**Frontend:** `RoomView.tsx` (516 satır) bu slice'ta BÖLÜNMÜYOR (ayrı
+refactor dilimi kararı yukarıda). `lib/api.ts`'e `Room.status` (string
+union, Prisma tipi import edilmiyor) + yeni `listRooms(accessToken,
+includeArchived?)` (`authedGetJson` ile — bu, `bootstrap()`'ın bugün
+`lib/api.ts`'i atlayıp doğrudan `fetch()` yaptığı bir borcu da temizliyor).
+"Arşivlenmiş odaları göster" toggle'ı + composer'ın `activeRoom.status
+!== 'active'` iken hem görsel hem gerçekten devre dışı kalması (`canSend`
+boolean'ına da eklenir, sadece UI görünümü değil) + mevcut `exception`
+dinleyicisine `ROOM_ARCHIVED` yedek dalı.
+
+**Test:** birim (`archiveSilentRooms` kesim matematiği + çekirdek oda
+istisnası, `sendMessage`/`editMessage`'ın `GoneException` fırlatması);
+entegrasyon (`GET /rooms` filtresi, `CronSecretGuard` doğru/yanlış/eksik
+header); e2e (gerçek geriye-tarihlenmiş oda + sweep çağrısı + WS üzerinden
+`ROOM_ARCHIVED` — STATE.md'nin bilinen tuzağı: test oda adı `general`'den
+alfabetik önce sıralanmasın, `afterAll` temizliği çocuktan-ebeveyne);
+frontend mocked e2e (toggle + salt-okunur composer).
+
+### Sıradaki
+Slice B tasarımı onaylandı ama **uygulama henüz başlamadı** — oturum
+limiti nedeniyle sadece plan dokümante edildi. Bir sonraki oturumda
+`m3/slice-b-archive-lifecycle` dalı açılıp bu bölümdeki tasarım aynen
+uygulanacak (M1-M2.5'in kullandığı aynı ritim: kod + testler + tam
+doğrulama + Plan notları güncellemesi + commit, push kullanıcının onayına
+kalır).
