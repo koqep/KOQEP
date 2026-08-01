@@ -48,6 +48,7 @@ npm run db:migrate                 # migration çalıştır
 2. Aktif milestone dosyasını oku: `docs/milestones/<aktif>.md`
 3. Plan modunda planı çıkar, `docs/milestones/<aktif>.md` içine yaz, ONAY BEKLE.
 4. Onay sonrası uygula.
+5. Plan modundayken docs-only bir istek gelse bile önce `ExitPlanMode` çağrılır — plan dosyası dışındaki hiçbir dosya (STATE.md dahil) o onay olmadan düzenlenemez, ExitPlanMode sadece "implementasyona başla" anlamına gelmez.
 
 ## Her görev biterken
 `/wrap` komutunu çalıştır (STATE.md günceller, checkbox işaretler, ADR gerekiyorsa açar).
