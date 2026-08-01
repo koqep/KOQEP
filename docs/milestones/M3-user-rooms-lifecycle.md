@@ -13,17 +13,18 @@
 - View-count exposed in the UI — an internal signal for the delete sweep only.
 
 ## Acceptance criteria
-- [ ] A user can create a room with a free-form topic; creation is capped at 1 per user per 24h (`docs/THREAT-MODEL.md` row 6).
-- [ ] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable.
+- [ ] A user can create a room with a slug-style name (username'in `^[a-zA-Z0-9_-]+$` deseniyle aynı, homoglyph/kılık değiştirme riskine karşı) ve opsiyonel serbest-metin bir açıklama (okunabilir "konu" burada yaşıyor); oluşturma günde 1 ile sınırlı (`docs/THREAT-MODEL.md` row 6).
+- [ ] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable (bkz. Slice B Plan notları — `includeArchived` parametresiyle).
 - [ ] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule).
 - [ ] The browse list excludes archived and deleted rooms by default.
 - [ ] A newly created room's messages actually reach other connected users in real time (not in the original spec's task list — found by reading the code, see Plan notları).
+- [ ] Her oda butonu bir canlılık sinyali gösteriyor (açıklama + son aktivite zamanı, tooltip seviyesinde — ucuz, ikinci tur gözden geçirmesinde eklendi).
 - [ ] Tests cover both lifecycle transitions (archive and delete) and the creation rate limit.
 
 ## Tasks
-Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü (aşağıdaki Plan notları):
-- [ ] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId` şema eki, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
-- [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Cron-tetiklemeli `POST /internal/rooms/lifecycle-sweep` (yeni bağımlılık yok, dış bir tetikleyici çağırıyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (`sendMessage`'ın hiç kontrol etmediği bir başka açık), çekirdek oda istisnası, `GET /rooms` filtresi.
+Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü, aynı gün ikinci bir tur (kullanıcının 8 maddelik gözden geçirmesi) tasarımı revize etti (aşağıdaki Plan notları):
+- [ ] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId`/`description` şema eki, oda adı için slug doğrulaması + case-insensitive ön-kontrol (username deseniyle aynı disiplin), `lastActivityAt`'in `sendMessage`'da güncellenmesi (ikinci turda bulunan bir açık — güncellenmezse her oda tam 14 günde arşivlenir), oda butonlarında tooltip seviyesinde canlılık sinyali, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
+- [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Cron-tetiklemeli `POST /internal/rooms/lifecycle-sweep` (yeni bağımlılık yok, dış bir tetikleyici çağırıyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (`sendMessage`'ın hiç kontrol etmediği bir başka açık), çekirdek oda istisnası, `GET /rooms` filtresi + arşivlenmiş odaların ADR-0006'nın "hâlâ linkable" gereksinimini karşılaması için `includeArchived` parametresi (ikinci turda bulunan bir gerileme — filtre eklenince switcher'da arşivlenmiş bir odaya ulaşacak hiçbir yol kalmıyordu).
 - [ ] **M3 Slice C — Silme yaşam döngüsü.** Görüntülenme takibi (`Room.lastViewedAt`), 60-gün-sıfır-görüntülenme → hard-delete, mesajların da odayla birlikte silinmesi (kayıtlı istisna, aşağıya bakın).
 
 ## Risks
@@ -86,7 +87,50 @@ ifadesiyle zaten örtüşüyordu. Dış tetikleyici seçimi (Render Cron Job vs.
 ücretsiz bir GitHub Actions scheduled workflow) kod dışı, kullanıcının
 kararı — Slice B'nin Plan notlarında somutlaştırılacak.
 
+### Sıradaki (ilk tur sonu — ikinci tur aşağıda)
+Slice A — ayrı bir dal, ayrı bir commit, tam doğrulama.
+
+## Plan notları — 2026-07-31 ikinci tur (kullanıcının 8 maddelik gözden geçirmesi)
+
+İlk tur onaylandıktan hemen sonra, Slice A'nın kod/migration'ına
+başlanmışken kullanıcı "planı erken onayladım" dedi ve durdu — 8 eksik
+madde listeledi, her biri için **"Yol B" ölçütü** verdi: *bu olmadan
+20-30 kişilik kapalı bir toplulukta ürün bozuk/güvensiz hissettirir mi?*
+Her madde gerçek dokümanlar (`docs/PRD.md`, `docs/DATA-MODEL.md`,
+`docs/THREAT-MODEL.md`, `docs/ARCHITECTURE.md`) okunarak, sonradan-ekleme
+maliyeti gerçekten hesaplanarak değerlendirildi — varsayılmadı. İki madde
+`AskUserQuestion` ile doğrudan soruldu (üyelik modeli + oda konusu alanı).
+
+**M3'e alınanlar** (Slice A/B'nin Tasks maddelerine zaten işlendi):
+- Oda adı slug doğrulaması (username deseniyle aynı, homoglyph riski).
+- `Room.description` — ayrı, serbest-metin bir "konu" alanı (slug okunabilir
+  bir konu OLAMIYOR — "elden-ring-inceleme" ≠ "Elden Ring inceleme
+  tartışması").
+- `lastActivityAt`'in gerçekten güncellendiği nokta (`sendMessage`) —
+  ilk turda YAZILMAMIŞ sessiz bir açıktı, güncellenmezse her oda
+  aktiviteden bağımsız tam 14 günde arşivlenir.
+- Tooltip seviyesinde canlılık sinyali (açıklama + son aktivite) — Faz 1'in
+  FATAL coğrafi-oda bulgusuyla aynı risk sınıfı (boş/ölü görünen odalar),
+  daha düşük olasılıkla ama ucuz bir sigorta.
+- Arşivlenmiş odanın "hâlâ linkable" kalması (Slice B) — `GET /rooms`
+  filtresi eklenince switcher'da arşivlenmiş bir odaya ulaşacak hiçbir yol
+  kalmıyordu; `includeArchived` parametresiyle çözüldü.
+
+**`docs/BACKLOG.md`'ye somut tetikleyicilerle ertelenenler** (aşağıdaki
+ayrı commit'te):
+- Üyelik modeli (`RoomMember`) + oda şifresi — `DATA-MODEL.md`'nin 7
+  varlığında hiç yok, PRD üyelikten bahsetmiyor, çekirdek odalar zaten
+  "herkes otomatik içeride" çalışıyor. Tetikleyici: aktif kullanıcı >50
+  VEYA aktif oda sayısı >15 VEYA gerçek bir özel-oda talebi.
+- Oda moderasyonu (silme/yeniden adlandırma) — TOTP kilitlenme/resend-endpoint
+  ile aynı kurulu desen (founder'ın manuel Postgres düzeltmesi). Tetikleyici:
+  bu manuel düzeltme ikinci kez gerekirse VEYA M4 (moderasyon) şipse.
+
+Detaylı karar tablosu (8 madde, gerekçe + sonradan-ekleme maliyeti) plan
+dosyasında tam haliyle duruyor, buraya kopyalanmadı.
+
 ### Sıradaki
-Slice A — ayrı bir dal, ayrı bir commit, tam doğrulama. Tasarımı bu
-dokümanda zaten yeterince detaylı (bkz. üstteki Tasks maddesi) — ayrı bir
-plan-modu turu gerekmedi.
+Slice A — `m3/slice-a-room-creation` dalında devam ediyor, ikinci turun
+değişiklikleriyle (description, slug doğrulama, `lastActivityAt` güncelleme
+noktası, tooltip) tamamlanacak. Slice B/C ayrı dallar, ayrı plan-modu
+turları (tasarımları bu dokümanda zaten var, uygulaması ayrı).

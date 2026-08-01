@@ -266,6 +266,24 @@ Eski üç sorunun yerine, bu lansman için:
 Eski kuralın 2 ve 3. maddeleri ("başka platform kopyalar mı", "ürün çalışır
 mı") hâlâ geçerli, aynen kalıyor.
 
+**2026-07-31 — M3 kapsam gözden geçirmesi (ikinci tur, kullanıcının 8
+maddelik incelemesi) ertelemeleri:**
+- **Üyelik modeli (`RoomMember`) + oda şifresi:** `docs/DATA-MODEL.md`'nin
+  7 varlığında `RoomMember` hiç yok, `docs/PRD.md` üyelikten hiç
+  bahsetmiyor — çekirdek odalar zaten "herkes otomatik içeride" çalışıyor,
+  bununla tutarlı. 20-30 kişilik davetiyeli/vetted bir grupta ek bir
+  üyelik katmanı olmadan "bozuk/güvensiz" hissetmiyor. Oda şifresi bu
+  modele bağımlı, ayrı bir madde değil. **Somut tetikleyici:** aktif
+  kullanıcı sayısı >50 VEYA aktif oda sayısı >15 VEYA gerçek bir özel-oda
+  talebi gelirse. → `M3` sonrası.
+- **Oda moderasyonu (silme/yeniden adlandırma):** 20-30 kişilik,
+  "dikkatli tek moderatör" varsayımlı bir toplulukta (THREAT-MODEL satır 7)
+  nadir bir kötü-isimli oda için founder'ın manuel Postgres düzeltmesi
+  kabul edilebilir — TOTP kilitlenme/resend-endpoint kararlarındaki AYNI
+  kurulu desen. **Somut tetikleyici:** bu manuel düzeltme ikinci kez
+  gerekirse VEYA M4 (moderasyon) şipse, hangisi önce gelirse. →
+  `M4` ya da tetiklenirse daha erken.
+
 ---
 
 ## A. EKSİK ZORUNLULUKLAR — bunlar "özellik" değil, açık
