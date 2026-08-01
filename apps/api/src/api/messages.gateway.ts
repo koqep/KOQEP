@@ -65,8 +65,13 @@ export class MessagesGateway
 
     try {
       const payload = await this.authService.verifyAccessToken(token);
+      // M3 Slice A: eskiden sadece CORE_ROOM_NAMES'i sorguluyordu -
+      // kullanıcı odaları hiç katılmıyordu, o odalarda gönderilen
+      // mesajlar hiçbir bağlı sokete gerçek zamanlı ulaşmıyordu (kod
+      // okuyarak bulunan bir açık, milestone'un Tasks listesinde hiç
+      // yoktu). Artık tüm aktif odalara katılıyor.
       const rooms = await this.prisma.room.findMany({
-        where: { name: { in: [...CORE_ROOM_NAMES] } },
+        where: { status: 'active' },
       });
 
       if (rooms.length === 0) {

@@ -50,9 +50,20 @@ export class MessagesService {
   ): Promise<MessageDto> {
     const room = await this.findRoomOrThrow(roomName);
 
-    const message = await this.prisma.message.create({
-      data: { content, roomId: room.id, authorId: userId },
-      include: { author: { select: { username: true } } },
+    // M3 Slice A: Room.lastActivityAt burada güncellenmezse, Slice B'nin
+    // 14-gün-sessizlik arşivleme süpürmesi HER odayı aktiviteden bağımsız
+    // tam 14 günde arşivlerdi (2. tur kapsam gözden geçirmesinde bulunan
+    // sessiz bir açık).
+    const message = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.message.create({
+        data: { content, roomId: room.id, authorId: userId },
+        include: { author: { select: { username: true } } },
+      });
+      await tx.room.update({
+        where: { id: room.id },
+        data: { lastActivityAt: new Date() },
+      });
+      return created;
     });
 
     return toMessageDto(message);

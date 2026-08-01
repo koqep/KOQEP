@@ -14,21 +14,39 @@ import {
   getMessageEditHistory,
   type UserProfile,
   type MessageEdit,
+  type Room,
 } from "../../lib/api";
 import TotpSettingsView from "./TotpSettingsView";
 import BlockedUsersView from "./BlockedUsersView";
 import InviteView from "./InviteView";
 import DeleteAccountView from "./DeleteAccountView";
+import CreateRoomView from "./CreateRoomView";
 import MessageItem from "./MessageItem";
 
-type ActivePanel = "none" | "totp" | "blocked" | "invites" | "delete-account";
+type ActivePanel =
+  | "none"
+  | "totp"
+  | "blocked"
+  | "invites"
+  | "delete-account"
+  | "create-room";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
 
-interface Room {
-  id: string;
-  name: string;
+// Odanın son ne zaman aktif olduğunu kabaca gösteriyor - tam bir "keşfet"
+// görünümü (sıralama/filtreleme) bilerek kapsam dışı, sadece switcher'ın
+// title tooltip'inde ucuz bir canlılık sinyali (M3 kapsam gözden geçirmesi,
+// 2. tur, madde 2).
+function formatRelativeActivity(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const diffMinutes = Math.floor(diffMs / (60 * 1000));
+  if (diffMinutes < 1) return "az önce";
+  if (diffMinutes < 60) return `${diffMinutes}dk önce`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}s önce`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}g önce`;
 }
 
 interface Message {
@@ -327,6 +345,10 @@ export default function RoomView({
                 key={r.id}
                 type="button"
                 onClick={() => void handleRoomSwitch(r)}
+                title={
+                  (r.description ? `${r.description} — ` : "") +
+                  `son aktivite: ${formatRelativeActivity(r.lastActivityAt)}`
+                }
                 className={
                   r.id === activeRoom?.id
                     ? "text-neutral-200"
@@ -338,6 +360,13 @@ export default function RoomView({
               </button>
             ))
           )}
+          <button
+            type="button"
+            onClick={() => setActivePanel("create-room")}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            + yeni oda
+          </button>
         </nav>
         <div className="flex items-center gap-4">
           <button
@@ -399,6 +428,16 @@ export default function RoomView({
         <DeleteAccountView
           accessToken={accessToken}
           onDeleted={onLoggedOut}
+          onClose={() => setActivePanel("none")}
+        />
+      ) : activePanel === "create-room" ? (
+        <CreateRoomView
+          accessToken={accessToken}
+          onCreated={(room) => {
+            setRooms((prev) => [...prev, room]);
+            setActivePanel("none");
+            void handleRoomSwitch(room);
+          }}
           onClose={() => setActivePanel("none")}
         />
       ) : (

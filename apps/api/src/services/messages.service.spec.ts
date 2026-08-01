@@ -21,6 +21,33 @@ describe('MessagesService', () => {
   }
 
   describe('sendMessage', () => {
+    function buildSendMessagePrismaMock(
+      foundRoom: { id: string; name: string },
+      created: unknown,
+    ): {
+      prismaMock: Partial<PrismaService>;
+      findUniqueSpy: jest.Mock;
+      createSpy: jest.Mock;
+      roomUpdateSpy: jest.Mock;
+    } {
+      const createSpy = jest.fn().mockResolvedValue(created);
+      const roomUpdateSpy = jest.fn().mockResolvedValue(foundRoom);
+      const findUniqueSpy = jest.fn().mockResolvedValue(foundRoom);
+      const txMock = {
+        message: { create: createSpy },
+        room: { update: roomUpdateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: findUniqueSpy,
+        } as unknown as PrismaService['room'],
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+      return { prismaMock, findUniqueSpy, createSpy, roomUpdateSpy };
+    }
+
     it('mesaji_dogru_oda_ve_yazar_ile_olusturur', async () => {
       const created = {
         id: 'msg-1',
@@ -29,15 +56,8 @@ describe('MessagesService', () => {
         roomId: room.id,
         author: { username: 'dev' },
       };
-      const createMock = jest.fn().mockResolvedValue(created);
-      const prismaMock: Partial<PrismaService> = {
-        room: {
-          findUnique: jest.fn().mockResolvedValue(room),
-        } as unknown as PrismaService['room'],
-        message: {
-          create: createMock,
-        } as unknown as PrismaService['message'],
-      };
+      const { prismaMock, createSpy, roomUpdateSpy } =
+        buildSendMessagePrismaMock(room, created);
 
       const service = buildService(prismaMock);
       const result = await service.sendMessage(
@@ -46,10 +66,13 @@ describe('MessagesService', () => {
         'merhaba',
       );
 
-      expect(createMock).toHaveBeenCalledWith(
+      expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           data: { content: 'merhaba', roomId: room.id, authorId: 'user-1' },
         }),
+      );
+      expect(roomUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: room.id } }),
       );
       expect(result).toEqual({
         id: 'msg-1',
@@ -68,16 +91,8 @@ describe('MessagesService', () => {
         roomId: otherRoom.id,
         author: { username: 'dev' },
       };
-      const findUniqueMock = jest.fn().mockResolvedValue(otherRoom);
-      const createMock = jest.fn().mockResolvedValue(created);
-      const prismaMock: Partial<PrismaService> = {
-        room: {
-          findUnique: findUniqueMock,
-        } as unknown as PrismaService['room'],
-        message: {
-          create: createMock,
-        } as unknown as PrismaService['message'],
-      };
+      const { prismaMock, findUniqueSpy, createSpy } =
+        buildSendMessagePrismaMock(otherRoom, created);
 
       const service = buildService(prismaMock);
       const result = await service.sendMessage(
@@ -86,10 +101,10 @@ describe('MessagesService', () => {
         'meta selam',
       );
 
-      expect(findUniqueMock).toHaveBeenCalledWith({
+      expect(findUniqueSpy).toHaveBeenCalledWith({
         where: { name: CORE_ROOM_NAMES[1] },
       });
-      expect(createMock).toHaveBeenCalledWith(
+      expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           data: {
             content: 'meta selam',

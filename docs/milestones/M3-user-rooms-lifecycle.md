@@ -13,17 +13,17 @@
 - View-count exposed in the UI — an internal signal for the delete sweep only.
 
 ## Acceptance criteria
-- [ ] A user can create a room with a slug-style name (username'in `^[a-zA-Z0-9_-]+$` deseniyle aynı, homoglyph/kılık değiştirme riskine karşı) ve opsiyonel serbest-metin bir açıklama (okunabilir "konu" burada yaşıyor); oluşturma günde 1 ile sınırlı (`docs/THREAT-MODEL.md` row 6).
+- [x] A user can create a room with a slug-style name (username'in `^[a-zA-Z0-9_-]+$` deseniyle aynı, homoglyph/kılık değiştirme riskine karşı) ve opsiyonel serbest-metin bir açıklama (okunabilir "konu" burada yaşıyor); oluşturma günde 1 ile sınırlı (`docs/THREAT-MODEL.md` row 6).
 - [ ] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable (bkz. Slice B Plan notları — `includeArchived` parametresiyle).
 - [ ] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule).
 - [ ] The browse list excludes archived and deleted rooms by default.
-- [ ] A newly created room's messages actually reach other connected users in real time (not in the original spec's task list — found by reading the code, see Plan notları).
-- [ ] Her oda butonu bir canlılık sinyali gösteriyor (açıklama + son aktivite zamanı, tooltip seviyesinde — ucuz, ikinci tur gözden geçirmesinde eklendi).
-- [ ] Tests cover both lifecycle transitions (archive and delete) and the creation rate limit.
+- [x] A newly created room's messages actually reach other connected users in real time (not in the original spec's task list — found by reading the code, see Plan notları).
+- [x] Her oda butonu bir canlılık sinyali gösteriyor (açıklama + son aktivite zamanı, tooltip seviyesinde — ucuz, ikinci tur gözden geçirmesinde eklendi).
+- [x] Tests cover the creation rate limit and both real-time join-set paths (Slice A). Lifecycle transitions (archive/delete) are Slice B/C, not yet built.
 
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü, aynı gün ikinci bir tur (kullanıcının 8 maddelik gözden geçirmesi) tasarımı revize etti (aşağıdaki Plan notları):
-- [ ] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId`/`description` şema eki, oda adı için slug doğrulaması + case-insensitive ön-kontrol (username deseniyle aynı disiplin), `lastActivityAt`'in `sendMessage`'da güncellenmesi (ikinci turda bulunan bir açık — güncellenmezse her oda tam 14 günde arşivlenir), oda butonlarında tooltip seviyesinde canlılık sinyali, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
+- [x] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId`/`description` şema eki, oda adı için slug doğrulaması + case-insensitive ön-kontrol (username deseniyle aynı disiplin), `lastActivityAt`'in `sendMessage`'da güncellenmesi (ikinci turda bulunan bir açık — güncellenmezse her oda tam 14 günde arşivlenir), oda butonlarında tooltip seviyesinde canlılık sinyali, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
 - [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Cron-tetiklemeli `POST /internal/rooms/lifecycle-sweep` (yeni bağımlılık yok, dış bir tetikleyici çağırıyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (`sendMessage`'ın hiç kontrol etmediği bir başka açık), çekirdek oda istisnası, `GET /rooms` filtresi + arşivlenmiş odaların ADR-0006'nın "hâlâ linkable" gereksinimini karşılaması için `includeArchived` parametresi (ikinci turda bulunan bir gerileme — filtre eklenince switcher'da arşivlenmiş bir odaya ulaşacak hiçbir yol kalmıyordu).
 - [ ] **M3 Slice C — Silme yaşam döngüsü.** Görüntülenme takibi (`Room.lastViewedAt`), 60-gün-sıfır-görüntülenme → hard-delete, mesajların da odayla birlikte silinmesi (kayıtlı istisna, aşağıya bakın).
 
@@ -134,3 +134,53 @@ Slice A — `m3/slice-a-room-creation` dalında devam ediyor, ikinci turun
 değişiklikleriyle (description, slug doğrulama, `lastActivityAt` güncelleme
 noktası, tooltip) tamamlanacak. Slice B/C ayrı dallar, ayrı plan-modu
 turları (tasarımları bu dokümanda zaten var, uygulaması ayrı).
+
+## Plan notları — Slice A uygulaması (2026-08-01)
+
+Tasarım aynen uygulandı, hiçbir sapma olmadı. Doğrulama: `apps/api`'de
+lint/typecheck/build temiz, birim testler 98/98, e2e testler 46/46
+(yeni `test/rooms.e2e-spec.ts` dahil); `apps/web`'de lint/typecheck/build
+temiz, mocked e2e 42/42 (yeni `e2e/create-room.spec.ts` dahil).
+
+**Backend:** `apps/api/src/db/schema.prisma` (`Room.description`/
+`lastActivityAt`/`creatorId`, iki ayrı `--create-only` migration),
+`apps/api/src/api/dto/create-room.dto.ts` (yeni), `apps/api/src/api/
+room-creation-throttler.guard.ts` (yeni, `UserThrottlerGuard`'ın yapısal
+kopyası), `RoomsController`'a `POST /rooms`, `RoomsService.createRoom`
+(case-insensitive ön-kontrol + P2002 backstop + `socketRegistry.
+getSockets(userId)` ile oluşturanın açık soketini yeni odaya katma),
+`MessagesService.sendMessage`'ın `$transaction` içinde `Room.
+lastActivityAt`'i güncellemesi, `messages.gateway.ts`
+`handleConnection`'ının `CORE_ROOM_NAMES` yerine `status:'active'`
+sorgulaması (join-set düzeltmesi).
+
+**Frontend:** `lib/api.ts`'e `Room`/`createRoom`, yeni `CreateRoomView.tsx`
+(InviteView/BlockedUsersView'ın kurduğu panel deseni), `RoomView.tsx`'e
+"+ yeni oda" nav butonu + `create-room` paneli + oda butonlarında
+`title` tooltip'i (`description` + `formatRelativeActivity(lastActivityAt)`).
+
+**Test:** `rooms.e2e-spec.ts`'teki iki gerçek-zamanlı test, join-set
+açığının iki farklı yüzünü ayrı ayrı doğruluyor — oluşturanın ZATEN bağlı
+soketinin yeni odaya hemen katılması (`RoomsService`'in soket-katma kodu)
+ve odanın oluşmasından SONRA bağlanan başka bir kullanıcının da
+`handleConnection`'ın `status:'active'` sorgusuyla otomatik katılması.
+İkisi ayrı test — biri diğerini kapsamıyor, ikisi de ayrı ayrı bugüne
+kadar YAZILMAMIŞ bir açığın kapandığını kanıtlıyor.
+
+**Bilinen, bilerek ertelenmiş bir açık:** oda oluşturulduğunda, oluşturan
+DIŞINDA halihazırda bağlı kullanıcılar o odaya otomatik katılmıyor —
+`GET /rooms` de WS ile canlı güncellenmediği için (kapsam dışı, bkz. Out
+of scope) zaten bu kullanıcılar odanın var olduğunu sayfayı yenilemeden
+bilmiyor; tutarlı bir sınır, ayrı bir bug değil.
+
+**Küçük bir yan not (aksiyon gerekmiyor, kayıt için):**
+`apps/web/app/components/RoomView.tsx` bu slice'tan önce zaten 477 satırdı
+(M2.5 Slice D/E/F birikimi), Slice A'nın eklerinden sonra 516'ya çıktı —
+CLAUDE.md'nin "400 satırı geçtiyse bölünmesi konuşulur" eşiği zaten
+aşılmıştı, bu slice onu daha da aştı. Bölme (ör. header/nav'ı ayrı bir
+`RoomHeader.tsx`'e çıkarmak) Slice A'nın kapsamına girmiyordu, bilerek
+ertelendi — sıradaki bir slice'ta (ör. Slice B) ele alınması önerilir.
+
+### Sıradaki
+Slice A tamamlandı, commit'e hazır. Sırada Slice B (arşiv yaşam döngüsü)
+— ayrı dal, ayrı plan-modu turu.
