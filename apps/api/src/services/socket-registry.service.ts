@@ -16,6 +16,14 @@ export class SocketRegistryService {
     this.socketsByUserId.set(userId, sockets);
   }
 
+  // M3 Slice A: bir kullanıcı yeni bir oda oluşturduğunda, o an zaten
+  // bağlı olan soketlerini MessagesGateway'e hiç dokunmadan yeni odaya
+  // katmak için kullanılıyor (disconnectUser'ın aynı "aşağı doğru
+  // bağımlılık" prensibi).
+  getSockets(userId: string): Socket[] {
+    return [...(this.socketsByUserId.get(userId) ?? [])];
+  }
+
   unregister(userId: string, socket: Socket): void {
     const sockets = this.socketsByUserId.get(userId);
     if (!sockets) return;

@@ -182,3 +182,21 @@ export function getMessageEditHistory(
 export function createInvite(accessToken: string): Promise<{ code: string }> {
   return authedPostJson<{ code: string }>("/invites", accessToken);
 }
+
+export interface Room {
+  id: string;
+  name: string;
+  description: string | null;
+  lastActivityAt: string;
+}
+
+export function createRoom(
+  accessToken: string,
+  name: string,
+  description?: string,
+): Promise<Room> {
+  return authedPostJson<Room>("/rooms", accessToken, {
+    name,
+    description: description || undefined,
+  });
+}

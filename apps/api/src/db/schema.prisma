@@ -42,6 +42,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   blocksMade              Block[]                  @relation("Blocker")
   blocksReceived          Block[]                  @relation("Blocked")
+  createdRooms            Room[]                   @relation("RoomCreator")
 }
 
 model Invite {
@@ -122,10 +123,15 @@ model Block {
 }
 
 model Room {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  status    RoomStatus @default(active)
-  createdAt DateTime   @default(now())
+  id             String     @id @default(uuid())
+  name           String     @unique
+  description    String?
+  status         RoomStatus @default(active)
+  createdAt      DateTime   @default(now())
+  lastActivityAt DateTime   @default(now())
+
+  creatorId String?
+  creator   User?   @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: SetNull)
 
   messages Message[]
 }

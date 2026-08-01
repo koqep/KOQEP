@@ -35,7 +35,7 @@ npm run db:migrate                 # migration çalıştır
 - İş mantığı `apps/api/src/services/` dışına YAZILMAZ. Handler'lar sadece validate + delegate eder.
 - Şema değişikliği migration olmadan yapılmaz. El ile SQL çalıştırılmaz.
 - `ReputationEvent` satırları sadece insert edilir, asla UPDATE edilmez (ADR-0004).
-- Mesaj içeriği asla hard-delete edilmez; hesap silindiğinde sadece yazar bağlantısı anonimleştirilir (ADR-0005).
+- Mesaj içeriği asla hard-delete edilmez; hesap silindiğinde sadece yazar bağlantısı anonimleştirilir (ADR-0005). **İSTİSNA:** bir odanın kendisi ADR-0006 kapsamında hard-delete edildiğinde (60 gün sıfır görüntülenme), o odaya ait mesajlar da odayla birlikte silinir (M3) — hesap silmedeki tek-kişinin-katkısını-canlı-thread'den-silme durumundan kategorik farklı, bilerek kayıtlı bir istisna.
 - Oda durumu tek yönlü ilerler: active → archived → deleted (ADR-0006).
 - Yeni bağımlılık eklemeden önce sor.
 - `main` branch'e doğrudan commit atılmaz.
