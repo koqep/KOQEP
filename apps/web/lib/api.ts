@@ -188,6 +188,15 @@ export interface Room {
   name: string;
   description: string | null;
   lastActivityAt: string;
+  status: "active" | "archived" | "deleted";
+}
+
+export function listRooms(
+  accessToken: string,
+  includeArchived?: boolean,
+): Promise<Room[]> {
+  const query = includeArchived ? "?includeArchived=true" : "";
+  return authedGetJson<Room[]>(`/rooms${query}`, accessToken);
 }
 
 export function createRoom(

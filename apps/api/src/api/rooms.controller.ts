@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { RoomsService, RoomSummary } from '../services/rooms.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
@@ -11,8 +19,10 @@ export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   @Get()
-  listRooms(): Promise<RoomSummary[]> {
-    return this.roomsService.listRooms();
+  listRooms(
+    @Query('includeArchived') includeArchived?: string,
+  ): Promise<RoomSummary[]> {
+    return this.roomsService.listRooms(includeArchived === 'true');
   }
 
   @Post()

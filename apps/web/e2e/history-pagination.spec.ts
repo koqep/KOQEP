@@ -12,7 +12,9 @@ test("daha_eski_mesajlari_yukle_butonu_calisir_ve_tukenince_kaybolur", async ({
     }),
   );
   await page.route("**/rooms", (route) =>
-    route.fulfill({ json: [{ id: "room-1", name: "test-oda" }] }),
+    route.fulfill({
+      json: [{ id: "room-1", name: "test-oda", status: "active" }],
+    }),
   );
 
   let secondPageRequested = false;

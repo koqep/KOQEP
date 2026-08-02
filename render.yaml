@@ -28,6 +28,14 @@ services:
       # girilmeli.
       - key: RESEND_API_KEY
         sync: false
+      # M3 Slice B: POST /internal/rooms/lifecycle-sweep'i korumak icin
+      # (CronSecretGuard, x-cron-secret header). GitHub Actions'daki
+      # secrets.CRON_SECRET ile BIREBIR AYNI olmali. DIKKAT: bu dosya canli
+      # Render servisine bagli degil (bkz. STATE.md tuzak notu) - deger yine
+      # de Render dashboard'undan elle girilmek zorunda, burasi sadece
+      # dokumantasyon amacli.
+      - key: CRON_SECRET
+        sync: false
       # Opsiyonel — sadece kendi domain'ini Resend'de dogruladiktan sonra
       # ayarla (SPF/DKIM/DMARC, bkz. docs/milestones/M6-launch-readiness.md).
       # Ayarlanmazsa kod onboarding@resend.dev'e duser.

@@ -14,17 +14,17 @@
 
 ## Acceptance criteria
 - [x] A user can create a room with a slug-style name (username'in `^[a-zA-Z0-9_-]+$` deseniyle aynı, homoglyph/kılık değiştirme riskine karşı) ve opsiyonel serbest-metin bir açıklama (okunabilir "konu" burada yaşıyor); oluşturma günde 1 ile sınırlı (`docs/THREAT-MODEL.md` row 6).
-- [ ] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable (bkz. Slice B Plan notları — `includeArchived` parametresiyle).
-- [ ] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule).
-- [ ] The browse list excludes archived and deleted rooms by default.
+- [x] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable (`includeArchived` parametresiyle — Slice B).
+- [ ] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule). Slice C, not yet built.
+- [x] The browse list excludes archived and deleted rooms by default.
 - [x] A newly created room's messages actually reach other connected users in real time (not in the original spec's task list — found by reading the code, see Plan notları).
 - [x] Her oda butonu bir canlılık sinyali gösteriyor (açıklama + son aktivite zamanı, tooltip seviyesinde — ucuz, ikinci tur gözden geçirmesinde eklendi).
-- [x] Tests cover the creation rate limit and both real-time join-set paths (Slice A). Lifecycle transitions (archive/delete) are Slice B/C, not yet built.
+- [x] Tests cover the creation rate limit, both real-time join-set paths, and the archive lifecycle (Slice A+B). Delete transitions (Slice C) not yet built.
 
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü, aynı gün ikinci bir tur (kullanıcının 8 maddelik gözden geçirmesi) tasarımı revize etti (aşağıdaki Plan notları):
 - [x] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId`/`description` şema eki, oda adı için slug doğrulaması + case-insensitive ön-kontrol (username deseniyle aynı disiplin), `lastActivityAt`'in `sendMessage`'da güncellenmesi (ikinci turda bulunan bir açık — güncellenmezse her oda tam 14 günde arşivlenir), oda butonlarında tooltip seviyesinde canlılık sinyali, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
-- [ ] **M3 Slice B — Arşiv yaşam döngüsü.** Plan modu onaylandı (2026-08-01), uygulama henüz başlamadı — tasarımın tam haliyle detayı için aşağıdaki "Plan notları — Slice B tasarımı" bölümüne bakın. Özet: `POST /internal/rooms/lifecycle-sweep` (`CronSecretGuard`, GitHub Actions scheduled workflow tetikleyecek), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (hem `sendMessage` HEM `editMessage` — ikincisi ilk taslakta atlanmıştı), çekirdek oda istisnası, `GET /rooms?includeArchived=true`, `Room.archivedAt` şema eki (Slice C'nin 60-gün hesaplaması için gereken, bilerek Slice C'ye değil buraya eklendi).
+- [x] **M3 Slice B — Arşiv yaşam döngüsü.** Tamamlandı (2026-08-02) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. Özet: `POST /internal/rooms/lifecycle-sweep` (`CronSecretGuard`, GitHub Actions scheduled workflow tetikliyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (hem `sendMessage` HEM `editMessage` — ikincisi ilk taslakta atlanmıştı), çekirdek oda istisnası, `GET /rooms?includeArchived=true`, `Room.archivedAt` şema eki (Slice C'nin 60-gün hesaplaması için gereken, bilerek Slice C'ye değil buraya eklendi).
 - [ ] **M3 Slice C — Silme yaşam döngüsü.** Görüntülenme takibi (`Room.lastViewedAt`), 60-gün-sıfır-görüntülenme → hard-delete, mesajların da odayla birlikte silinmesi (kayıtlı istisna, aşağıya bakın).
 
 ## Risks
@@ -266,10 +266,63 @@ header); e2e (gerçek geriye-tarihlenmiş oda + sweep çağrısı + WS üzerinde
 alfabetik önce sıralanmasın, `afterAll` temizliği çocuktan-ebeveyne);
 frontend mocked e2e (toggle + salt-okunur composer).
 
-### Sıradaki
+### Sıradaki (uygulama öncesi — uygulama sonucu aşağıda)
 Slice B tasarımı onaylandı ama **uygulama henüz başlamadı** — oturum
 limiti nedeniyle sadece plan dokümante edildi. Bir sonraki oturumda
 `m3/slice-b-archive-lifecycle` dalı açılıp bu bölümdeki tasarım aynen
 uygulanacak (M1-M2.5'in kullandığı aynı ritim: kod + testler + tam
 doğrulama + Plan notları güncellemesi + commit, push kullanıcının onayına
 kalır).
+
+## Plan notları — Slice B uygulaması (2026-08-02)
+
+Tasarım aynen uygulandı, sapma yok. Kullanıcının açık talebiyle sekiz
+küçük, izole commit'e bölündü (`m3/slice-b-archive-lifecycle` dalında) —
+her biri kendi testleriyle + lint/typecheck ile geldi, haftalık limitin
+dolma riskine karşı her adımdan sonra durup ilerleme bildirildi. Migration
+adımı bilerek en başta, tek başına, kod içermeyen izole bir commit oldu.
+
+**Bir kendi kendine düzeltilen hata:** migration commit'inde, Prisma'nın
+ürettiği `migration.sql`'e (zaten uygulanmışken) bir rollback yorumu
+eklenmeye çalışıldı — bu STATE.md'nin bilinen "uygulanmış migration'ı
+editlemek checksum uyuşmazlığı yaratır" tuzağına düşüldüğü anlamına
+geliyordu. `prisma migrate dev` "reset gerekiyor, tüm veri silinir" dedi;
+reset'e HİÇ dokunulmadan dosya orijinal haline geri döndürüldü, checksum
+tekrar eşleşti, veri kaybı olmadı (`migrate status`/`migrate dev` ile
+doğrulandı). Ders: rollback yorumu gerekiyorsa `--create-only` ile önce
+dosyayı oluşturup editleyip SONRA uygulamak gerekiyormuş — bu turda
+atlandı, ileride hatırlanmalı.
+
+**Backend:** tasarımdaki her madde birebir uygulandı —
+`Room.archivedAt` migration'ı, `RoomsService.archiveSilentRooms(now)`,
+`sendMessage`/`editMessage`'ın `GoneException` fırlatması,
+`messages.gateway.ts`'in iki handler'da FARKLI diff şekliyle
+`ROOM_ARCHIVED`'ı işlemesi (`handleMessageSend`'de tamamen yeni bir dal,
+`handleMessageEdit`'te mevcut sessiz-yutma dalından bağımsız ayrı bir
+dal — plan agent'ın önceden tam olarak işaret ettiği fark), `GET
+/rooms?includeArchived`, `RoomsLifecycleController` + `CronSecretGuard`.
+
+**Frontend:** `lib/api.ts`'e `Room.status` + `listRooms` (bu arada
+`bootstrap()`'ın `lib/api.ts`'i atlayıp doğrudan `fetch()` yaptığı eski
+bir borç da temizlendi), "arşivi göster" toggle'ı, composer'ın
+`activeRoom.status`'a göre gerçekten (sadece görsel değil, `canSend`'e
+de işlenerek) devre dışı kalması.
+
+**Beklenmeyen bir test regresyonu, hemen bulunup düzeltildi:**
+`RoomSummary`'ye `status` eklenince, bu alanı içermeyen ESKİ mocked
+frontend e2e testleri (`blocked-users.spec.ts`, `totp-settings.spec.ts`)
+gerçekten kırıldı — `status` `undefined` olunca composer sessizce
+"salt-okunur" render yoluna düşüyordu (`undefined !== 'active'`). Tam
+`apps/web` e2e koşusuyla yakalandı, mock'lara `status: 'active'` eklenerek
+düzeltildi (`create-room.spec.ts`/`room-switcher.spec.ts`'e de tutarlılık
+için eklendi, onlar aslında kırılmamıştı).
+
+**Doğrulama (final):** `apps/api` lint/typecheck/build temiz, birim
+103/103, e2e 52/52; `apps/web` lint/typecheck/build temiz, mocked e2e
+43/43 (yeni `e2e/room-archive.spec.ts` dahil).
+
+### Sıradaki
+Slice B tamamlandı, commit'e hazır (henüz push/merge edilmedi — kullanıcı
+onayına kalmış). Sırada iki bağımsız iş, sırası kullanıcının tercihine
+kalmış: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim) ve Slice C
+(silme yaşam döngüsü — kendi plan-modu turu gerekiyor).

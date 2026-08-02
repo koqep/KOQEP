@@ -2,7 +2,9 @@ import { test, expect } from "@playwright/test";
 
 async function mockRoomEndpoints(page: import("@playwright/test").Page) {
   await page.route("**/rooms", (route) =>
-    route.fulfill({ json: [{ id: "room-1", name: "test-oda" }] }),
+    route.fulfill({
+      json: [{ id: "room-1", name: "test-oda", status: "active" }],
+    }),
   );
   await page.route("**/rooms/*/messages", (route) =>
     route.fulfill({ json: { messages: [], nextCursor: null } }),

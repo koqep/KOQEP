@@ -1,0 +1,17 @@
+name: Room lifecycle sweep
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call lifecycle-sweep endpoint
+        run: |
+          curl --fail --show-error \
+            -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.API_BASE_URL }}/internal/rooms/lifecycle-sweep"

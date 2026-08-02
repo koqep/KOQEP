@@ -18,19 +18,21 @@ describe('RoomsService', () => {
   }
 
   describe('listRooms', () => {
-    it('odalari_isme_gore_alfabetik_dondurur', async () => {
+    it('odalari_isme_gore_alfabetik_dondurur_varsayilan_aktif_filtreyle', async () => {
       const findManyMock = jest.fn().mockResolvedValue([
         {
           id: 'room-general',
           name: 'general',
           description: null,
           lastActivityAt: new Date('2026-01-01'),
+          status: 'active',
         },
         {
           id: 'room-meta',
           name: 'meta',
           description: 'meta konusu',
           lastActivityAt: new Date('2026-01-02'),
+          status: 'active',
         },
       ]);
       const prismaMock: Partial<PrismaService> = {
@@ -43,15 +45,35 @@ describe('RoomsService', () => {
       const rooms = await service.listRooms();
 
       expect(findManyMock).toHaveBeenCalledWith({
+        where: { status: 'active' },
         select: {
           id: true,
           name: true,
           description: true,
           lastActivityAt: true,
+          status: true,
         },
         orderBy: { name: 'asc' },
       });
       expect(rooms).toHaveLength(2);
+    });
+
+    it('includeArchived_true_iken_arsivlenmisleri_de_dahil_eder', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      await service.listRooms(true);
+
+      expect(findManyMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: { in: ['active', 'archived'] } },
+        }),
+      );
     });
   });
 
@@ -62,6 +84,7 @@ describe('RoomsService', () => {
         name: 'elden-ring',
         description: 'Elden Ring tartışması',
         lastActivityAt: new Date(),
+        status: 'active',
       };
       const findFirstMock = jest.fn().mockResolvedValue(null);
       const createMock = jest.fn().mockResolvedValue(room);
@@ -97,6 +120,7 @@ describe('RoomsService', () => {
           name: true,
           description: true,
           lastActivityAt: true,
+          status: true,
         },
       });
       expect(joinMock).toHaveBeenCalledWith('room-1');
@@ -134,6 +158,56 @@ describe('RoomsService', () => {
       await expect(service.createRoom('user-1', 'general')).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('archiveSilentRooms', () => {
+    it('14_gunden_eski_odalari_cekirdek_disinda_arsivler', async () => {
+      const now = new Date('2026-08-15T00:00:00.000Z');
+      const updateManyMock = jest.fn().mockResolvedValue({ count: 3 });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          updateMany: updateManyMock,
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.archiveSilentRooms(now);
+
+      expect(updateManyMock).toHaveBeenCalledWith({
+        where: {
+          status: 'active',
+          lastActivityAt: { lt: new Date('2026-08-01T00:00:00.000Z') },
+          name: { notIn: ['general', 'meta'] },
+        },
+        data: { status: 'archived', archivedAt: now },
+      });
+      expect(result).toEqual({ archivedCount: 3 });
+    });
+
+    it('now_verilmezse_gercek_saati_kullanir', async () => {
+      let capturedArchivedAt: Date | undefined;
+      const updateManyMock = jest
+        .fn()
+        .mockImplementation((args: { data: { archivedAt: Date } }) => {
+          capturedArchivedAt = args.data.archivedAt;
+          return Promise.resolve({ count: 0 });
+        });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          updateMany: updateManyMock,
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const before = Date.now();
+      await service.archiveSilentRooms();
+      const after = Date.now();
+
+      expect(capturedArchivedAt).toBeDefined();
+      const usedNow = capturedArchivedAt!.getTime();
+      expect(usedNow).toBeGreaterThanOrEqual(before);
+      expect(usedNow).toBeLessThanOrEqual(after);
     });
   });
 });

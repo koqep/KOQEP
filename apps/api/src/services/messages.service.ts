@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  GoneException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -49,6 +50,11 @@ export class MessagesService {
     content: string,
   ): Promise<MessageDto> {
     const room = await this.findRoomOrThrow(roomName);
+    if (room.status !== 'active') {
+      // M3 Slice B: "arşivlenince salt-okunur" - sendMessage bugüne kadar
+      // oda durumunu hiç kontrol etmiyordu.
+      throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
+    }
 
     // M3 Slice A: Room.lastActivityAt burada güncellenmezse, Slice B'nin
     // 14-gün-sessizlik arşivleme süpürmesi HER odayı aktiviteden bağımsız
@@ -118,9 +124,16 @@ export class MessagesService {
   ): Promise<MessageDto> {
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
+      include: { room: { select: { status: true } } },
     });
     if (!message) {
       throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+    }
+    if (message.room.status !== 'active') {
+      // M3 Slice B: editMessage bugüne kadar oda durumunu hiç kontrol
+      // etmiyordu - sadece sendMessage'ı engellemek "yeni mesaj yasak ama
+      // düzenleme serbest" bırakırdı, "salt-okunur" değil.
+      throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
     }
     if (message.authorId !== userId) {
       throw new ForbiddenException('Sadece kendi mesajını düzenleyebilirsin.');
