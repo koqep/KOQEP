@@ -136,4 +136,54 @@ describe('RoomsService', () => {
       );
     });
   });
+
+  describe('archiveSilentRooms', () => {
+    it('14_gunden_eski_odalari_cekirdek_disinda_arsivler', async () => {
+      const now = new Date('2026-08-15T00:00:00.000Z');
+      const updateManyMock = jest.fn().mockResolvedValue({ count: 3 });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          updateMany: updateManyMock,
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.archiveSilentRooms(now);
+
+      expect(updateManyMock).toHaveBeenCalledWith({
+        where: {
+          status: 'active',
+          lastActivityAt: { lt: new Date('2026-08-01T00:00:00.000Z') },
+          name: { notIn: ['general', 'meta'] },
+        },
+        data: { status: 'archived', archivedAt: now },
+      });
+      expect(result).toEqual({ archivedCount: 3 });
+    });
+
+    it('now_verilmezse_gercek_saati_kullanir', async () => {
+      let capturedArchivedAt: Date | undefined;
+      const updateManyMock = jest
+        .fn()
+        .mockImplementation((args: { data: { archivedAt: Date } }) => {
+          capturedArchivedAt = args.data.archivedAt;
+          return Promise.resolve({ count: 0 });
+        });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          updateMany: updateManyMock,
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const before = Date.now();
+      await service.archiveSilentRooms();
+      const after = Date.now();
+
+      expect(capturedArchivedAt).toBeDefined();
+      const usedNow = capturedArchivedAt!.getTime();
+      expect(usedNow).toBeGreaterThanOrEqual(before);
+      expect(usedNow).toBeLessThanOrEqual(after);
+    });
+  });
 });

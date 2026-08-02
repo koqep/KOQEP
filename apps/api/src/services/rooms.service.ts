@@ -2,6 +2,9 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { SocketRegistryService } from './socket-registry.service';
+import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
+
+const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 
 export interface RoomSummary {
   id: string;
@@ -69,6 +72,25 @@ export class RoomsService {
     }
 
     return room;
+  }
+
+  // `now` parametresi bu kod tabanında ilk kez kullanılan bir desen -
+  // "kurulu convention" değil, bilerek eklendi (sadece birim testte kesim
+  // matematiğini kontrol etmek için). Sweep endpoint'i bunu dışarıdan
+  // enjekte etmiyor, her zaman gerçek saati kullanıyor.
+  async archiveSilentRooms(
+    now: Date = new Date(),
+  ): Promise<{ archivedCount: number }> {
+    const cutoff = new Date(now.getTime() - ARCHIVE_AFTER_MS);
+    const result = await this.prisma.room.updateMany({
+      where: {
+        status: 'active',
+        lastActivityAt: { lt: cutoff },
+        name: { notIn: [...CORE_ROOM_NAMES] },
+      },
+      data: { status: 'archived', archivedAt: now },
+    });
+    return { archivedCount: result.count };
   }
 }
 
