@@ -10,7 +10,9 @@ async function login(page: import("@playwright/test").Page) {
     }),
   );
   await page.route("**/rooms", (route) =>
-    route.fulfill({ json: [{ id: "room-1", name: "test-oda" }] }),
+    route.fulfill({
+      json: [{ id: "room-1", name: "test-oda", status: "active" }],
+    }),
   );
 
   await page.goto("/");

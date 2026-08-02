@@ -16,7 +16,9 @@ async function login(
     }),
   );
   await page.route("**/rooms", (route) =>
-    route.fulfill({ json: [{ id: "room-1", name: "general" }] }),
+    route.fulfill({
+      json: [{ id: "room-1", name: "general", status: "active" }],
+    }),
   );
   await page.route("**/rooms/*/messages", (route) =>
     route.fulfill({
