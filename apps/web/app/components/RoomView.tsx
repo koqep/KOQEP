@@ -22,7 +22,8 @@ import BlockedUsersView from "./BlockedUsersView";
 import InviteView from "./InviteView";
 import DeleteAccountView from "./DeleteAccountView";
 import CreateRoomView from "./CreateRoomView";
-import MessageItem from "./MessageItem";
+import RoomHeader from "./RoomHeader";
+import ChatPanel from "./ChatPanel";
 
 type ActivePanel =
   | "none"
@@ -34,21 +35,6 @@ type ActivePanel =
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
-
-// Odanın son ne zaman aktif olduğunu kabaca gösteriyor - tam bir "keşfet"
-// görünümü (sıralama/filtreleme) bilerek kapsam dışı, sadece switcher'ın
-// title tooltip'inde ucuz bir canlılık sinyali (M3 kapsam gözden geçirmesi,
-// 2. tur, madde 2).
-function formatRelativeActivity(isoDate: string): string {
-  const diffMs = Date.now() - new Date(isoDate).getTime();
-  const diffMinutes = Math.floor(diffMs / (60 * 1000));
-  if (diffMinutes < 1) return "az önce";
-  if (diffMinutes < 60) return `${diffMinutes}dk önce`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}s önce`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}g önce`;
-}
 
 interface Message {
   id: string;
@@ -351,87 +337,19 @@ export default function RoomView({
 
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-2xl flex-col p-4">
-      <header className="flex items-center justify-between border-b border-neutral-800 pb-2">
-        <nav className="flex items-center gap-3">
-          {rooms.length === 0 ? (
-            <span className="text-neutral-400">
-              <span className="text-neutral-600">#</span>...
-            </span>
-          ) : (
-            rooms.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => void handleRoomSwitch(r)}
-                title={
-                  (r.description ? `${r.description} — ` : "") +
-                  `son aktivite: ${formatRelativeActivity(r.lastActivityAt)}`
-                }
-                className={
-                  r.id === activeRoom?.id
-                    ? "text-neutral-200"
-                    : "text-neutral-600 hover:text-neutral-400"
-                }
-              >
-                <span className="text-neutral-600">#</span>
-                {r.name}
-                {r.status !== "active" && " (arşiv)"}
-              </button>
-            ))
-          )}
-          <button
-            type="button"
-            onClick={() => setActivePanel("create-room")}
-            className="text-neutral-600 hover:text-neutral-400"
-          >
-            + yeni oda
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleToggleShowArchived()}
-            className="text-neutral-600 hover:text-neutral-400"
-          >
-            {showArchived ? "arşivi gizle" : "arşivi göster"}
-          </button>
-        </nav>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setActivePanel("totp")}
-            className="text-neutral-600 hover:text-neutral-400"
-          >
-            iki adımlı doğrulama
-          </button>
-          <button
-            type="button"
-            onClick={() => setActivePanel("blocked")}
-            className="text-neutral-600 hover:text-neutral-400"
-          >
-            engellenenler
-          </button>
-          <button
-            type="button"
-            onClick={() => setActivePanel("invites")}
-            className="text-neutral-600 hover:text-neutral-400"
-          >
-            invites
-          </button>
-          <button
-            type="button"
-            onClick={() => setActivePanel("delete-account")}
-            className="text-neutral-600 hover:text-red-400"
-          >
-            hesabı sil
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            className="text-neutral-600 hover:text-neutral-400"
-          >
-            çıkış
-          </button>
-        </div>
-      </header>
+      <RoomHeader
+        rooms={rooms}
+        activeRoom={activeRoom}
+        onRoomSwitch={(room) => void handleRoomSwitch(room)}
+        onCreateRoomClick={() => setActivePanel("create-room")}
+        showArchived={showArchived}
+        onToggleShowArchived={() => void handleToggleShowArchived()}
+        onOpenTotp={() => setActivePanel("totp")}
+        onOpenBlocked={() => setActivePanel("blocked")}
+        onOpenInvites={() => setActivePanel("invites")}
+        onOpenDeleteAccount={() => setActivePanel("delete-account")}
+        onLogout={() => void handleLogout()}
+      />
 
       {activePanel === "totp" ? (
         <TotpSettingsView
@@ -467,81 +385,24 @@ export default function RoomView({
           onClose={() => setActivePanel("none")}
         />
       ) : (
-        <>
-          <section
-            ref={messagesSectionRef}
-            className="flex-1 overflow-y-auto py-4 text-neutral-500"
-          >
-            {nextCursor && (
-              <button
-                type="button"
-                onClick={() => void handleLoadOlder()}
-                disabled={isLoadingOlder}
-                className="mb-2 text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
-              >
-                {isLoadingOlder
-                  ? "yükleniyor..."
-                  : "daha eski mesajları yükle"}
-              </button>
-            )}
-            {messages.length === 0 ? (
-              <p>henüz mesaj yok</p>
-            ) : (
-              <ul className="space-y-1">
-                {messages.map((message) => {
-                  const isMine =
-                    message.authorUsername !== null &&
-                    message.authorUsername === myProfile?.username;
-                  const canViewHistory =
-                    isMine || myProfile?.role === "moderator";
-                  return (
-                    <MessageItem
-                      key={message.id}
-                      message={message}
-                      isMine={isMine}
-                      canViewHistory={canViewHistory}
-                      onSubmitEdit={handleMessageEdit}
-                      fetchHistory={fetchHistoryForMessage}
-                    />
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-
-          {sendError && <p className="text-red-400">{sendError}</p>}
-          {activeRoom && activeRoom.status !== "active" ? (
-            <p className="border-t border-neutral-800 pt-2 text-neutral-600">
-              bu oda arşivlenmiş, sadece okunabilir
-            </p>
-          ) : (
-            <form
-              onSubmit={(event) => void handleSubmit(event)}
-              className="flex items-center gap-2 border-t border-neutral-800 pt-2"
-            >
-              <span className="text-neutral-600">&gt;</span>
-              <input
-                type="text"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                disabled={!isReady}
-                placeholder="mesaj yaz..."
-                className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none disabled:cursor-not-allowed"
-              />
-              <span
-                className="terminal-cursor inline-block h-4 w-2 bg-neutral-400"
-                aria-hidden="true"
-              />
-              <button
-                type="submit"
-                disabled={!canSend || isSending}
-                className="text-neutral-600 disabled:cursor-not-allowed"
-              >
-                {isSending ? "gönderiliyor..." : "gönder"}
-              </button>
-            </form>
-          )}
-        </>
+        <ChatPanel
+          messagesSectionRef={messagesSectionRef}
+          messages={messages}
+          myProfile={myProfile}
+          onMessageEditSubmit={handleMessageEdit}
+          fetchHistoryForMessage={fetchHistoryForMessage}
+          nextCursor={nextCursor}
+          isLoadingOlder={isLoadingOlder}
+          onLoadOlder={() => void handleLoadOlder()}
+          sendError={sendError}
+          activeRoom={activeRoom}
+          draft={draft}
+          onDraftChange={setDraft}
+          isReady={isReady}
+          canSend={canSend}
+          isSending={isSending}
+          onSubmit={(event) => void handleSubmit(event)}
+        />
       )}
     </main>
   );
