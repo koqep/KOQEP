@@ -210,4 +210,175 @@ describe('RoomsService', () => {
       expect(usedNow).toBeLessThanOrEqual(after);
     });
   });
+
+  describe('purgeArchivedRooms', () => {
+    const now = new Date('2026-08-15T00:00:00.000Z');
+    const cutoff = new Date('2026-06-16T00:00:00.000Z'); // now - 60 gün
+    const oldArchivedAt = new Date('2026-06-01T00:00:00.000Z');
+
+    function buildPurgeMock(
+      candidates: {
+        id: string;
+        archivedAt: Date | null;
+        lastViewedAt: Date | null;
+      }[],
+      recheckResult: {
+        id: string;
+        archivedAt: Date | null;
+        lastViewedAt: Date | null;
+      }[],
+    ): {
+      prismaMock: Partial<PrismaService>;
+      outerFindManyMock: jest.Mock;
+      recheckFindManyMock: jest.Mock;
+      messageEditDeleteManyMock: jest.Mock;
+      messageDeleteManyMock: jest.Mock;
+      roomDeleteManyMock: jest.Mock;
+      transactionMock: jest.Mock;
+    } {
+      const outerFindManyMock = jest.fn().mockResolvedValue(candidates);
+      const recheckFindManyMock = jest.fn().mockResolvedValue(recheckResult);
+      const messageEditDeleteManyMock = jest
+        .fn()
+        .mockResolvedValue({ count: 0 });
+      const messageDeleteManyMock = jest.fn().mockResolvedValue({ count: 0 });
+      const roomDeleteManyMock = jest.fn().mockResolvedValue({ count: 0 });
+      const txMock = {
+        room: { findMany: recheckFindManyMock, deleteMany: roomDeleteManyMock },
+        message: { deleteMany: messageDeleteManyMock },
+        messageEdit: { deleteMany: messageEditDeleteManyMock },
+      };
+      const transactionMock = jest
+        .fn()
+        .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock));
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findMany: outerFindManyMock,
+        } as unknown as PrismaService['room'],
+        $transaction: transactionMock,
+      };
+      return {
+        prismaMock,
+        outerFindManyMock,
+        recheckFindManyMock,
+        messageEditDeleteManyMock,
+        messageDeleteManyMock,
+        roomDeleteManyMock,
+        transactionMock,
+      };
+    }
+
+    it('hic_goruntulenmemis_arsivlenmis_odayi_siler', async () => {
+      const candidate = {
+        id: 'room-1',
+        archivedAt: oldArchivedAt,
+        lastViewedAt: null,
+      };
+      const {
+        prismaMock,
+        outerFindManyMock,
+        messageEditDeleteManyMock,
+        messageDeleteManyMock,
+        roomDeleteManyMock,
+      } = buildPurgeMock([candidate], [candidate]);
+
+      const service = buildService(prismaMock);
+      const result = await service.purgeArchivedRooms(now);
+
+      expect(outerFindManyMock).toHaveBeenCalledWith({
+        where: { status: 'archived', archivedAt: { lt: cutoff } },
+        select: { id: true, archivedAt: true, lastViewedAt: true },
+      });
+      expect(messageEditDeleteManyMock).toHaveBeenCalledWith({
+        where: { message: { roomId: { in: ['room-1'] } } },
+      });
+      expect(messageDeleteManyMock).toHaveBeenCalledWith({
+        where: { roomId: { in: ['room-1'] } },
+      });
+      expect(roomDeleteManyMock).toHaveBeenCalledWith({
+        where: { id: { in: ['room-1'] } },
+      });
+      expect(result).toEqual({ deletedCount: 1 });
+    });
+
+    it('arsivden_once_goruntulenmis_ama_sonra_hic_goruntulenmemis_odayi_siler', async () => {
+      const candidate = {
+        id: 'room-1',
+        archivedAt: oldArchivedAt,
+        lastViewedAt: new Date('2026-05-01T00:00:00.000Z'), // archivedAt'ten önce
+      };
+      const { prismaMock, roomDeleteManyMock } = buildPurgeMock(
+        [candidate],
+        [candidate],
+      );
+
+      const service = buildService(prismaMock);
+      const result = await service.purgeArchivedRooms(now);
+
+      expect(roomDeleteManyMock).toHaveBeenCalledWith({
+        where: { id: { in: ['room-1'] } },
+      });
+      expect(result).toEqual({ deletedCount: 1 });
+    });
+
+    it('arsivden_sonra_goruntulenmis_odayi_hic_transactiona_girmeden_atlar', async () => {
+      const candidate = {
+        id: 'room-1',
+        archivedAt: oldArchivedAt,
+        lastViewedAt: new Date('2026-07-01T00:00:00.000Z'), // archivedAt'ten sonra
+      };
+      const { prismaMock, transactionMock, outerFindManyMock } = buildPurgeMock(
+        [candidate],
+        [candidate],
+      );
+
+      const service = buildService(prismaMock);
+      const result = await service.purgeArchivedRooms(now);
+
+      expect(outerFindManyMock).toHaveBeenCalled();
+      expect(transactionMock).not.toHaveBeenCalled();
+      expect(result).toEqual({ deletedCount: 0 });
+    });
+
+    it('aday_yoksa_transactiona_hic_girmez', async () => {
+      const { prismaMock, transactionMock } = buildPurgeMock([], []);
+
+      const service = buildService(prismaMock);
+      const result = await service.purgeArchivedRooms(now);
+
+      expect(transactionMock).not.toHaveBeenCalled();
+      expect(result).toEqual({ deletedCount: 0 });
+    });
+
+    it('toctou_disi_sorguda_uygun_gorunen_ama_transaction_icindeki_recheckte_artik_uygun_olmayan_odayi_silmez', async () => {
+      // Aday-seçme sorgusu sırasında hiç görüntülenmemiş görünüyordu, ama
+      // transaction içindeki recheck'te (aradan biri odayı görüntülemiş
+      // gibi simüle ediliyor) artık arşivden SONRA görüntülenmiş -
+      // silinMEmeli.
+      const staleOuterView = {
+        id: 'room-1',
+        archivedAt: oldArchivedAt,
+        lastViewedAt: null,
+      };
+      const freshRecheckView = {
+        id: 'room-1',
+        archivedAt: oldArchivedAt,
+        lastViewedAt: new Date('2026-08-14T00:00:00.000Z'), // recheck anında görüntülenmiş
+      };
+      const {
+        prismaMock,
+        messageEditDeleteManyMock,
+        messageDeleteManyMock,
+        roomDeleteManyMock,
+      } = buildPurgeMock([staleOuterView], [freshRecheckView]);
+
+      const service = buildService(prismaMock);
+      const result = await service.purgeArchivedRooms(now);
+
+      expect(messageEditDeleteManyMock).not.toHaveBeenCalled();
+      expect(messageDeleteManyMock).not.toHaveBeenCalled();
+      expect(roomDeleteManyMock).not.toHaveBeenCalled();
+      expect(result).toEqual({ deletedCount: 0 });
+    });
+  });
 });
