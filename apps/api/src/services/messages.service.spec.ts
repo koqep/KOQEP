@@ -1,12 +1,20 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  GoneException,
+  NotFoundException,
+} from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { BlocksService } from './blocks.service';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
 describe('MessagesService', () => {
-  const room = { id: 'room-1', name: CORE_ROOM_NAMES[0] };
-  const otherRoom = { id: 'room-2', name: CORE_ROOM_NAMES[1] };
+  const room = { id: 'room-1', name: CORE_ROOM_NAMES[0], status: 'active' };
+  const otherRoom = {
+    id: 'room-2',
+    name: CORE_ROOM_NAMES[1],
+    status: 'active',
+  };
 
   function buildService(
     prismaMock: Partial<PrismaService>,
@@ -128,6 +136,21 @@ describe('MessagesService', () => {
       await expect(
         service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('reddeder_arsivlenmis_odaya_mesaji_gone_ile', async () => {
+      const archivedRoom = { ...room, status: 'archived' };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(archivedRoom),
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).rejects.toThrow(GoneException);
     });
   });
 
@@ -265,7 +288,12 @@ describe('MessagesService', () => {
 
   describe('editMessage', () => {
     function buildTransactionalPrismaMock(
-      existingMessage: { id: string; content: string; authorId: string | null },
+      existingMessage: {
+        id: string;
+        content: string;
+        authorId: string | null;
+        room?: { status: string };
+      },
       updated: unknown,
     ): {
       prismaMock: Partial<PrismaService>;
@@ -280,7 +308,10 @@ describe('MessagesService', () => {
       };
       const prismaMock: Partial<PrismaService> = {
         message: {
-          findUnique: jest.fn().mockResolvedValue(existingMessage),
+          findUnique: jest.fn().mockResolvedValue({
+            room: { status: 'active' },
+            ...existingMessage,
+          }),
         } as unknown as PrismaService['message'],
         $transaction: jest
           .fn()
@@ -353,6 +384,22 @@ describe('MessagesService', () => {
       await expect(
         service.editMessage('user-1', 'yok-mesaj', 'yeni icerik'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('reddeder_arsivlenmis_odadaki_duzenlemeyi_gone_ile_yazar_olsa_bile', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'eski icerik',
+        authorId: 'user-1',
+        room: { status: 'archived' },
+      };
+      const { prismaMock } = buildTransactionalPrismaMock(existing, {});
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.editMessage('user-1', 'msg-1', 'yeni icerik'),
+      ).rejects.toThrow(GoneException);
     });
   });
 

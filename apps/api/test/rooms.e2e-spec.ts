@@ -213,4 +213,41 @@ describe('Room creation (e2e)', () => {
     const message = await receivedPromise;
     expect(message.content).toBe(content);
   }, 10000);
+
+  it('arsivlenmis_odaya_mesaj_gonderme_denemesi_room_archived_hatasi_doner', async () => {
+    // Sweep endpoint'i (Slice B'nin sonraki adımı) henüz yok - odayı elle
+    // arşivleyip GoneException -> WsException(ROOM_ARCHIVED) zincirini
+    // uçtan uca doğruluyor.
+    const { accessToken } = await createTestUser();
+    const name = `oda-${randomUUID()}`;
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name })
+      .expect(201);
+    const room = response.body as { id: string; name: string };
+    createdRoomIds.push(room.id);
+
+    await prisma.room.update({
+      where: { id: room.id },
+      data: { status: 'archived', archivedAt: new Date() },
+    });
+
+    const socket = connect(accessToken);
+    await waitForEvent(socket, 'ready');
+
+    const exceptionPromise = waitForEvent<{ status: string; code: string }>(
+      socket,
+      'exception',
+    );
+    socket.emit('message:send', { content: 'arsiv-denemesi', roomName: room.name });
+
+    const exception = await exceptionPromise;
+    expect(exception.code).toBe('ROOM_ARCHIVED');
+
+    const row = await prisma.message.findFirst({
+      where: { content: 'arsiv-denemesi' },
+    });
+    expect(row).toBeNull();
+  }, 10000);
 });

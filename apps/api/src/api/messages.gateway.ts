@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import {
   ForbiddenException,
+  GoneException,
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
@@ -143,6 +144,11 @@ export class MessagesGateway
         // guvenilir kabul etme.
         return;
       }
+      if (error instanceof GoneException) {
+        // M3 Slice B: oda arşivlenmiş - RATE_LIMITED/MESSAGE_TOO_LONG ile
+        // aynı yapısal hata deseni, client'ta "salt-okunur" mesajı gösterir.
+        throw new WsException({ status: 'error', code: 'ROOM_ARCHIVED' });
+      }
       // Beklenmeyen (ornegin yazarin User satiri artik yok - silinmis
       // kullanicinin soketi SocketRegistryService tarafindan proaktif
       // kapatildigi icin pratikte ulasilamaz olmasi hedefleniyor) -
@@ -187,6 +193,12 @@ export class MessagesGateway
         content,
       );
     } catch (error) {
+      if (error instanceof GoneException) {
+        // M3 Slice B: oda arşivlenmiş - "yazarı değilsin" durumundan
+        // BAĞIMSIZ, sessizce yutulmuyor (ROOM_ARCHIVED yapısal hatası
+        // gösterilmeli, "yazarı değilsin" ise gösterilmiyor).
+        throw new WsException({ status: 'error', code: 'ROOM_ARCHIVED' });
+      }
       if (
         error instanceof NotFoundException ||
         error instanceof ForbiddenException
