@@ -3,20 +3,20 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-01
-**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A-C'ye bölündü, Slice A TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29). Slice B (arşiv yaşam döngüsü) plan modu onaylandı, uygulama henüz başlamadı. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Son güncelleme:** 2026-08-02
+**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A TAMAMEN BİTTİ (main'e merge, PR #29). Slice B (arşiv yaşam döngüsü) TAMAMEN BİTTİ, `m3/slice-b-archive-lifecycle` dalında commit'e hazır, henüz push/merge edilmedi. Slice C (silme) sırada. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-07-31 — M3 kapsam gözden geçirmesi: A/B/C dilimlerine bölündü.** Kod okuyarak iki kritik açık bulundu (milestone'un Tasks listesinde hiç yoktu): WS gateway sadece çekirdek odaları katılıyor (kullanıcı odaları gerçek zamanlı hiç ulaşmaz — Slice A'ya dahil), `sendMessage` oda durumunu hiç kontrol etmiyor (Slice B'ye dahil). Gerçek bir kural çatışması bulundu: `CLAUDE.md`'nin "mesaj asla hard-delete edilmez" kuralı ile ADR-0006'nın oda hard-delete'i — kullanıcıya soruldu, oda silinince mesajları da siliniyor kararı verildi, `CLAUDE.md`+ADR-0006'ya kayıtlı istisna eklendi. Detay: milestone Plan notları.
 - **2026-08-01 — M3 Slice A tamamlandı, main'e merge edildi (PR #29).** `POST /rooms` + günde-1 rate limit + WS join-set düzeltmesi + `description`/`lastActivityAt` tooltip sinyali. Tam doğrulama: apps/api (lint/typecheck/build temiz, birim 98/98, e2e 46/46), apps/web (lint/typecheck/build temiz, mocked e2e 42/42). Detay: milestone dosyasının "Plan notları — Slice A uygulaması" bölümü.
-- **2026-08-01 — M3 Slice B (arşiv yaşam döngüsü) plan modu onaylandı.** Bir Plan agent'ın ikinci geçişiyle çapraz kontrol edildi; `Room.archivedAt` bilerek Slice C'den Slice B'ye taşındı (Slice C'nin 60-gün hesaplaması bir başlangıç noktasına muhtaç), `editMessage`'ın da `sendMessage` gibi arşiv kontrolüne ihtiyacı olduğu bulundu. Dış tetikleyici: GitHub Actions scheduled workflow (kullanıcı kararı). Oturum limiti nedeniyle UYGULAMA YOK, sadece tasarım — detay: milestone dosyasının "Plan notları — Slice B tasarımı" bölümü.
+- **2026-08-02 — M3 Slice B (arşiv yaşam döngüsü) tamamlandı.** `POST /internal/rooms/lifecycle-sweep` + `CronSecretGuard`, 14-gün-sessizlik → arşivleme, salt-okunur (hem `sendMessage` HEM `editMessage`), `GET /rooms?includeArchived`, GitHub Actions saatlik tetikleyici, frontend toggle + gerçek salt-okunur composer. Sekiz izole commit'e bölündü (kullanıcı isteği, haftalık limit riski). Tam doğrulama: apps/api (birim 103/103, e2e 52/52), apps/web (mocked e2e 43/43). Detay: milestone dosyasının "Plan notları — Slice B uygulaması" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M3 Slice B (arşiv yaşam döngüsü) plan modu onaylandı (2026-08-01) — tasarım milestone dosyasının "Plan notları — Slice B tasarımı" bölümünde tam haliyle duruyor. Oturum limiti nedeniyle UYGULAMA HENÜZ BAŞLAMADI, sadece plan dokümante edildi.
-- **Sonraki adım:** Bir sonraki oturumda `m3/slice-b-archive-lifecycle` dalı açılıp Slice B'nin onaylı tasarımı uygulanacak. Ayrıca bağımsız, sırası kullanıcının tercihine kalmış bir iş var: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim — Slice B'ye GÖMÜLMEYECEK, kullanıcının 2026-08-01 kararı). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M3 Slice B tamamlandı, `m3/slice-b-archive-lifecycle` dalında commit'e hazır — henüz push/merge edilmedi.
+- **Sonraki adım:** İki bağımsız iş, sırası kullanıcının tercihine kalmış: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim — Slice B'ye GÖMÜLMEDİ, kullanıcının kararı) ve Slice C (silme yaşam döngüsü — kendi plan-modu turu gerekiyor). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
