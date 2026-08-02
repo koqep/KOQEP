@@ -9,6 +9,7 @@ import { TotpController } from './api/totp.controller';
 import { PasswordResetController } from './api/password-reset.controller';
 import { BlocksController } from './api/blocks.controller';
 import { RoomsController } from './api/rooms.controller';
+import { RoomsLifecycleController } from './api/rooms-lifecycle.controller';
 import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
 import { InvitesController } from './api/invites.controller';
@@ -60,6 +61,7 @@ const DEFAULT_RATE_LIMIT = 100;
     PasswordResetController,
     BlocksController,
     RoomsController,
+    RoomsLifecycleController,
     MessagesController,
     InvitesController,
   ],
