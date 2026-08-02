@@ -4,19 +4,19 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-02
-**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A TAMAMEN BİTTİ (main'e merge, PR #29). Slice B (arşiv yaşam döngüsü) TAMAMEN BİTTİ, `m3/slice-b-archive-lifecycle` dalında commit'e hazır, henüz push/merge edilmedi. Slice C (silme) sırada. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A + Slice B (arşiv yaşam döngüsü) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29, #31). `RoomView.tsx` bölme refactor'ü TAMAMLANDI, `refactor/room-view-split` dalında commit'e hazır. Slice C (silme) sırada. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-07-31 — M3 kapsam gözden geçirmesi: A/B/C dilimlerine bölündü.** Kod okuyarak iki kritik açık bulundu (milestone'un Tasks listesinde hiç yoktu): WS gateway sadece çekirdek odaları katılıyor (kullanıcı odaları gerçek zamanlı hiç ulaşmaz — Slice A'ya dahil), `sendMessage` oda durumunu hiç kontrol etmiyor (Slice B'ye dahil). Gerçek bir kural çatışması bulundu: `CLAUDE.md`'nin "mesaj asla hard-delete edilmez" kuralı ile ADR-0006'nın oda hard-delete'i — kullanıcıya soruldu, oda silinince mesajları da siliniyor kararı verildi, `CLAUDE.md`+ADR-0006'ya kayıtlı istisna eklendi. Detay: milestone Plan notları.
 - **2026-08-01 — M3 Slice A tamamlandı, main'e merge edildi (PR #29).** `POST /rooms` + günde-1 rate limit + WS join-set düzeltmesi + `description`/`lastActivityAt` tooltip sinyali. Tam doğrulama: apps/api (lint/typecheck/build temiz, birim 98/98, e2e 46/46), apps/web (lint/typecheck/build temiz, mocked e2e 42/42). Detay: milestone dosyasının "Plan notları — Slice A uygulaması" bölümü.
-- **2026-08-02 — M3 Slice B (arşiv yaşam döngüsü) tamamlandı.** `POST /internal/rooms/lifecycle-sweep` + `CronSecretGuard`, 14-gün-sessizlik → arşivleme, salt-okunur (hem `sendMessage` HEM `editMessage`), `GET /rooms?includeArchived`, GitHub Actions saatlik tetikleyici, frontend toggle + gerçek salt-okunur composer. Sekiz izole commit'e bölündü (kullanıcı isteği, haftalık limit riski). Tam doğrulama: apps/api (birim 103/103, e2e 52/52), apps/web (mocked e2e 43/43). Detay: milestone dosyasının "Plan notları — Slice B uygulaması" bölümü.
+- **2026-08-02 — M3 Slice B (arşiv yaşam döngüsü) tamamlandı, main'e merge (PR #31).** `POST /internal/rooms/lifecycle-sweep` + `CronSecretGuard`, 14-gün-sessizlik → arşivleme, salt-okunur (hem `sendMessage` HEM `editMessage`), `GET /rooms?includeArchived`, GitHub Actions saatlik tetikleyici, frontend toggle + gerçek salt-okunur composer. CI'da 5 mocked e2e testi kırmızı çıktı (gerçek yarış durumu — composer, `status` alanı eksik mock'larda arşiv render'ına düşüyordu), ayrı commit'te düzeltildi. Ardından `RoomView.tsx` (548→409 satır) `RoomHeader`/`ChatPanel`'e bölündü, davranış değişmedi. Detay: milestone dosyasının ilgili Plan notları bölümleri.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M3 Slice B tamamlandı, `m3/slice-b-archive-lifecycle` dalında commit'e hazır — henüz push/merge edilmedi.
-- **Sonraki adım:** İki bağımsız iş, sırası kullanıcının tercihine kalmış: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim — Slice B'ye GÖMÜLMEDİ, kullanıcının kararı) ve Slice C (silme yaşam döngüsü — kendi plan-modu turu gerekiyor). Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** `RoomView.tsx` bölme refactor'ü tamamlandı, `refactor/room-view-split` dalında commit'e hazır — henüz push/merge edilmedi.
+- **Sonraki adım:** Slice C (silme yaşam döngüsü) — kendi plan-modu turu gerekiyor, M3'ün son dilimi. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -39,8 +39,7 @@
 - CI'da job-seviyesi env değişkenleri TÜM adım/alt süreçlere sızar, ama JOB'LAR ARASI miras YOK — her job'ın kendi `env:` bloğu var, bir job'a eklenen değişken diğerlerinde sessizce eksik kalır. Yeni bir env var eklerken HER job'ı tek tek kontrol et.
 - Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i — buildCommand/CI adımına gömmeye çalışma.
 - Render servisi Blueprint'e bağlı DEĞİL, elle kuruldu — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz; bir env var'ın DEĞERİNİ değiştirmek de yansımayabilir, sadece tamamen SİLMEK işe yaradı (gözlemlendi, mekanizma bilinmiyor).
-- `.env`/`.env.*` dosyaları `Read` için engelli — içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz.
-- `@prisma/client` import edilince `.env`'i sessizce (yeniden) yükler; testte "env var yok" simüle etmek için `delete process.env.X` DEĞİL, boş string (`''`) kullan.
+- `.env`/`.env.*` dosyaları `Read` için engelli (içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz); `@prisma/client` import edilince `.env`'i ayrıca sessizce (yeniden) yükler — testte "env var yok" simüle etmek için `delete process.env.X` DEĞİL, boş string (`''`) kullan.
 - `resend` SDK hata durumunda fırlatmaz, `{data, error}` döner — elle kontrol şart.
 - `apps/web`'de token bellek-içi (ADR-0002) — reload oturumu düşürür, kasıtlı.
 - Sıfır kullanıcılı bir DB'de `/auth/signup` kendi kendini başlatamaz — davetin `issuedById`'i var olan bir `User`'a FK'lidir. İlk kullanıcı her zaman elle `INSERT INTO "User"` + lokal `argon2.hash` gerektirir — "eksik davet kodu" sanıp Invite tablosuna uğraşma, önce User'ı elle yarat.
@@ -58,3 +57,4 @@
 - NestJS WS gateway'lerinde: varsayılan exception filtresi `WsException` DIŞINDAKİ her şeyi jenerik "Internal server error"a çeviriyor (kaynak kodda doğrulandı) — yapısal bir hata sinyali (`code` alanlı) istiyorsan `WsException({code:...})` fırlat. Ayrıca handler `Promise<void>` dönerse ack callback'i (başarıda bile) hiç tetiklenmiyor — gerçek bir değer dönmesi şart; client'ta da düz `.emit(event,payload,cb)` disconnect'te ack'i sessizce kaybeder, `.timeout()` şart. M2.5 Slice D'de üçü de kaynak okunarak doğrulandı, sonra e2e'de kanıtlandı.
 - `messages.gateway.ts`'in `handleConnection`'ı bağlantıda hangi odalara `client.join()` edileceğini SABİT bir listeden (`CORE_ROOM_NAMES`) alıyordu — dinamik/kullanıcı-üretimi kaynaklar (M3'te oda) eklerken bu tür "bağlantı anında sabit bir listeye katıl" desenlerini MUTLAKA ara: yeni kaynak var olsa bile hiçbir soket ona hiç katılmaz, gerçek zamanlı teslimat sessizce kırılır. Milestone dokümanının Tasks listesi bunu hiç anmıyordu, sadece kod okuyarak bulundu.
 - Plan modundayken `ExitPlanMode` SADECE "implementasyona başla" onayı DEĞİL — plan dosyası dışındaki HER dosyayı düzenlemenin (docs dahil) tek kilidi. Kullanıcı "kod yazma, sadece docs güncelle" dediğinde bile önce `ExitPlanMode` çağrılmalı; aksi halde `Edit`/`Write` plan-modu kısıtlamasına takılır, kullanıcı aynı isteği tekrarlamak zorunda kalır (bu oturumda oldu).
+- `Message` interface'i artık İKİ ayrı dosyada tanımlı (`MessageItem.tsx` ve `ChatPanel.tsx`, RoomView.tsx bölme refactor'ünün bilinçli tercihi — import yerine tekrar) — birini değiştirirsen diğerini de kontrol et, sessizce birbirinden sapabilirler.
