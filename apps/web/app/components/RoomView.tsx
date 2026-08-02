@@ -12,6 +12,7 @@ import {
   logout,
   getCurrentUser,
   getMessageEditHistory,
+  listRooms,
   type UserProfile,
   type MessageEdit,
   type Room,
@@ -87,6 +88,7 @@ export default function RoomView({
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
   const [activePanel, setActivePanel] = useState<ActivePanel>("none");
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const activeRoomIdRef = useRef<string | null>(null);
   const activeRoomRef = useRef<Room | null>(null);
@@ -180,11 +182,8 @@ export default function RoomView({
             // sohbetin geri kalanı bundan bağımsız çalışmaya devam eder.
           });
 
-        const roomsResponse = await fetch(`${API_URL}/rooms`, {
-          headers: authHeaders,
-        });
-        if (!roomsResponse.ok || cancelled) return;
-        const fetchedRooms = (await roomsResponse.json()) as Room[];
+        const fetchedRooms = await listRooms(accessToken);
+        if (cancelled) return;
         const firstRoom = fetchedRooms[0];
         if (!firstRoom || cancelled) return;
         setRooms(fetchedRooms);
@@ -233,6 +232,11 @@ export default function RoomView({
             setSendError(
               `Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`,
             );
+          } else if (payload?.code === "ROOM_ARCHIVED") {
+            // Yedek yol - composer zaten activeRoom.status'a göre proaktif
+            // devre dışı kalıyor, bu sadece WS round-trip'ini bekleyen
+            // nadir bir yarış durumu için.
+            setSendError("Bu oda arşivlenmiş, sadece okunabilir.");
           } else {
             setSendError("Mesaj gönderilemedi.");
           }
@@ -262,6 +266,17 @@ export default function RoomView({
     if (fetchGenerationRef.current !== generation) return;
     setMessages(history?.messages ?? []);
     setNextCursor(history?.nextCursor ?? null);
+  }
+
+  async function handleToggleShowArchived() {
+    const next = !showArchived;
+    setShowArchived(next);
+    try {
+      const fetchedRooms = await listRooms(accessToken, next);
+      setRooms(fetchedRooms);
+    } catch {
+      // Sessizce yoksay - switcher eski listede kalır, sonraki reload'da düzelir.
+    }
   }
 
   async function handleLoadOlder() {
@@ -329,7 +344,10 @@ export default function RoomView({
     onLoggedOut();
   }
 
-  const canSend = isReady && draft.trim().length > 0;
+  const canSend =
+    isReady &&
+    draft.trim().length > 0 &&
+    (activeRoom === null || activeRoom.status === "active");
 
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-2xl flex-col p-4">
@@ -357,6 +375,7 @@ export default function RoomView({
               >
                 <span className="text-neutral-600">#</span>
                 {r.name}
+                {r.status !== "active" && " (arşiv)"}
               </button>
             ))
           )}
@@ -366,6 +385,13 @@ export default function RoomView({
             className="text-neutral-600 hover:text-neutral-400"
           >
             + yeni oda
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleToggleShowArchived()}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            {showArchived ? "arşivi gizle" : "arşivi göster"}
           </button>
         </nav>
         <div className="flex items-center gap-4">
@@ -484,31 +510,37 @@ export default function RoomView({
           </section>
 
           {sendError && <p className="text-red-400">{sendError}</p>}
-          <form
-            onSubmit={(event) => void handleSubmit(event)}
-            className="flex items-center gap-2 border-t border-neutral-800 pt-2"
-          >
-            <span className="text-neutral-600">&gt;</span>
-            <input
-              type="text"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              disabled={!isReady}
-              placeholder="mesaj yaz..."
-              className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none disabled:cursor-not-allowed"
-            />
-            <span
-              className="terminal-cursor inline-block h-4 w-2 bg-neutral-400"
-              aria-hidden="true"
-            />
-            <button
-              type="submit"
-              disabled={!canSend || isSending}
-              className="text-neutral-600 disabled:cursor-not-allowed"
+          {activeRoom && activeRoom.status !== "active" ? (
+            <p className="border-t border-neutral-800 pt-2 text-neutral-600">
+              bu oda arşivlenmiş, sadece okunabilir
+            </p>
+          ) : (
+            <form
+              onSubmit={(event) => void handleSubmit(event)}
+              className="flex items-center gap-2 border-t border-neutral-800 pt-2"
             >
-              {isSending ? "gönderiliyor..." : "gönder"}
-            </button>
-          </form>
+              <span className="text-neutral-600">&gt;</span>
+              <input
+                type="text"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                disabled={!isReady}
+                placeholder="mesaj yaz..."
+                className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none disabled:cursor-not-allowed"
+              />
+              <span
+                className="terminal-cursor inline-block h-4 w-2 bg-neutral-400"
+                aria-hidden="true"
+              />
+              <button
+                type="submit"
+                disabled={!canSend || isSending}
+                className="text-neutral-600 disabled:cursor-not-allowed"
+              >
+                {isSending ? "gönderiliyor..." : "gönder"}
+              </button>
+            </form>
+          )}
         </>
       )}
     </main>

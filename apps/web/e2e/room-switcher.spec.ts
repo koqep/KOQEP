@@ -11,8 +11,8 @@ test("oda_degistirince_mesaj_listesi_yeni_odaya_gore_guncellenir", async ({
   await page.route("**/rooms", (route) =>
     route.fulfill({
       json: [
-        { id: "room-general", name: "general" },
-        { id: "room-meta", name: "meta" },
+        { id: "room-general", name: "general", status: "active" },
+        { id: "room-meta", name: "meta", status: "active" },
       ],
     }),
   );

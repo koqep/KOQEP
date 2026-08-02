@@ -24,6 +24,7 @@ test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
           name: body.name,
           description: body.description ?? null,
           lastActivityAt: new Date().toISOString(),
+          status: "active",
         },
       });
       return;
@@ -35,6 +36,7 @@ test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
           name: "general",
           description: null,
           lastActivityAt: new Date().toISOString(),
+          status: "active",
         },
       ],
     });
@@ -101,6 +103,7 @@ test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
           name: "general",
           description: null,
           lastActivityAt: new Date().toISOString(),
+          status: "active",
         },
       ],
     });
