@@ -240,7 +240,10 @@ describe('Room creation (e2e)', () => {
       socket,
       'exception',
     );
-    socket.emit('message:send', { content: 'arsiv-denemesi', roomName: room.name });
+    socket.emit('message:send', {
+      content: 'arsiv-denemesi',
+      roomName: room.name,
+    });
 
     const exception = await exceptionPromise;
     expect(exception.code).toBe('ROOM_ARCHIVED');
@@ -250,4 +253,41 @@ describe('Room creation (e2e)', () => {
     });
     expect(row).toBeNull();
   }, 10000);
+
+  it('get_rooms_varsayilan_olarak_arsivlenmisi_haric_tutar_includeArchived_ile_dahil_eder', async () => {
+    const { accessToken } = await createTestUser();
+    const name = `oda-${randomUUID()}`;
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name })
+      .expect(201);
+    const room = response.body as { id: string };
+    createdRoomIds.push(room.id);
+
+    await prisma.room.update({
+      where: { id: room.id },
+      data: { status: 'archived', archivedAt: new Date() },
+    });
+
+    const defaultList = await request(app.getHttpServer())
+      .get('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const defaultNames = (defaultList.body as { name: string }[]).map(
+      (r) => r.name,
+    );
+    expect(defaultNames).not.toContain(name);
+
+    const withArchived = await request(app.getHttpServer())
+      .get('/rooms?includeArchived=true')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const withArchivedRooms = withArchived.body as {
+      name: string;
+      status: string;
+    }[];
+    const archivedEntry = withArchivedRooms.find((r) => r.name === name);
+    expect(archivedEntry?.status).toBe('archived');
+  });
 });

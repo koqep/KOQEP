@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, RoomStatus } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { SocketRegistryService } from './socket-registry.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
@@ -11,6 +11,7 @@ export interface RoomSummary {
   name: string;
   description: string | null;
   lastActivityAt: Date;
+  status: RoomStatus;
 }
 
 @Injectable()
@@ -20,9 +21,21 @@ export class RoomsService {
     private readonly socketRegistry: SocketRegistryService,
   ) {}
 
-  async listRooms(): Promise<RoomSummary[]> {
+  // `deleted` durumu hiçbir kod yolunda gerçekten yazılmıyor (ADR-0006:
+  // silme gerçek bir row hard-delete, status flip değil) - filtre yine de
+  // tam tip güvenliği için `RoomStatus`'un üç değerini de kapsıyor.
+  async listRooms(includeArchived = false): Promise<RoomSummary[]> {
     return this.prisma.room.findMany({
-      select: { id: true, name: true, description: true, lastActivityAt: true },
+      where: {
+        status: includeArchived ? { in: ['active', 'archived'] } : 'active',
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        lastActivityAt: true,
+        status: true,
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -58,6 +71,7 @@ export class RoomsService {
           name: true,
           description: true,
           lastActivityAt: true,
+          status: true,
         },
       });
     } catch (error) {
