@@ -322,7 +322,43 @@ için eklendi, onlar aslında kırılmamıştı).
 43/43 (yeni `e2e/room-archive.spec.ts` dahil).
 
 ### Sıradaki
-Slice B tamamlandı, commit'e hazır (henüz push/merge edilmedi — kullanıcı
-onayına kalmış). Sırada iki bağımsız iş, sırası kullanıcının tercihine
-kalmış: `RoomView.tsx` bölme refactor'ü (küçük, ayrı dilim) ve Slice C
-(silme yaşam döngüsü — kendi plan-modu turu gerekiyor).
+Slice B `main`'e merge edildi (PR #31). CI'da 5 mocked e2e testi kırmızı
+çıktı (`auth`/`code-block`/`delete-account`/`invite` + iki tekrar) —
+gerçek bir yarış durumuydu, flaky değil: composer `activeRoom.status
+!== 'active'` olunca salt-okunur render'a düşüyor, `activeRoom` başta
+`null` olduğu için form kısa bir an görünüyor, `status` alanı eksik
+mock'larda oda fetch'i çözülünce salt-okunur'a dönüyor — Playwright'ın
+`toBeVisible()` poll'u bu pencereyi bazen yakalıyor bazen yakalamıyordu.
+`page.locator("main").innerHTML()` ile doğrudan DOM dökümüyle doğrulandı,
+eksik `status: 'active'` alanı olan 6 dosyaya eklenerek düzeltildi (ayrı
+commit, `c14cea2`). Sırada `RoomView.tsx` bölme refactor'ü kalmıştı —
+aşağıya bakın, tamamlandı. Slice C (silme yaşam döngüsü) hâlâ sırada,
+kendi plan-modu turu gerekiyor.
+
+## Plan notları — RoomView.tsx bölme refactor'ü (2026-08-02)
+
+Tasarım aynen uygulandı, sapma yok — davranış değişikliği yok, sadece
+JSX + prop taşıma. `apps/web/app/components/RoomView.tsx`'ten iki saf-sunum
+bileşeni çıkarıldı: `RoomHeader.tsx` (`<header>` bloğu + artık sadece
+orada kullanılan `formatRelativeActivity`) ve `ChatPanel.tsx` (mesaj
+listesi + composer, `messagesSectionRef` parent'ta kalıp prop olarak
+geçiriliyor — scroll-koruma `useLayoutEffect`'i hiç taşınmadı).
+State/ref/effect/handler'ların tamamı `RoomView.tsx`'te kaldı —
+bootstrap `useEffect`'i (WS bağlantısı, `fetchGenerationRef`'in üç
+handler arasında paylaşıldığı en karmaşık kısım) bilinçli olarak
+dokunulmadı, ayrı ve daha riskli bir gelecek iş olarak bırakıldı.
+
+**Sonuç:** `RoomView.tsx` 548 → 409 satır. Yeni test yazılmadı — davranış
+değişmediği için mevcut 43 mocked e2e testi (hem `--workers=1` hem
+varsayılan paralellikle, ikişer kez) + lint/typecheck/build regresyon
+ağı oldu, hepsi temiz.
+
+**Kullanıcının onay sırasında düşürdüğü bir tuzak notu:** `ChatPanel.tsx`
+artık `MessageItem.tsx` gibi kendi `Message` interface'ini ayrı tanımlıyor
+(bilinçli tekrar, import değil) — `docs/STATE.md`'nin Tuzaklar bölümüne
+tek satır not eklendi.
+
+### Sıradaki
+Refactor tamamlandı, `refactor/room-view-split` dalında commit'e hazır,
+push kullanıcı onayına kalmış. Sırada tek iş: Slice C (silme yaşam
+döngüsü) — kendi plan-modu turu gerekiyor.
