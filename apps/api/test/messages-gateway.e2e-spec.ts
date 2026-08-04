@@ -25,6 +25,7 @@ describe('Messages Gateway (e2e)', () => {
   let accessToken: string;
   let baseUrl: string;
   const createdMessageIds: string[] = [];
+  const createdReputationEventIds: string[] = [];
   const openSockets: Socket[] = [];
 
   beforeAll(async () => {
@@ -82,6 +83,11 @@ describe('Messages Gateway (e2e)', () => {
 
   afterAll(async () => {
     openSockets.forEach((socket) => socket.close());
+    if (createdReputationEventIds.length > 0) {
+      await prisma.reputationEvent.deleteMany({
+        where: { id: { in: createdReputationEventIds } },
+      });
+    }
     if (createdMessageIds.length > 0) {
       // MessageEdit -> Message FK'si ON DELETE RESTRICT - mesajdan once
       // onun duzenleme gecmisi silinmeli (M2 Slice B).
@@ -332,5 +338,45 @@ describe('Messages Gateway (e2e)', () => {
       );
     });
     expect(editAck).toEqual({ status: 'ok' });
+  }, 10000);
+
+  it('mesaj_gonderilince_gercek_bir_reputationevent_olusur_ve_totalXp_artar', async () => {
+    // Taze bir kullanıcı - paylaşılan accessToken'ın önceki testlerden
+    // birikmiş totalXp'sini devralmaması için (M4 Slice A).
+    const jwtService = app.get(JwtService);
+    const user = await prisma.user.create({
+      data: {
+        email: `xp-${randomUUID()}@koqep.local`,
+        username: `xp-${randomUUID()}`,
+        passwordHash: 'test-not-a-real-hash',
+      },
+    });
+    const token = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+    const client = connect(token);
+    await waitForEvent(client, 'ready');
+
+    const content = `xp-testi-${randomUUID()}`;
+    const receivedPromise = waitForEvent<{ id: string }>(client, 'message:new');
+    client.emit('message:send', { content });
+    const message = await receivedPromise;
+    createdMessageIds.push(message.id);
+
+    const event = await prisma.reputationEvent.findFirst({
+      where: { sourceMessageId: message.id },
+    });
+    expect(event).not.toBeNull();
+    if (event) createdReputationEventIds.push(event.id);
+    expect(event?.userId).toBe(user.id);
+    expect(event?.actionType).toBe('MESSAGE_SENT');
+    expect(event?.amount).toBe(1);
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
+    expect(updatedUser?.totalXp).toBe(1);
+    expect(updatedUser?.level).toBe(0); // XP_PER_LEVEL=35, tek mesaj yetmez
   }, 10000);
 });

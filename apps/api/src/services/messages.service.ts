@@ -7,6 +7,11 @@ import {
 import { Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { BlocksService } from './blocks.service';
+import {
+  ReputationService,
+  MESSAGE_SENT_ACTION,
+  MESSAGE_SENT_XP,
+} from './reputation.service';
 
 export const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_PAGE_SIZE = 50;
@@ -42,6 +47,7 @@ export class MessagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly blocksService: BlocksService,
+    private readonly reputationService: ReputationService,
   ) {}
 
   async sendMessage(
@@ -69,6 +75,16 @@ export class MessagesService {
         where: { id: room.id },
         data: { lastActivityAt: new Date() },
       });
+      // M4 Slice A: ADR-0004'ün itibar günlüğü - mesaj gönderimi XP
+      // kazandırıyor, aynı transaction içinde (mesaj var ama olayı yoksa
+      // günlük tutarsız kalırdı).
+      await this.reputationService.awardXp(
+        tx,
+        userId,
+        MESSAGE_SENT_ACTION,
+        MESSAGE_SENT_XP,
+        created.id,
+      );
       return created;
     });
 
