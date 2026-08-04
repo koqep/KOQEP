@@ -15,17 +15,17 @@
 ## Acceptance criteria
 - [x] A user can create a room with a slug-style name (username'in `^[a-zA-Z0-9_-]+$` deseniyle aynı, homoglyph/kılık değiştirme riskine karşı) ve opsiyonel serbest-metin bir açıklama (okunabilir "konu" burada yaşıyor); oluşturma günde 1 ile sınırlı (`docs/THREAT-MODEL.md` row 6).
 - [x] A room with no new messages for 14 days becomes read-only and disappears from the active browse list, but stays linkable (`includeArchived` parametresiyle — Slice B).
-- [ ] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule). Slice C, not yet built.
+- [x] An archived room with zero views for a further 60 days is hard-deleted (messages included — see Plan notları, this required an explicit, recorded exception to the message-immutability rule).
 - [x] The browse list excludes archived and deleted rooms by default.
 - [x] A newly created room's messages actually reach other connected users in real time (not in the original spec's task list — found by reading the code, see Plan notları).
 - [x] Her oda butonu bir canlılık sinyali gösteriyor (açıklama + son aktivite zamanı, tooltip seviyesinde — ucuz, ikinci tur gözden geçirmesinde eklendi).
-- [x] Tests cover the creation rate limit, both real-time join-set paths, and the archive lifecycle (Slice A+B). Delete transitions (Slice C) not yet built.
+- [x] Tests cover the creation rate limit, both real-time join-set paths, the archive lifecycle, and the delete lifecycle (Slice A+B+C). M3 tamamlandı.
 
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M2.5'in kullandığı aynı ritim). 2026-07-31 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü, aynı gün ikinci bir tur (kullanıcının 8 maddelik gözden geçirmesi) tasarımı revize etti (aşağıdaki Plan notları):
 - [x] **M3 Slice A — Oda oluşturma + rate limit + WS join-set düzeltmesi.** `POST /rooms`, per-user 24h rate limit (`invites`'ın kurduğu `UserThrottlerGuard` deseni), `Room.lastActivityAt`/`creatorId`/`description` şema eki, oda adı için slug doğrulaması + case-insensitive ön-kontrol (username deseniyle aynı disiplin), `lastActivityAt`'in `sendMessage`'da güncellenmesi (ikinci turda bulunan bir açık — güncellenmezse her oda tam 14 günde arşivlenir), oda butonlarında tooltip seviyesinde canlılık sinyali, ve kod okuyarak bulunan kritik bir açığın düzeltmesi: `messages.gateway.ts`'in `handleConnection`'ı sadece `CORE_ROOM_NAMES`'i katılıyor — kullanıcı odaları hiç katılmıyor, gerçek zamanlı mesaj hiç ulaşmıyor.
 - [x] **M3 Slice B — Arşiv yaşam döngüsü.** Tamamlandı (2026-08-02) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. Özet: `POST /internal/rooms/lifecycle-sweep` (`CronSecretGuard`, GitHub Actions scheduled workflow tetikliyor), 14-gün-sessizlik → arşivleme, salt-okunur uygulaması (hem `sendMessage` HEM `editMessage` — ikincisi ilk taslakta atlanmıştı), çekirdek oda istisnası, `GET /rooms?includeArchived=true`, `Room.archivedAt` şema eki (Slice C'nin 60-gün hesaplaması için gereken, bilerek Slice C'ye değil buraya eklendi).
-- [ ] **M3 Slice C — Silme yaşam döngüsü.** Görüntülenme takibi (`Room.lastViewedAt`), 60-gün-sıfır-görüntülenme → hard-delete, mesajların da odayla birlikte silinmesi (kayıtlı istisna, aşağıya bakın).
+- [x] **M3 Slice C — Silme yaşam döngüsü.** Tamamlandı (2026-08-04) — detay için aşağıdaki "Plan notları — Slice C uygulaması" bölümüne bakın. Özet: `Room.lastViewedAt` (sadece arşivlenmiş odalarda `getRecentMessages`'da damgalanıyor), `RoomsService.purgeArchivedRooms` (60-gün-sıfır-görüntülenme → hard-delete, TOCTOU kapatmalı), `lifecycle-sweep` endpoint'i artık hem arşivliyor hem siliyor. M3 milestone'u TAMAMEN BİTTİ.
 
 ## Risks
 - Background job reliability on a $50/mo host — mitigation: keep both jobs as simple, idempotent, cron-triggered HTTP endpoints rather than introducing a separate queue/worker system, consistent with the monolith-first decision.
@@ -359,6 +359,74 @@ artık `MessageItem.tsx` gibi kendi `Message` interface'ini ayrı tanımlıyor
 tek satır not eklendi.
 
 ### Sıradaki
-Refactor tamamlandı, `refactor/room-view-split` dalında commit'e hazır,
-push kullanıcı onayına kalmış. Sırada tek iş: Slice C (silme yaşam
-döngüsü) — kendi plan-modu turu gerekiyor.
+Refactor tamamlandı, `main`'e merge edildi (PR #32). Sırada tek iş: Slice C
+(silme yaşam döngüsü) — kendi plan-modu turu gerekiyor.
+
+## Plan notları — Slice C uygulaması (2026-08-04)
+
+Tasarım kod okunarak tazeden tasarlandı (bu dokümanın önceki taslak
+metni — orijinal `Room.lastViewedAt`/`purgeArchivedRooms` şema notları
+— hiçbir kalıcı dosyada tam haliyle hayatta kalmamıştı, sadece geçici
+plan dosyasında vardı ve sonraki turlarda üzerine yazılmıştı). Bir Plan
+agent'ın geçişiyle çapraz kontrol edildi — agent iki gerçek açık buldu,
+ikisi de tasarıma işlendi:
+
+1. **TOCTOU penceresi:** aday-oda seçme sorgusu ile asıl silme arasında
+   biri odayı görüntüleyebilir. `purgeArchivedRooms`'un `$transaction`'ı
+   içinde, silmeden hemen önce aynı uygunluk koşulu TEKRAR kontrol
+   ediliyor — pencere saatlik cron döngüsünden aynı transaction'ın
+   milisaniyelerine iniyor.
+2. **e2e temizlik sırası:** "hayatta kalması gereken" fixture'lar mesaj
+   taşıyorsa paylaşılan `afterAll`'ın sadece `room.deleteMany` yapması
+   `docs/STATE.md`'nin zaten belgelediği FK-sırası tuzağına düşerdi —
+   `afterAll` artık `messageEdit`→`message`→`room` sırasıyla temizliyor.
+
+Ayrıca `agent`, `getRecentMessages`'ın `lastViewedAt`'i `update` değil
+`updateMany` ile damgalaması gerektiğini buldu — sweep aynı anda odayı
+silmişse `update` `P2025` fırlatıp isteği 500'e düşürürdü, `updateMany`
+sıfır eşleşmede sessizce no-op olur.
+
+**Backend:** `Room.lastViewedAt DateTime?` migration (Slice B'nin
+`archivedAt` eklemesiyle birebir aynı basitlikte). `MessagesService.
+getRecentMessages`, oda `status:'archived'` iken `lastViewedAt`'i
+damgalıyor — SADECE arşivlenmiş odalarda, her `#general` geçmiş
+çekişinde yazmak $50/mo Postgres'te gereksiz. `RoomsService.
+purgeArchivedRooms(now)` — `archiveSilentRooms`'un kurduğu `now`
+parametresi desenini izliyor, "sıfır görüntülenme"yi (`lastViewedAt
+IS NULL OR lastViewedAt < archivedAt`) Prisma'nın query builder'ı aynı
+satırın iki kolonunu karşılaştıramadığı için (raw SQL gerekir, bu kod
+tabanında hiç kullanılmıyor) adayları çekip JS'te süzerek hesaplıyor —
+bu ölçekte (`docs/BACKLOG.md`'nin ">15 aktif oda" tetikleyicisi zaten
+teyit ediyor) performans sorunu değil. Silme `messageEdit`→`message`→
+`room` sırasıyla, callback-form `$transaction` içinde. `lifecycle-sweep`
+endpoint'i artık `{archived, deleted}` döner (iç bir endpoint, GitHub
+Actions workflow'u sadece HTTP status kontrol ediyor, body şekli
+değişikliği güvenli).
+
+**Frontend:** DEĞİŞİKLİK YOK — bir oda hard-delete edilince listeden
+zaten kayboluyor, bayat bir sekmede `GET /rooms/:name/messages` 404
+döner, `RoomView.tsx`'in `fetchRoomHistory`'si zaten sessizce `null`
+dönüyor (refactor sonrası da aynı yerde, doğrulandı). WS tarafında
+`sendMessage`'ın `NotFoundException`'ı gateway'de zaten sessizce
+yutuluyor.
+
+**Test:** birim (`purgeArchivedRooms` — hiç görüntülenmemiş/arşivden
+önce-sonra görüntülenmiş/henüz 60 gün dolmamış + TOCTOU recheck testi;
+`getRecentMessages`'ın sadece arşivlenmiş odada damgalaması); e2e (gerçek
+geriye-tarihlenmiş, mesaj+düzenlemeli bir oda GERÇEKTEN siliniyor —
+Room/Message/MessageEdit satırları DB'de yok; yakın zamanda görüntülenmiş
+ve henüz 60 gün dolmamış odalar hayatta kalıyor).
+
+Bir kendi kendine düzeltilen operasyonel not: bu turda Docker Desktop
+oturumu sırasında kapanıp `koqep-postgres-1` container'ını durdurdu
+(bilinen bir tuzak) — `docker start` ile düzeltildi, `prisma migrate
+status` ile veri/migration kaybı olmadığı doğrulandı.
+
+**Doğrulama (final):** `apps/api` lint/typecheck/build temiz, birim
+110/110, e2e 55/55. Yeni frontend testi yok (frontend'e dokunulmadı).
+
+### Sıradaki
+**M3 milestone'u TAMAMEN BİTTİ** — Slice A, B, C ve `RoomView.tsx`
+refactor'ünün hepsi tamamlandı. Slice C `m3/slice-c-delete-lifecycle`
+dalında commit'e hazır, push kullanıcının onayına kalmış. M3'ten sonraki
+milestone için ayrı bir tur gerekiyor.

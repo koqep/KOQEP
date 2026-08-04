@@ -3,20 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-02
-**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — Slice A + Slice B (arşiv yaşam döngüsü) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29, #31). `RoomView.tsx` bölme refactor'ü TAMAMLANDI, `refactor/room-view-split` dalında commit'e hazır. Slice C (silme) sırada. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Son güncelleme:** 2026-08-04
+**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — **TAMAMEN BİTTİ** (Slice A/B/C + `RoomView.tsx` refactor). Slice C `m3/slice-c-delete-lifecycle` dalında commit'e hazır, henüz push/merge edilmedi (diğerleri main'de, PR #29/#31/#32). Sıradaki milestone henüz belirlenmedi. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-07-31 — M3 kapsam gözden geçirmesi: A/B/C dilimlerine bölündü.** Kod okuyarak iki kritik açık bulundu (milestone'un Tasks listesinde hiç yoktu): WS gateway sadece çekirdek odaları katılıyor (kullanıcı odaları gerçek zamanlı hiç ulaşmaz — Slice A'ya dahil), `sendMessage` oda durumunu hiç kontrol etmiyor (Slice B'ye dahil). Gerçek bir kural çatışması bulundu: `CLAUDE.md`'nin "mesaj asla hard-delete edilmez" kuralı ile ADR-0006'nın oda hard-delete'i — kullanıcıya soruldu, oda silinince mesajları da siliniyor kararı verildi, `CLAUDE.md`+ADR-0006'ya kayıtlı istisna eklendi. Detay: milestone Plan notları.
-- **2026-08-01 — M3 Slice A tamamlandı, main'e merge edildi (PR #29).** `POST /rooms` + günde-1 rate limit + WS join-set düzeltmesi + `description`/`lastActivityAt` tooltip sinyali. Tam doğrulama: apps/api (lint/typecheck/build temiz, birim 98/98, e2e 46/46), apps/web (lint/typecheck/build temiz, mocked e2e 42/42). Detay: milestone dosyasının "Plan notları — Slice A uygulaması" bölümü.
-- **2026-08-02 — M3 Slice B (arşiv yaşam döngüsü) tamamlandı, main'e merge (PR #31).** `POST /internal/rooms/lifecycle-sweep` + `CronSecretGuard`, 14-gün-sessizlik → arşivleme, salt-okunur (hem `sendMessage` HEM `editMessage`), `GET /rooms?includeArchived`, GitHub Actions saatlik tetikleyici, frontend toggle + gerçek salt-okunur composer. CI'da 5 mocked e2e testi kırmızı çıktı (gerçek yarış durumu — composer, `status` alanı eksik mock'larda arşiv render'ına düşüyordu), ayrı commit'te düzeltildi. Ardından `RoomView.tsx` (548→409 satır) `RoomHeader`/`ChatPanel`'e bölündü, davranış değişmedi. Detay: milestone dosyasının ilgili Plan notları bölümleri.
+- **2026-07-31—2026-08-04 — M3 (oda oluşturma + arşiv + silme yaşam döngüsü) tamamen bitti.** Slice A (`POST /rooms`, rate limit, WS join-set düzeltmesi), Slice B (`lifecycle-sweep` + arşivleme + salt-okunur), Slice C (60-gün-sıfır-görüntülenme → hard-delete, TOCTOU kapatmalı), ardından `RoomView.tsx` (548→409 satır) refactor'ü. Kod okuyarak bulunan iki kritik açık (WS join-set, sendMessage'ın oda durumunu kontrol etmemesi) ve kayıtlı bir kural istisnası (oda hard-delete'i mesaj-asla-silinmez kuralına, ADR-0006) dahil — tam derivasyon zinciri `docs/milestones/M3-user-rooms-lifecycle.md`'nin art arda gelen "Plan notları" bölümlerinde duruyor, buraya taşınmadı.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `RoomView.tsx` bölme refactor'ü tamamlandı, `refactor/room-view-split` dalında commit'e hazır — henüz push/merge edilmedi.
-- **Sonraki adım:** Slice C (silme yaşam döngüsü) — kendi plan-modu turu gerekiyor, M3'ün son dilimi. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M3 Slice C tamamlandı, `m3/slice-c-delete-lifecycle` dalında commit'e hazır — henüz push/merge edilmedi. Bununla M3 milestone'u TAMAMEN BİTTİ.
+- **Sonraki adım:** Sıradaki milestone henüz belirlenmedi, kullanıcıyla konuşulmalı. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

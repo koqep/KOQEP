@@ -5,6 +5,7 @@ import { SocketRegistryService } from './socket-registry.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
 const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
+const DELETE_AFTER_MS = 60 * 24 * 60 * 60 * 1000;
 
 export interface RoomSummary {
   id: string;
@@ -12,6 +13,25 @@ export interface RoomSummary {
   description: string | null;
   lastActivityAt: Date;
   status: RoomStatus;
+}
+
+interface PurgeCandidate {
+  id: string;
+  archivedAt: Date | null;
+  lastViewedAt: Date | null;
+}
+
+// "Sıfır görüntülenme" - lastViewedAt hiç set edilmemiş YA DA arşivlenme
+// anından ÖNCEKİ bir görüntülemeyi taşıyor (arşivlendikten SONRA kimse
+// bakmamış). Prisma aynı satırın iki kolonunu where'de karşılaştıramıyor
+// (raw SQL gerekir) - bu kod tabanında hiç $queryRaw/$executeRaw
+// kullanılmıyor, o yüzden adaylar tek kolonlu bir filtreyle çekilip bu
+// fonksiyonla JS'te süzülüyor (bu ölçekte performans sorunu değil).
+function isEligibleForPurge(room: PurgeCandidate): boolean {
+  return (
+    room.lastViewedAt === null ||
+    (room.archivedAt !== null && room.lastViewedAt < room.archivedAt)
+  );
 }
 
 @Injectable()
@@ -105,6 +125,56 @@ export class RoomsService {
       data: { status: 'archived', archivedAt: now },
     });
     return { archivedCount: result.count };
+  }
+
+  // ADR-0006: arşivlenmiş bir oda 60 gün sıfır görüntülenmeyle hard-delete
+  // edilir - CLAUDE.md'nin "mesaj asla hard-delete edilmez" kuralına
+  // kayıtlı bir istisna (ADR-0006 Addendum). Çekirdek odalar için ayrı bir
+  // istisna filtresi gerekmiyor - archiveSilentRooms zaten onları hiçbir
+  // zaman 'archived' durumuna getirmiyor, purge'ün girdisine hiç girmiyorlar.
+  async purgeArchivedRooms(now: Date = new Date()): Promise<{
+    deletedCount: number;
+  }> {
+    const cutoff = new Date(now.getTime() - DELETE_AFTER_MS);
+    const candidateWhere = {
+      status: 'archived' as const,
+      archivedAt: { lt: cutoff },
+    };
+
+    const candidates = await this.prisma.room.findMany({
+      where: candidateWhere,
+      select: { id: true, archivedAt: true, lastViewedAt: true },
+    });
+    const eligibleIds = candidates.filter(isEligibleForPurge).map((r) => r.id);
+    if (eligibleIds.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // TOCTOU kapatma: yukarıdaki aday-seçme sorgusu ile buradaki silme
+      // arasında biri odayı görüntülemiş olabilir (lastViewedAt
+      // güncellenmiş) - silmeden hemen önce aynı uygunluk koşulunu
+      // transaction içinde tekrar kontrol ediyoruz, pencereyi saatlik cron
+      // döngüsünden aynı transaction içindeki milisaniyelere indiriyor.
+      const recheck = await tx.room.findMany({
+        where: { id: { in: eligibleIds }, ...candidateWhere },
+        select: { id: true, archivedAt: true, lastViewedAt: true },
+      });
+      const finalIds = recheck.filter(isEligibleForPurge).map((r) => r.id);
+      if (finalIds.length === 0) {
+        return { deletedCount: 0 };
+      }
+
+      // Child->parent sırası zorunlu: Message/MessageEdit'in Room'a FK'si
+      // RESTRICT, önce onlar gitmeden Room silinemez.
+      await tx.messageEdit.deleteMany({
+        where: { message: { roomId: { in: finalIds } } },
+      });
+      await tx.message.deleteMany({ where: { roomId: { in: finalIds } } });
+      await tx.room.deleteMany({ where: { id: { in: finalIds } } });
+
+      return { deletedCount: finalIds.length };
+    });
   }
 }
 

@@ -8,8 +8,9 @@ export class RoomsLifecycleController {
   constructor(private readonly roomsService: RoomsService) {}
 
   @Post('lifecycle-sweep')
-  async lifecycleSweep(): Promise<{ archived: number }> {
+  async lifecycleSweep(): Promise<{ archived: number; deleted: number }> {
     const { archivedCount } = await this.roomsService.archiveSilentRooms();
-    return { archived: archivedCount };
+    const { deletedCount } = await this.roomsService.purgeArchivedRooms();
+    return { archived: archivedCount, deleted: deletedCount };
   }
 }
