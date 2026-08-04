@@ -16,15 +16,15 @@
 ## Acceptance criteria
 - [x] Sending a message appends a `ReputationEvent` row (`MESSAGE_SENT`, diğer eylemler kapsam dışı — yukarıya bakın).
 - [x] Current level is computed/materialized from the event log, never stored as an authoritative mutable counter (ADR-0004).
-- [ ] Leveling up grants exactly 1 new invite PER SEVİYE (bir olayda birden fazla seviye atlanırsa o kadar davet — aşağıdaki Plan notları'na bakın), starting at Level 1. Slice B.
-- [ ] Kazanılan davetler `GET /invites` ile listelenebiliyor — bu, mevcut kodun (ve `InviteView.tsx`'in) hiç sahip olmadığı yeni bir uç nokta, "davet kazandım ama göremiyorum" durumunu önlemek için zorunlu (Yol B: bu olmadan özellik kullanılamaz, kozmetik değil). Slice B.
-- [x] ~~Invite issuance is rate-limited per inviter~~ — **ZATEN YAPILMIŞ** (M2 Slice C, `UserThrottlerGuard`, 5/saat). Manuel oluşturma kaldırılınca bu guard'ın `invites.controller.ts`'teki kullanımı da kaldırılıyor (Slice B) — otomatik kazanım zaten mesaj gönderiminin kendi WS rate limitine tabi, ayrı bir limite ihtiyaç yok.
+- [x] Leveling up grants exactly 1 new invite PER SEVİYE (bir olayda birden fazla seviye atlanırsa o kadar davet), starting at Level 1.
+- [x] Kazanılan davetler `GET /invites` ile listelenebiliyor.
+- [x] ~~Invite issuance is rate-limited per inviter~~ — M2 Slice C'de yapılmıştı, Slice B'de manuel oluşturmayla BİRLİKTE kaldırıldı (aşağıdaki Plan notları'na bakın) — artık uygulanacak bir "issuance" yok, kontrol dolaylı hale geldi (`docs/THREAT-MODEL.md` satır 1/7 güncellendi).
 - [x] A test demonstrates replaying the event log after a simulated XP-rule change, proving the event-log choice pays off.
 
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M3'ün kullandığı aynı ritim). 2026-08-04 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü (aşağıdaki Plan notları):
 - [x] **M4 Slice A — ReputationEvent günlüğü + seviye hesaplama + mesaj başı XP.** Tamamlandı (2026-08-04) — detay için aşağıdaki "Plan notları — Slice A uygulaması" bölümüne bakın. `ReputationEvent` tablosu + `User.totalXp`/`User.level` (cache, AYNI migration'da). `ReputationService.awardXp` — `MessagesService.sendMessage`'ın zaten var olan transaction'ına eklendi. Saf fonksiyon `computeLevelFromXp(totalXp, xpPerLevel)` — replay testinin kalbi.
-- [ ] **M4 Slice B — Davet kazanımı + manuel oluşturmanın kaldırılması + GET /invites.** Seviye atlayınca (birden fazla seviye tek olayda atlanabilir — çoklu davet) `Invite` satırları AYNI transaction içinde oluşturulur. `POST /invites` VE `UserThrottlerGuard`'ın oradaki kullanımı kaldırılır (kullanıcı kararı — davetler artık sadece kazanılır). Yeni `GET /invites` (kendi davetlerini listele). Frontend: `InviteView.tsx`'in "davet oluştur" butonu kaldırılır, yerine kalıcı bir liste gelir.
+- [x] **M4 Slice B — Davet kazanımı + manuel oluşturmanın kaldırılması + GET /invites.** Tamamlandı (2026-08-04) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. Seviye atlayınca `Invite` satırları `MessagesService.sendMessage`'ın transaction'ı içinde oluşturuluyor. `POST /invites` ve `UserThrottlerGuard` kaldırıldı. `GET /invites` eklendi. `InviteView.tsx` yeniden yazıldı.
 - [ ] **M4 Slice C — Founder/mevcut kullanıcı geçişi + minimal seviye görünürlüğü.** Founder ve erken kullanıcılar M4 şipince 0 XP'yle başlıyor — ilk daveti manuel SQL ile bootstrap (kod DEĞİL, zaten kurulu "sıfır-kullanıcılı DB" desenine uygun, bkz. STATE.md tuzağı). `GET /users/me`'ye `level`/`totalXp` eklenir (sayfa değil, tek alan) — Yol B: seviye tamamen görünmez olsaydı mekanik "sessiz" hissettirirdi.
 
 ## Risks
@@ -182,3 +182,66 @@ onayına kalıyor.
 Slice A tamam. Slice B (davet kazanımı + manuel oluşturmanın
 kaldırılması + `GET /invites` + frontend rework) kendi plan-modu
 turuyla başlayacak.
+
+## Plan notları — Slice B uygulaması (2026-08-04)
+
+Plan-modu turunda kod okunarak tasarlandı, bir Plan agent'ıyla çapraz
+kontrol edildi. Agent ilk taslağın bir tasarım kararını **reddetti** ve
+bir gerçek performans/transaction sorunu buldu:
+
+**Reddedilen tasarım — orkestrasyon `ReputationService`'te değil.** İlk
+taslak "seviye atlayınca davet ver" mantığını `awardXp`'nin içine,
+`InvitesService`'i enjekte ederek koymayı öneriyordu ("her XP kaynağı
+otomatik davet versin"). Agent bunu, `reputation.service.ts`'in kendi
+yorumunun (`ReputationService` bilerek bağımlılıksız, `awardXp` kendi
+transaction'ını bu yüzden açmıyor) ve Slice A'nın kendi Plan notlarının
+("ReputationService MessagesService'in aşağı-yönlü bağımlılığı olacak,
+tersi değil") zaten kaydettiği yönle çeliştiği için reddetti. Karar:
+`MessagesService.sendMessage`, `awardXp`'nin `{oldLevel, newLevel}`
+dönüş değerini yakalayıp (önceden atılıyordu), seviye artınca AYNI
+transaction'da `invitesService.grantInvites(tx, userId, newLevel -
+oldLevel)` çağırıyor. `ReputationService` hiç değişmedi.
+
+**Bulunan gerçek sorun — paylaşılan satır kilidi.** `grantInvites`'ı bir
+döngüde N ayrı `tx.invite.create()` olarak yazmak, `sendMessage`'ın
+transaction'ı zaten tuttuğu PAYLAŞILAN `Room` satır kilidini (o odadaki
+herkesi etkiler) N round-trip kadar uzatır — büyük bir N Prisma'nın
+varsayılan 5000ms transaction timeout'unu aşıp TÜM mesaj gönderimini
+geri alabilirdi. Düzeltme: kodlar önce uygulama tarafında üretilir,
+sonra TEK bir `tx.invite.createMany(...)` ile yazılır.
+
+**Gerçekte yapılan:**
+- `InvitesService.createInvite` (manuel oluşturma) silindi;
+  `grantInvites(tx, issuedById, count)` (yukarıdaki `createMany`
+  deseniyle) ve `listInvites(issuedById)` eklendi — ikincisi
+  `usedById`/redeemer kimliğini DTO'ya bilerek dahil etmiyor (yeni bir
+  gizlilik kararı — `inviterId` bugün hiçbir yerde geri okunmuyor,
+  grep ile doğrulandı).
+- `InvitesController`: `POST` ve `UserThrottlerGuard` kaldırıldı,
+  `GET /invites` eklendi. `user-throttler.guard.ts` tamamen silindi
+  (tek kullanıcısıydı) — `room-creation-throttler.guard.ts`'in bunun
+  neredeyse birebir yapısal kopyası olduğu not edildi (bu slice'ın
+  kapsamı değil).
+- Şema/migration GEREKMEDİ — `Invite` modeli zaten yeterliydi.
+- `docs/THREAT-MODEL.md` satır 1/7 güncellendi: eski 5/saat sınırı
+  kaldırıldığı, yerine WS mesaj limitinden türeyen ~100 davet/saat/
+  kullanıcı teorik tavanın (eskisinden ~20x gevşek) geldiği yazıldı.
+- e2e: `invites.e2e-spec.ts` tamamen yeniden yazıldı (POST yok artık) —
+  davetçi kullanıcılar eşiğin bir mesaj öncesine seed edilip gerçek
+  `MessagesService.sendMessage` ile seviye atlatılıyor, üretilen kod
+  gerçek `grantInvites` yolundan geri okunup `/auth/signup`'ta
+  kullanılıyor. `messages-gateway.e2e-spec.ts`'e gerçek bir WS
+  mesajının tam 1 `Invite` satırı ürettiğini kanıtlayan test eklendi.
+- Frontend: `InviteView.tsx` "davet oluştur" butonunu kaldırıp mount'ta
+  `GET /invites` çeken bir listeye döndü (`BlockedUsersView`'ın
+  null=yükleniyor desenini izliyor); her davet kod + durum
+  (kullanıldı/kullanılabilir) gösteriyor.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, 120/120 birim test,
+58/58 e2e test. `apps/web` lint/typecheck/build temiz, Playwright
+43/43. Dal `m4/slice-b-invite-earning`, push kullanıcının onayına
+kalıyor.
+
+### Sıradaki
+Slice B tamam. Slice C (founder/mevcut kullanıcı geçişi + minimal
+seviye görünürlüğü) kendi plan-modu turuyla başlayacak.
