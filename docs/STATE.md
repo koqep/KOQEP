@@ -4,17 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-04
-**Aktif milestone:** M3 (`docs/milestones/M3-user-rooms-lifecycle.md`) — **TAMAMEN BİTTİ** (Slice A/B/C + `RoomView.tsx` refactor). Slice C `m3/slice-c-delete-lifecycle` dalında commit'e hazır, henüz push/merge edilmedi (diğerleri main'de, PR #29/#31/#32). Sıradaki milestone henüz belirlenmedi. M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M4 (`docs/milestones/M4-reputation-invites.md`) — kapsam gözden geçirmesi TAMAMLANDI, Slice A/B/C'ye bölündü, uygulama henüz başlamadı. M3 (Slice A/B/C + `RoomView.tsx` refactor) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33). M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-07-31—2026-08-04 — M3 (oda oluşturma + arşiv + silme yaşam döngüsü) tamamen bitti.** Slice A (`POST /rooms`, rate limit, WS join-set düzeltmesi), Slice B (`lifecycle-sweep` + arşivleme + salt-okunur), Slice C (60-gün-sıfır-görüntülenme → hard-delete, TOCTOU kapatmalı), ardından `RoomView.tsx` (548→409 satır) refactor'ü. Kod okuyarak bulunan iki kritik açık (WS join-set, sendMessage'ın oda durumunu kontrol etmemesi) ve kayıtlı bir kural istisnası (oda hard-delete'i mesaj-asla-silinmez kuralına, ADR-0006) dahil — tam derivasyon zinciri `docs/milestones/M3-user-rooms-lifecycle.md`'nin art arda gelen "Plan notları" bölümlerinde duruyor, buraya taşınmadı.
+- **2026-07-31—2026-08-04 — M3 (oda oluşturma + arşiv + silme yaşam döngüsü) tamamen bitti.** Slice A/B/C + `RoomView.tsx` refactor'ü. Kod okuyarak bulunan kritik açıklar + ADR-0006'ya kayıtlı bir kural istisnası dahil — tam derivasyon zinciri `docs/milestones/M3-user-rooms-lifecycle.md`'nin Plan notları bölümlerinde, buraya taşınmadı.
+- **2026-08-04 — M4 kapsam gözden geçirmesi.** `POST /invites`'ın bugün TAMAMEN AÇIK/sınırsız olduğu (sadece 5/saat rate limit, bakiye kontrolü YOK) bulundu — M4'ün "seviye başına 1 davet" mekaniğiyle doğrudan çelişiyordu. Kullanıcıya soruldu: manuel oluşturma KALDIRILACAK (`AskUserQuestion`, önerilen seçenek onaylandı). İkinci açık: `InviteView.tsx`'in kod listesi kalıcı değil, `GET /invites` hiç yok — davet kazanılsa bile görülemezdi (Yol B: kozmetik değil, kullanılamaz). Detay: milestone dosyasının "Plan notları — 2026-08-04 kapsam gözden geçirmesi" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M3 Slice C tamamlandı, `m3/slice-c-delete-lifecycle` dalında commit'e hazır — henüz push/merge edilmedi. Bununla M3 milestone'u TAMAMEN BİTTİ.
-- **Sonraki adım:** Sıradaki milestone henüz belirlenmedi, kullanıcıyla konuşulmalı. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M4 kapsam gözden geçirmesi tamamlandı, `docs/m4-scope-review` dalında commit'e hazır — henüz push/merge edilmedi. Uygulama henüz başlamadı.
+- **Sonraki adım:** M4 Slice A (`ReputationEvent` günlüğü + seviye hesaplama + mesaj başı XP) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
