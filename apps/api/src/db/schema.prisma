@@ -28,6 +28,8 @@ model User {
   totpSecret      String?
   totpEnabledAt   DateTime?
   emailVerifiedAt DateTime?
+  totalXp         Int       @default(0)
+  level           Int       @default(0)
 
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
@@ -43,6 +45,7 @@ model User {
   blocksMade              Block[]                  @relation("Blocker")
   blocksReceived          Block[]                  @relation("Blocked")
   createdRooms            Room[]                   @relation("RoomCreator")
+  reputationEvents        ReputationEvent[]
 }
 
 model Invite {
@@ -149,7 +152,8 @@ model Message {
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
-  edits MessageEdit[]
+  edits            MessageEdit[]
+  reputationEvents ReputationEvent[]
 
   @@index([roomId, createdAt])
 }
@@ -163,4 +167,19 @@ model MessageEdit {
   message   Message @relation(fields: [messageId], references: [id])
 
   @@index([messageId])
+}
+
+model ReputationEvent {
+  id         String   @id @default(uuid())
+  actionType String
+  amount     Int
+  createdAt  DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  sourceMessageId String?
+  sourceMessage   Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
