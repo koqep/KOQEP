@@ -138,9 +138,7 @@ describe('MessagesService', () => {
         prismaMock,
         undefined,
         {
-          awardXp: jest
-            .fn()
-            .mockResolvedValue({ oldLevel: 0, newLevel: 1 }),
+          awardXp: jest.fn().mockResolvedValue({ oldLevel: 0, newLevel: 1 }),
         },
         { grantInvites: grantInvitesMock },
       );
@@ -168,9 +166,7 @@ describe('MessagesService', () => {
         prismaMock,
         undefined,
         {
-          awardXp: jest
-            .fn()
-            .mockResolvedValue({ oldLevel: 0, newLevel: 3 }),
+          awardXp: jest.fn().mockResolvedValue({ oldLevel: 0, newLevel: 3 }),
         },
         { grantInvites: grantInvitesMock },
       );

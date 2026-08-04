@@ -75,9 +75,10 @@ describe('InvitesService', () => {
       await service.grantInvites(tx, 'user-1', 3);
 
       expect(createManyMock).toHaveBeenCalledTimes(1);
-      const { data } = createManyMock.mock.calls[0][0] as {
-        data: { code: string; issuedById: string }[];
-      };
+      const [[call]] = createManyMock.mock.calls as [
+        [{ data: { code: string; issuedById: string }[] }],
+      ];
+      const { data } = call;
       expect(data).toHaveLength(3);
       expect(data.every((row) => row.issuedById === 'user-1')).toBe(true);
       const codes = data.map((row) => row.code);
@@ -116,7 +117,9 @@ describe('InvitesService', () => {
       ];
       const findManyMock = jest.fn().mockResolvedValue(rows);
       const prismaMock: Partial<PrismaService> = {
-        invite: { findMany: findManyMock } as unknown as PrismaService['invite'],
+        invite: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['invite'],
       };
 
       const service = buildService(prismaMock);

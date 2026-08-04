@@ -91,11 +91,7 @@ export class MessagesService {
       // birden fazla seviye atlatabilir - bkz. reputation.service.ts).
       // Aynı transaction'da, XP yazımıyla atomik.
       if (newLevel > oldLevel) {
-        await this.invitesService.grantInvites(
-          tx,
-          userId,
-          newLevel - oldLevel,
-        );
+        await this.invitesService.grantInvites(tx, userId, newLevel - oldLevel);
       }
       return created;
     });
