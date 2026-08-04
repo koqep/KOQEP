@@ -82,6 +82,17 @@ export class MessagesService {
     limit: number = DEFAULT_PAGE_SIZE,
   ): Promise<MessagePage> {
     const room = await this.findRoomOrThrow(roomName);
+    if (room.status === 'archived') {
+      // M3 Slice C: purgeArchivedRooms'un 60-gün-sıfır-görüntülenme
+      // hesaplaması bu alana bakıyor - SADECE arşivlenmiş odalarda
+      // yazıyoruz, her #general geçmiş çekişinde yazmak $50/mo Postgres'te
+      // gereksiz. updateMany (update DEĞİL) - sweep bu odayı aynı anda
+      // silmiş olabilir, updateMany sıfır eşleşmede sessizce no-op olur.
+      await this.prisma.room.updateMany({
+        where: { id: room.id },
+        data: { lastViewedAt: new Date() },
+      });
+    }
     const blockedAuthorIds =
       await this.blocksService.getBlockedAuthorIds(requesterId);
 

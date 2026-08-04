@@ -237,6 +237,54 @@ describe('MessagesService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
+    it('arsivlenmis_odada_lastViewedAti_damgalar', async () => {
+      const archivedRoom = { ...room, status: 'archived' };
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const updateManyMock = jest.fn().mockResolvedValue({ count: 1 });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(archivedRoom),
+          updateMany: updateManyMock,
+        } as unknown as PrismaService['room'],
+        message: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+      const before = Date.now();
+      await service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1');
+      const after = Date.now();
+
+      expect(updateManyMock).toHaveBeenCalledTimes(1);
+      const call = updateManyMock.mock.calls[0] as [
+        { where: { id: string }; data: { lastViewedAt: Date } },
+      ];
+      expect(call[0].where).toEqual({ id: archivedRoom.id });
+      const stamped = call[0].data.lastViewedAt.getTime();
+      expect(stamped).toBeGreaterThanOrEqual(before);
+      expect(stamped).toBeLessThanOrEqual(after);
+    });
+
+    it('aktif_odada_lastViewedAti_hic_damgalamaz', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const updateManyMock = jest.fn().mockResolvedValue({ count: 0 });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+          updateMany: updateManyMock,
+        } as unknown as PrismaService['room'],
+        message: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+      await service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1');
+
+      expect(updateManyMock).not.toHaveBeenCalled();
+    });
+
     it('engellenen_yazarlarin_mesajlarini_disarida_birakir', async () => {
       const findManyMock = jest.fn().mockResolvedValue([]);
       const prismaMock: Partial<PrismaService> = {
