@@ -5,6 +5,11 @@ import {
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { BlocksService } from './blocks.service';
+import {
+  ReputationService,
+  MESSAGE_SENT_ACTION,
+  MESSAGE_SENT_XP,
+} from './reputation.service';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
@@ -21,10 +26,14 @@ describe('MessagesService', () => {
     blocksMock: Partial<BlocksService> = {
       getBlockedAuthorIds: jest.fn().mockResolvedValue([]),
     },
+    reputationServiceMock: Partial<ReputationService> = {
+      awardXp: jest.fn().mockResolvedValue({ oldLevel: 0, newLevel: 0 }),
+    },
   ): MessagesService {
     return new MessagesService(
       prismaMock as PrismaService,
       blocksMock as BlocksService,
+      reputationServiceMock as ReputationService,
     );
   }
 
@@ -66,8 +75,13 @@ describe('MessagesService', () => {
       };
       const { prismaMock, createSpy, roomUpdateSpy } =
         buildSendMessagePrismaMock(room, created);
+      const awardXpMock = jest
+        .fn()
+        .mockResolvedValue({ oldLevel: 0, newLevel: 0 });
 
-      const service = buildService(prismaMock);
+      const service = buildService(prismaMock, undefined, {
+        awardXp: awardXpMock,
+      });
       const result = await service.sendMessage(
         'user-1',
         CORE_ROOM_NAMES[0],
@@ -81,6 +95,13 @@ describe('MessagesService', () => {
       );
       expect(roomUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: room.id } }),
+      );
+      expect(awardXpMock).toHaveBeenCalledWith(
+        expect.anything(),
+        'user-1',
+        MESSAGE_SENT_ACTION,
+        MESSAGE_SENT_XP,
+        'msg-1',
       );
       expect(result).toEqual({
         id: 'msg-1',
