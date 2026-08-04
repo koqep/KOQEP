@@ -15,7 +15,7 @@
 
 **MessageEdit** — one row per edit, preserving prior content for review by the message's author and moderators only — never public (resolved Phase 5, `docs/THREAT-MODEL.md` row 3; addresses Phase 1's message-edit-as-abuse-vector finding).
 
-**ReputationEvent** — an append-only XP ledger (ADR-0004). Current level is a materialized/cached derivation of this log, never the source of truth itself.
+**ReputationEvent** — an append-only XP ledger (ADR-0004). Current level is a materialized/cached derivation of this log, never the source of truth itself. `user_id` and `source_message_id` are both nullable with SET NULL on delete (not RESTRICT/cascade) — deliberately, so the event survives account deletion and room/message hard-delete (M3 Slice C), matching the retention table's "never" trigger below; a RESTRICT default would have broken both of those already-shipped delete paths (M4 Slice A, 2026-08-04).
 
 **ReadCursor** — `(user, room) → last_read_message_id`, server-owned, monotonic only (resolves Phase 1's multi-device read-state finding). Presence/typing state is explicitly **not** a persisted entity — it lives in-process per `ARCHITECTURE.md`.
 
@@ -27,6 +27,7 @@
 - Room 1—N Message
 - Message 1—N MessageEdit
 - User 1—N ReputationEvent
+- Message 0/1—N ReputationEvent (`source_message_id`, nullable — which message earned the XP, for audit; not every event needs one)
 - User 1—N ReadCursor, Room 1—N ReadCursor
 
 ## Invariants
