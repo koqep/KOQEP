@@ -10,6 +10,7 @@ import {
   MESSAGE_SENT_ACTION,
   MESSAGE_SENT_XP,
 } from './reputation.service';
+import { InvitesService } from './invites.service';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
@@ -29,11 +30,15 @@ describe('MessagesService', () => {
     reputationServiceMock: Partial<ReputationService> = {
       awardXp: jest.fn().mockResolvedValue({ oldLevel: 0, newLevel: 0 }),
     },
+    invitesServiceMock: Partial<InvitesService> = {
+      grantInvites: jest.fn().mockResolvedValue(undefined),
+    },
   ): MessagesService {
     return new MessagesService(
       prismaMock as PrismaService,
       blocksMock as BlocksService,
       reputationServiceMock as ReputationService,
+      invitesServiceMock as InvitesService,
     );
   }
 
@@ -78,10 +83,14 @@ describe('MessagesService', () => {
       const awardXpMock = jest
         .fn()
         .mockResolvedValue({ oldLevel: 0, newLevel: 0 });
+      const grantInvitesMock = jest.fn().mockResolvedValue(undefined);
 
-      const service = buildService(prismaMock, undefined, {
-        awardXp: awardXpMock,
-      });
+      const service = buildService(
+        prismaMock,
+        undefined,
+        { awardXp: awardXpMock },
+        { grantInvites: grantInvitesMock },
+      );
       const result = await service.sendMessage(
         'user-1',
         CORE_ROOM_NAMES[0],
@@ -103,6 +112,8 @@ describe('MessagesService', () => {
         MESSAGE_SENT_XP,
         'msg-1',
       );
+      // Seviye değişmedi (0 -> 0), davet verilmemeli.
+      expect(grantInvitesMock).not.toHaveBeenCalled();
       expect(result).toEqual({
         id: 'msg-1',
         content: 'merhaba',
@@ -110,6 +121,66 @@ describe('MessagesService', () => {
         authorUsername: 'dev',
         roomId: room.id,
       });
+    });
+
+    it('seviye_bir_atlayinca_tam_bir_davet_verir', async () => {
+      const created = {
+        id: 'msg-1',
+        content: 'merhaba',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+      };
+      const { prismaMock } = buildSendMessagePrismaMock(room, created);
+      const grantInvitesMock = jest.fn().mockResolvedValue(undefined);
+
+      const service = buildService(
+        prismaMock,
+        undefined,
+        {
+          awardXp: jest
+            .fn()
+            .mockResolvedValue({ oldLevel: 0, newLevel: 1 }),
+        },
+        { grantInvites: grantInvitesMock },
+      );
+      await service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba');
+
+      expect(grantInvitesMock).toHaveBeenCalledWith(
+        expect.anything(),
+        'user-1',
+        1,
+      );
+    });
+
+    it('tek_mesajda_birden_fazla_seviye_atlarsa_o_kadar_davet_verir', async () => {
+      const created = {
+        id: 'msg-1',
+        content: 'merhaba',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+      };
+      const { prismaMock } = buildSendMessagePrismaMock(room, created);
+      const grantInvitesMock = jest.fn().mockResolvedValue(undefined);
+
+      const service = buildService(
+        prismaMock,
+        undefined,
+        {
+          awardXp: jest
+            .fn()
+            .mockResolvedValue({ oldLevel: 0, newLevel: 3 }),
+        },
+        { grantInvites: grantInvitesMock },
+      );
+      await service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba');
+
+      expect(grantInvitesMock).toHaveBeenCalledWith(
+        expect.anything(),
+        'user-1',
+        3,
+      );
     });
 
     it('ikinci_cekirdek_odaya_da_mesaj_olusturabilir', async () => {
