@@ -179,8 +179,14 @@ export function getMessageEditHistory(
   );
 }
 
-export function createInvite(accessToken: string): Promise<{ code: string }> {
-  return authedPostJson<{ code: string }>("/invites", accessToken);
+export interface InviteDto {
+  code: string;
+  createdAt: string;
+  usedAt: string | null;
+}
+
+export function listInvites(accessToken: string): Promise<InviteDto[]> {
+  return authedGetJson<InviteDto[]>("/invites", accessToken);
 }
 
 export interface Room {
