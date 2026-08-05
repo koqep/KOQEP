@@ -10,12 +10,12 @@
 - **M0 + M1 + M2 + M2.5 + M3 + M4 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-08-05 — koqep.com domain taşıması + CORS düzeltmesi.** `WEB_ORIGIN` hem CORS allow-list hem e-posta linklerinin taban URL'i olarak kullanılıyordu — ikinci kullanım tek kanonik domain (koqep.com, www'suz) gerektirdiği için WEB_ORIGIN'e dokunulmadı, yeni `allowed-origins.ts` www karşılığını otomatik türetip CORS'a ekliyor.
-- **2026-08-05 — M5 (moderasyon) kapsam gözden geçirmesi.** Acceptance criteria'nın "DM raporlanabilsin" maddesi kendi gerekçe gösterdiği `docs/THREAT-MODEL.md` satır 10'la ÇELİŞİYORDU — o satır zaten "DM yok, bu risk moot" diyor. Rapor akışı SADECE oda mesajlarına daraltıldı. İkinci bulgu: rapor mekanizmasının kendisi bir suistimal yüzeyi — rate limit Slice A'ya eklendi. Slice A/B/C/D'ye bölündü. Detay: milestone dosyasının Plan notları bölümü.
+- **2026-08-05 — M5 (moderasyon) kapsam gözden geçirmesi (iki tur).** İlk tur: "DM raporlanabilsin" maddesi kendi gerekçe gösterdiği THREAT-MODEL satır 10'la çelişiyordu (DM yok) — rapora sadece oda mesajları girdi. İkinci tur (kullanıcı gözden geçirmesi, 5 boşluk): moderatörün raporu ÇÖZEBİLECEĞİ bir eylem yoktu (içerik kaldırma eklendi, hard-delete DEĞİL — `MessageEdit` deseni); rapor durum alanı yoktu; susturma sadece `sendMessage`'ı kapsıyordu, `editMessage` unutulmuştu (THREAT-MODEL satır 3'ün vektörü); oda moderasyonu iki milestone'dur kayan bir BACKLOG maddesiydi, Slice D oldu; moderatör-atama self-servisi Yol B'yle değerlendirilip M5'e ALINMADI (manuel kalıyor). Artık Slice A/B/C/D/E. Detay: milestone dosyasının iki Plan notları bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
 - **Görev:** M5 kapsam gözden geçirmesi tamamlandı, `docs/m5-scope-review` dalında commit'e hazır — henüz push/merge edilmedi. Uygulama henüz başlamadı.
-- **Sonraki adım:** M5 Slice A (rapor akışı + moderatöre kapsamlı görünürlük + denetim günlüğü temeli) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Sonraki adım:** M5 Slice A (rapor akışı + moderatöre görünürlük + çözüm eylemi + durum + denetim günlüğü temeli) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
