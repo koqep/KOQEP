@@ -4,18 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-05
-**Aktif milestone:** M4 (`docs/milestones/M4-reputation-invites.md`) — kapsam gözden geçirmesi TAMAMLANDI, Slice A/B/C'ye bölündü. Slice A ve Slice B TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36). Slice C (founder/mevcut kullanıcı geçişi + minimal seviye görünürlüğü) uygulama bekliyor, kendi plan-modu turu gerekiyor. M3 (Slice A/B/C + `RoomView.tsx` refactor) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33). M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M4 (`docs/milestones/M4-reputation-invites.md`) — Slice A/B/C'nin ÜÇÜ DE TAMAMLANDI (M4 fonksiyonel olarak bitti). Slice A/B `main`'e MERGE EDİLDİ (PR #35/#36). Slice C (`m4/slice-c-founder-transition` dalı) doğrulandı, henüz merge edilmedi. M3 (Slice A/B/C + `RoomView.tsx` refactor) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33). Sıradaki milestone adayı: M5 (`docs/milestones/M5-moderation-abuse.md`) — henüz kapsam gözden geçirmesi yapılmadı.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-07-31—2026-08-04 — M3 (oda oluşturma + arşiv + silme yaşam döngüsü) tamamen bitti.** Slice A/B/C + `RoomView.tsx` refactor'ü. Kod okuyarak bulunan kritik açıklar + ADR-0006'ya kayıtlı bir kural istisnası dahil — tam derivasyon zinciri `docs/milestones/M3-user-rooms-lifecycle.md`'nin Plan notları bölümlerinde, buraya taşınmadı.
-- **2026-08-04—2026-08-05 — M4 kapsam gözden geçirmesi + Slice A + Slice B, ikisi de TAMAMEN BİTTİ ve `main`'e MERGE EDİLDİ.** `POST /invites`'ın TAMAMEN AÇIK/sınırsız olduğu bulunup manuel oluşturma KALDIRILDI — davetler artık sadece seviye atlayınca `MessagesService.sendMessage`'ın transaction'ı içinde kazanılıyor, `GET /invites` ile listeleniyor. Slice A'da `ReputationEvent` + `User.totalXp`/`level` şipildi (iki FK regresyon riski `SetNull` ile önlendi, `XP_PER_LEVEL` 20→35 düzeltildi). Slice B'de `user-throttler.guard.ts` silindi, `docs/THREAT-MODEL.md` güncellendi; ayrıca CI'daki fullstack `invite-issuance` testini kıran gerçek bir kirlilik bug'ı (bkz. Tuzaklar) bulunup düzeltildi. Detay: milestone dosyasının Plan notları bölümleri.
+- **2026-08-04—2026-08-05 — M4 (kapsam gözden geçirmesi + Slice A/B/C) fonksiyonel olarak TAMAMLANDI.** `POST /invites`'ın TAMAMEN AÇIK/sınırsız olduğu bulunup manuel oluşturma KALDIRILDI — davetler artık sadece seviye atlayınca `MessagesService.sendMessage`'ın transaction'ı içinde kazanılıyor, `GET /invites` ile listeleniyor. Slice A: `ReputationEvent` + `User.totalXp`/`level` (iki FK regresyon riski `SetNull` ile önlendi). Slice B: `user-throttler.guard.ts` silindi; CI'daki fullstack `invite-issuance` testini kıran gerçek bir kirlilik bug'ı bulunup düzeltildi (bkz. Tuzaklar). Slice C: `GET /users/me`'ye `level`/`totalXp` (backend-only, `docs/BACKLOG.md`'nin kararıyla tutarlı); founder/mevcut kullanıcı geçişi kod DEĞİL, `docs/THREAT-MODEL.md`'ye yazılan bir bootstrap prosedürü (totalXp/level'i ASLA elle güncelleme — `grantInvites` tetiklenmez). Detay: milestone dosyasının Plan notları bölümleri.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M4 Slice A ve Slice B tamamen bitti, doğrulandı, `main`'e merge edildi. Yarım kalan iş yok.
-- **Sonraki adım:** M4 Slice C (founder/mevcut kullanıcı geçişi + minimal seviye görünürlüğü) — kendi plan-modu turuyla başlanacak. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M4 Slice C tamamlandı ve doğrulandı (`m4/slice-c-founder-transition` dalı) — henüz push/merge edilmedi. M4'ün üç dilimi de bitti.
+- **Sonraki adım:** Slice C merge onayı bekleniyor. Sonrasında M5 (`docs/milestones/M5-moderation-abuse.md`) için "taze gözle" kapsam gözden geçirmesi (M3/M4'te kullanılan aynı yöntem) gündeme gelecek. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
