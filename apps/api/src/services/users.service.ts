@@ -6,6 +6,8 @@ export interface UserProfile {
   email: string;
   username: string;
   role: UserRole;
+  level: number;
+  totalXp: number;
 }
 
 @Injectable()
@@ -15,7 +17,13 @@ export class UsersService {
   async getProfile(userId: string): Promise<UserProfile> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, username: true, role: true },
+      select: {
+        email: true,
+        username: true,
+        role: true,
+        level: true,
+        totalXp: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException('Geçersiz veya süresi dolmuş token.');

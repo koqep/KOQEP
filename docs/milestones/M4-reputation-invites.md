@@ -25,11 +25,11 @@
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M3'ün kullandığı aynı ritim). 2026-08-04 kapsam gözden geçirmesinde A/B/C dilimlerine bölündü (aşağıdaki Plan notları):
 - [x] **M4 Slice A — ReputationEvent günlüğü + seviye hesaplama + mesaj başı XP.** Tamamlandı (2026-08-04) — detay için aşağıdaki "Plan notları — Slice A uygulaması" bölümüne bakın. `ReputationEvent` tablosu + `User.totalXp`/`User.level` (cache, AYNI migration'da). `ReputationService.awardXp` — `MessagesService.sendMessage`'ın zaten var olan transaction'ına eklendi. Saf fonksiyon `computeLevelFromXp(totalXp, xpPerLevel)` — replay testinin kalbi.
 - [x] **M4 Slice B — Davet kazanımı + manuel oluşturmanın kaldırılması + GET /invites.** Tamamlandı (2026-08-04) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. Seviye atlayınca `Invite` satırları `MessagesService.sendMessage`'ın transaction'ı içinde oluşturuluyor. `POST /invites` ve `UserThrottlerGuard` kaldırıldı. `GET /invites` eklendi. `InviteView.tsx` yeniden yazıldı.
-- [ ] **M4 Slice C — Founder/mevcut kullanıcı geçişi + minimal seviye görünürlüğü.** Founder ve erken kullanıcılar M4 şipince 0 XP'yle başlıyor — ilk daveti manuel SQL ile bootstrap (kod DEĞİL, zaten kurulu "sıfır-kullanıcılı DB" desenine uygun, bkz. STATE.md tuzağı). `GET /users/me`'ye `level`/`totalXp` eklenir (sayfa değil, tek alan) — Yol B: seviye tamamen görünmez olsaydı mekanik "sessiz" hissettirirdi.
+- [x] **M4 Slice C — Founder/mevcut kullanıcı geçişi + minimal seviye görünürlüğü.** Tamamlandı (2026-08-05) — detay için aşağıdaki "Plan notları — Slice C uygulaması" bölümüne bakın. `GET /users/me`'ye `level`/`totalXp` eklendi (backend-only, `docs/BACKLOG.md`'nin kayıtlı kararıyla tutarlı). Founder/mevcut kullanıcı geçişi kod DEĞİL, `docs/THREAT-MODEL.md`'ye eklenen bir Open items maddesi (doğru bootstrap prosedürü + neden `totalXp`/`level`'i elle güncellemenin yanlış olduğu).
 
 ## Risks
 - The exact level/XP formula is a product guess, not a validated curve — mitigation: ship a simple linear formula first and treat tuning as a post-launch iteration, not a blocker for this milestone. **Slice A'da kesinleşti (2026-08-04):** 1 XP/mesaj, `level = floor(totalXp / 35)` — her 35 mesaj bir seviye. İlk taslak 20'ydi; günde 10-15 mesaj atan "makul aktif" bir kullanıcı için 20 → 1.3-2 gün/seviye çıkıyordu, PRD'nin dolaylı "~3 gün" hedefinden hızlıydı. 35 ile 3.5 gün (10 mesaj/gün) - 2.3 gün (15 mesaj/gün) arası, hedefe daha yakın. Tamamen tahmini, adlandırılmış sabitler olarak yazıldı (`XP_PER_LEVEL`, `MESSAGE_SENT_XP`), tuning sonraki bir iş.
-- **Yeni bulunan risk:** M4 şiptiği anda founder dahil TÜM mevcut kullanıcılar 0 XP/0 seviyede başlar — birileri davet edilmeden önce mesaj göndermesi/seviye atlaması gerekir. Kabul edilen risk (Slice C'ye bakın) — tek seferlik, zaten kurulu manuel-SQL-bootstrap deseniyle çözülüyor, kalıcı bir kod yolu gerektirmiyor.
+- **Yeni bulunan risk, Slice C'de belgelendi:** M4 şiptiği anda founder dahil TÜM mevcut kullanıcılar 0 XP/0 seviyede başlar — birileri davet edilmeden önce mesaj göndermesi/seviye atlaması gerekir. Kabul edilen risk, tek seferlik, kalıcı bir kod yolu gerektirmiyor — doğru manuel bootstrap prosedürü (ve `totalXp`/`level`'i elle güncellemenin neden YANLIŞ olduğu) `docs/THREAT-MODEL.md`'nin Open items bölümüne yazıldı.
 
 ---
 
@@ -245,3 +245,53 @@ kalıyor.
 ### Sıradaki
 Slice B tamam. Slice C (founder/mevcut kullanıcı geçişi + minimal
 seviye görünürlüğü) kendi plan-modu turuyla başlayacak.
+
+## Plan notları — Slice C uygulaması (2026-08-05)
+
+Kod okunarak tasarlandı, bir Plan agent'ıyla çapraz kontrol edildi.
+İki bağımsız iş: (1) `GET /users/me`'ye `level`/`totalXp` — Slice
+A'nın şiptiği kolonları API'ye açan tek satırlık iş; (2) founder/mevcut
+kullanıcı geçişi — milestone'un kendi Risk notunun zaten kabul ettiği
+gibi kod DEĞİL, dokümantasyon işi.
+
+**Frontend'e bilerek dokunulmadı.** `docs/BACKLOG.md` (satır 81-86)
+zaten kayıtlı bir karar: "Seviye/rozet zaten M4'ün kapsamında ama M4'ün
+mevcut görev listesinde hiçbir UI/profil sayfası yok — sadece backend
+hesaplama." Milestone'un kendi Out-of-scope'u da aynı şeyi söylüyor.
+Agent bu okumayı bağımsız doğruladı — `apps/web`'e hiç dokunulmadı.
+
+**Agent'ın kod okuyarak doğruladığı kritik bulgu (founder bootstrap
+için):** `User.level`/`totalXp`'i elle `UPDATE` ile "sahte" yükseltmek
+YANLIŞ olurdu — hem ADR-0004'ün "seviye her zaman gerçek günlükten
+türetilir" ilkesini kırar, hem de DAHA ÖNEMLİSİ: `grantInvites`
+SADECE `MessagesService.sendMessage`'ın transaction'ı içinde,
+`awardXp`'nin canlı hesapladığı `newLevel > oldLevel` görülünce
+tetikleniyor — başka HİÇBİR tetikleyici yok (agent kaynak kodda,
+migration SQL'lerinde ve tüm servislerde doğruladı: trigger/cron/event
+yok). Yani `level` kolonunu elle güncellemek ekranda "Level 1" gösterir
+ama GERÇEKTE sıfır davet üretir. Doğru prosedür: doğrudan bir `Invite`
+satırı INSERT etmek, `level`/`totalXp`'e hiç dokunmadan — gerçek
+entropili bir kodla (`docs/THREAT-MODEL.md` satır 9'un işaret ettiği
+insan-seçimi-kod açığını yeniden açmamak için).
+
+**Gerçekte yapılan:**
+- `UsersService.getProfile`'ın `select`'ine `level`/`totalXp` eklendi,
+  `UserProfile` interface'i genişledi.
+- İki mevcut test (`users.service.spec.ts`, `blocks.e2e-spec.ts`)
+  exact-equality kullandığı için güncellendi — agent'ın da bağımsız
+  doğruladığı, grep ile önceden bulunan iki gerçek regresyon.
+- `docs/THREAT-MODEL.md`'nin Open items bölümüne yeni bir madde: M4
+  sonrası herkesin (founder dahil) sıfır davetle başladığı, ve doğru
+  bootstrap prosedürü (gerçek entropili kod + doğrudan `Invite` INSERT,
+  `totalXp`/`level`'e ASLA dokunmama).
+- `docs/DATA-MODEL.md`'nin `User` blurb'ü — Slice A'dan beri eksik olan
+  `totalXp`/`level` (materialized/cached, ADR-0004) eklendi.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, 120/120 birim test,
+58/58 e2e test. Frontend'e dokunulmadığı için `apps/web` doğrulaması
+gerekmedi. Dal `m4/slice-c-founder-transition`, push kullanıcının
+onayına kalıyor.
+
+### Sıradaki
+M4 TAMAMEN BİTTİ — Slice A, B ve C'nin üçü de tamamlandı. Sonraki
+milestone için `docs/STATE.md` ve `docs/BACKLOG.md` kontrol edilmeli.

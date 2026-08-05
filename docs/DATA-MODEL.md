@@ -5,7 +5,7 @@
 ## Entities
 *Yedi çekirdek varlık: User, Invite, Room, Message, MessageEdit, ReputationEvent, ReadCursor. Presence kalıcı değil, in-process yaşar.*
 
-**User** — an account. Email, optional TOTP secret, a free-text `region` field (informational only, never used for access or filtering — ADR-0006), and `inviter_id` (self-referential, nullable only for the root account).
+**User** — an account. Email, optional TOTP secret, a free-text `region` field (informational only, never used for access or filtering — ADR-0006), `inviter_id` (self-referential, nullable only for the root account), and `total_xp`/`level` — a materialized/cached derivation of the `ReputationEvent` log (ADR-0004), never the source of truth itself; both default to `0` for every account, including the founder's own (M4 Slice A/C).
 
 **Invite** — a code issued by a user on level-up (PRD: 1 per level, starting at Level 1). `used_by` is nullable until consumed.
 
