@@ -20,6 +20,8 @@ describe('Invites: kazanım + görüntüleme (e2e)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let messagesService: MessagesService;
+  const createdUserIds: string[] = [];
+  const createdMessageIds: string[] = [];
 
   beforeAll(async () => {
     // Bu dosyanın odağı /invites, e-posta gönderimi değil - ama aşağıdaki
@@ -49,6 +51,32 @@ describe('Invites: kazanım + görüntüleme (e2e)', () => {
   });
 
   afterAll(async () => {
+    // createLeveledUpInviter gerçek MessagesService.sendMessage'ı çağırıyor -
+    // bu, PAYLAŞILAN #general odasına gerçek bir Message satırı yazıyor.
+    // Temizlenmezse her test koşusu #general'i kalıcı olarak kirletir (bu,
+    // gerçek bir CI/local koşumunda yakalanan bir hataydı - bkz. STATE.md).
+    if (createdMessageIds.length > 0) {
+      await prisma.reputationEvent.deleteMany({
+        where: { sourceMessageId: { in: createdMessageIds } },
+      });
+      await prisma.message.deleteMany({
+        where: { id: { in: createdMessageIds } },
+      });
+    }
+    if (createdUserIds.length > 0) {
+      await prisma.reputationEvent.deleteMany({
+        where: { userId: { in: createdUserIds } },
+      });
+      await prisma.invite.deleteMany({
+        where: {
+          OR: [
+            { issuedById: { in: createdUserIds } },
+            { usedById: { in: createdUserIds } },
+          ],
+        },
+      });
+      await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    }
     await app.close();
   });
 
@@ -73,11 +101,13 @@ describe('Invites: kazanım + görüntüleme (e2e)', () => {
         level: 0,
       },
     });
-    await messagesService.sendMessage(
+    createdUserIds.push(user.id);
+    const message = await messagesService.sendMessage(
       user.id,
       CORE_ROOM_NAMES[0],
       `seviye-atlama-${randomUUID()}`,
     );
+    createdMessageIds.push(message.id);
     const accessToken = await jwtService.signAsync({
       sub: user.id,
       email: user.email,
@@ -108,6 +138,7 @@ describe('Invites: kazanım + görüntüleme (e2e)', () => {
       where: { email: newUserEmail },
     });
     expect(newUser?.inviterId).toBe(issuer.userId);
+    if (newUser) createdUserIds.push(newUser.id);
   });
 
   describe('GET /invites', () => {
@@ -124,6 +155,7 @@ describe('Invites: kazanım + görüntüleme (e2e)', () => {
           passwordHash: 'test-not-a-real-hash',
         },
       });
+      createdUserIds.push(user.id);
       const accessToken = await jwtService.signAsync({
         sub: user.id,
         email: user.email,

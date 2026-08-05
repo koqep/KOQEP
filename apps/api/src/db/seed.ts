@@ -7,9 +7,13 @@ import {
   DEV_USER_2_EMAIL,
   DEV_USER_2_USERNAME,
   DEV_USER_2_PASSWORD,
+  DEV_USER_LEVELUP_EMAIL,
+  DEV_USER_LEVELUP_USERNAME,
+  DEV_USER_LEVELUP_PASSWORD,
   DEV_INVITE_CODES,
 } from './dev-seed.constants';
 import { CORE_ROOM_NAMES } from './core-rooms.constants';
+import { XP_PER_LEVEL, MESSAGE_SENT_XP } from '../services/reputation.service';
 
 // Bu script her deploy'da (render.yaml preDeployCommand) production'a karşı da
 // çalışıyor. Dev kullanıcı + davet kodları git'te düz metin sabitler - opt-in
@@ -77,6 +81,28 @@ async function main(): Promise<void> {
       username: DEV_USER_2_USERNAME,
       passwordHash: passwordHash2,
       emailVerifiedAt: new Date(),
+    },
+  });
+
+  // Sarf edilebilir üçüncü dev kullanıcı - sadece
+  // apps/web/e2e-fullstack/invite-issuance.spec.ts kullanıyor. totalXp/level
+  // her seed'de eşiğin bir mesaj öncesine SIFIRLANIYOR (update dalı da dahil)
+  // - böylece test her koşuda tek gerçek mesajla seviye atlatıp gerçek bir
+  // Invite üretebiliyor, önceki bir koşudan kalan durumdan etkilenmeden.
+  const passwordHash3 = await argon2.hash(DEV_USER_LEVELUP_PASSWORD);
+  const levelUpFields = {
+    totalXp: XP_PER_LEVEL - MESSAGE_SENT_XP,
+    level: 0,
+  };
+  await prisma.user.upsert({
+    where: { email: DEV_USER_LEVELUP_EMAIL },
+    update: { passwordHash: passwordHash3, ...levelUpFields },
+    create: {
+      email: DEV_USER_LEVELUP_EMAIL,
+      username: DEV_USER_LEVELUP_USERNAME,
+      passwordHash: passwordHash3,
+      emailVerifiedAt: new Date(),
+      ...levelUpFields,
     },
   });
 
