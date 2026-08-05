@@ -101,7 +101,7 @@ describe('Block-user (e2e)', () => {
     return { email, username, accessToken };
   }
 
-  it('doner_kendi_email_kullanici_adi_ve_rolunu', async () => {
+  it('doner_kendi_email_kullanici_adi_rolunu_seviyesini_ve_xpsini', async () => {
     const a = await createTestUser();
 
     const response = await request(app.getHttpServer())
@@ -113,6 +113,8 @@ describe('Block-user (e2e)', () => {
       email: a.email,
       username: a.username,
       role: 'user',
+      level: 0,
+      totalXp: 0,
     });
   });
 
