@@ -4,18 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-04
-**Aktif milestone:** M4 (`docs/milestones/M4-reputation-invites.md`) — kapsam gözden geçirmesi TAMAMLANDI, Slice A/B/C'ye bölündü. Slice A (ReputationEvent günlüğü + seviye + mesaj başı XP) TAMAMEN BİTTİ, henüz merge edilmedi. Slice B/C uygulama bekliyor. M3 (Slice A/B/C + `RoomView.tsx` refactor) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33). M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M4 (`docs/milestones/M4-reputation-invites.md`) — kapsam gözden geçirmesi TAMAMLANDI, Slice A/B/C'ye bölündü. Slice A+B TAMAMEN BİTTİ, henüz merge edilmedi. Slice C (founder geçişi + minimal seviye görünürlüğü) uygulama bekliyor. M3 (Slice A/B/C + `RoomView.tsx` refactor) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33). M2.5 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 (tüm 6 dilim: username/e-posta doğrulama/hesap silme/WS güvenilirlik/geçmiş sayfalama/kod bloğu) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI + büyük kapsam denetimi:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-07-31—2026-08-04 — M3 (oda oluşturma + arşiv + silme yaşam döngüsü) tamamen bitti.** Slice A/B/C + `RoomView.tsx` refactor'ü. Kod okuyarak bulunan kritik açıklar + ADR-0006'ya kayıtlı bir kural istisnası dahil — tam derivasyon zinciri `docs/milestones/M3-user-rooms-lifecycle.md`'nin Plan notları bölümlerinde, buraya taşınmadı.
-- **2026-08-04 — M4 kapsam gözden geçirmesi + Slice A.** `POST /invites`'ın TAMAMEN AÇIK/sınırsız olduğu bulundu (M4'ün "seviye başına 1 davet" mekaniğiyle çelişiyordu) — manuel oluşturma KALDIRILACAK kararı alındı (`AskUserQuestion`). `GET /invites` hiç yoktu, davet kazanılsa bile görülemezdi (Yol B). Slice A'da `ReputationEvent` tablosu + `User.totalXp`/`level` şipildi; iki kritik FK regresyon riski (hesap silme, Slice C'nin `purgeArchivedRooms`'u) `userId`/`sourceMessageId` `SetNull` ile önlendi; `XP_PER_LEVEL` 20→35 düzeltildi (hedeften hızlıydı). Detay: milestone dosyasının Plan notları bölümleri.
+- **2026-08-04 — M4 kapsam gözden geçirmesi + Slice A + Slice B.** `POST /invites`'ın TAMAMEN AÇIK/sınırsız olduğu bulunup manuel oluşturma KALDIRILDI (kullanıcı kararı) — davetler artık sadece seviye atlayınca `MessagesService.sendMessage`'ın transaction'ı içinde kazanılıyor, `GET /invites` ile listeleniyor. Slice A'da `ReputationEvent` + `User.totalXp`/`level` şipildi (iki FK regresyon riski `SetNull` ile önlendi, `XP_PER_LEVEL` 20→35 düzeltildi). Slice B'de `user-throttler.guard.ts` silindi, `docs/THREAT-MODEL.md` satır 1/7 güncellendi (yeni tavan ~100 davet/saat/kullanıcı, WS mesaj limitinden türeyen). Detay: milestone dosyasının Plan notları bölümleri.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M4 Slice A tamamlandı ve doğrulandı (`m4/slice-a-reputation-log` dalı, 5 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** M4 Slice B (davet kazanımı + `POST /invites` kaldırma + `GET /invites` + frontend rework) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M4 Slice B tamamlandı ve doğrulandı (`m4/slice-b-invite-earning` dalı, 7 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** M4 Slice C (founder/mevcut kullanıcı geçişi + minimal seviye görünürlüğü) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -57,3 +57,4 @@
 - `messages.gateway.ts`'in `handleConnection`'ı bağlantıda hangi odalara `client.join()` edileceğini SABİT bir listeden (`CORE_ROOM_NAMES`) alıyordu — dinamik/kullanıcı-üretimi kaynaklar (M3'te oda) eklerken bu tür "bağlantı anında sabit bir listeye katıl" desenlerini MUTLAKA ara: yeni kaynak var olsa bile hiçbir soket ona hiç katılmaz, gerçek zamanlı teslimat sessizce kırılır. Milestone dokümanının Tasks listesi bunu hiç anmıyordu, sadece kod okuyarak bulundu.
 - Plan modundayken `ExitPlanMode` SADECE "implementasyona başla" onayı DEĞİL — plan dosyası dışındaki HER dosyayı düzenlemenin (docs dahil) tek kilidi. Kullanıcı "kod yazma, sadece docs güncelle" dediğinde bile önce `ExitPlanMode` çağrılmalı; aksi halde `Edit`/`Write` plan-modu kısıtlamasına takılır, kullanıcı aynı isteği tekrarlamak zorunda kalır (bu oturumda oldu).
 - `Message` interface'i artık İKİ ayrı dosyada tanımlı (`MessageItem.tsx` ve `ChatPanel.tsx`, RoomView.tsx bölme refactor'ünün bilinçli tercihi — import yerine tekrar) — birini değiştirirsen diğerini de kontrol et, sessizce birbirinden sapabilirler.
+- Paylaşılan bir transaction içinde (ör. `sendMessage`'ın `$transaction`'ı) N adet satır yazarken bunu bir döngüde N ayrı `create()` ile YAPMA — aynı transaction'ın tuttuğu paylaşılan bir satır kilidini (ör. `Room`) N round-trip kadar uzatır, timeout riski doğurur. Tek bir `createMany` kullan (M4 Slice B'de `InvitesService.grantInvites`'ta bir Plan agent'ının bulduğu gerçek sorun).

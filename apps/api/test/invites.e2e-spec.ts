@@ -7,17 +7,26 @@ import { randomUUID } from 'crypto';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { EmailService } from './../src/services/email.service';
+import { MessagesService } from './../src/services/messages.service';
+import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
+import {
+  XP_PER_LEVEL,
+  MESSAGE_SENT_XP,
+} from './../src/services/reputation.service';
 import { buildEmailServiceMock } from './support/email-service-mock';
 
-describe('Invite issuance + rate limiting (e2e)', () => {
+describe('Invites: kazanım + görüntüleme (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let jwtService: JwtService;
+  let messagesService: MessagesService;
+  const createdUserIds: string[] = [];
+  const createdMessageIds: string[] = [];
 
   beforeAll(async () => {
-    // Bu dosyanın odağı /invites, e-posta gönderimi değil - ama aşağıdaki ilk
-    // test gerçek /auth/signup'ı tetikliyor (bkz. üstteki yorum), o da
-    // EmailService'e dokunuyor (bkz. support/email-service-mock.ts).
+    // Bu dosyanın odağı /invites, e-posta gönderimi değil - ama aşağıdaki
+    // testlerden biri gerçek /auth/signup'ı tetikliyor, o da EmailService'e
+    // dokunuyor (bkz. support/email-service-mock.ts).
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -30,81 +39,154 @@ describe('Invite issuance + rate limiting (e2e)', () => {
 
     prisma = moduleFixture.get(PrismaService);
     jwtService = moduleFixture.get(JwtService);
+    messagesService = moduleFixture.get(MessagesService);
+
+    for (const name of CORE_ROOM_NAMES) {
+      await prisma.room.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      });
+    }
   });
 
   afterAll(async () => {
+    // createLeveledUpInviter gerçek MessagesService.sendMessage'ı çağırıyor -
+    // bu, PAYLAŞILAN #general odasına gerçek bir Message satırı yazıyor.
+    // Temizlenmezse her test koşusu #general'i kalıcı olarak kirletir (bu,
+    // gerçek bir CI/local koşumunda yakalanan bir hataydı - bkz. STATE.md).
+    if (createdMessageIds.length > 0) {
+      await prisma.reputationEvent.deleteMany({
+        where: { sourceMessageId: { in: createdMessageIds } },
+      });
+      await prisma.message.deleteMany({
+        where: { id: { in: createdMessageIds } },
+      });
+    }
+    if (createdUserIds.length > 0) {
+      await prisma.reputationEvent.deleteMany({
+        where: { userId: { in: createdUserIds } },
+      });
+      await prisma.invite.deleteMany({
+        where: {
+          OR: [
+            { issuedById: { in: createdUserIds } },
+            { usedById: { in: createdUserIds } },
+          ],
+        },
+      });
+      await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    }
     await app.close();
   });
 
-  // Bu dosyanın testleri /invites endpoint'ini test ediyor, signup/e-posta
-  // doğrulama akışını değil - sadece kimlik doğrulanmış bir "davetçi"ye
-  // ihtiyaç var, doğrudan doğrulanmış kullanıcı oluşturup token imzalıyoruz
-  // (M2.5 Slice B). Aşağıdaki ilk testte AYRICA gerçek /auth/signup'a
-  // yapılan iç çağrı bilerek dokunulmadan kaldı - "üretilen kod gerçekten
-  // signup'ta işe yarıyor mu" iddiasını bizzat kanıtlayan asıl satır o.
-  async function createTestUser(): Promise<{
-    email: string;
+  // M4 Slice B'de manuel oluşturma kaldırıldığı için artık taze bir "davetçi"
+  // yaratmak, kullanıcıyı bir seviye atlamaya bir mesaj uzaklıkta seed edip
+  // gerçek bir mesaj göndermek demek - bu, üretilen kodun gerçek
+  // grantInvites yolundan geldiğini garanti eder (elle prisma.invite.create
+  // DEĞİL).
+  async function createLeveledUpInviter(): Promise<{
+    userId: string;
     accessToken: string;
   }> {
-    const email = `user-${randomUUID()}@koqep.local`;
-    const username = `user-${randomUUID()}`;
+    const email = `inviter-${randomUUID()}@koqep.local`;
+    const username = `inviter-${randomUUID()}`;
     const user = await prisma.user.create({
       data: {
         email,
         username,
         passwordHash: 'test-not-a-real-hash',
         emailVerifiedAt: new Date(),
+        totalXp: XP_PER_LEVEL - MESSAGE_SENT_XP,
+        level: 0,
       },
     });
+    createdUserIds.push(user.id);
+    const message = await messagesService.sendMessage(
+      user.id,
+      CORE_ROOM_NAMES[0],
+      `seviye-atlama-${randomUUID()}`,
+    );
+    createdMessageIds.push(message.id);
     const accessToken = await jwtService.signAsync({
       sub: user.id,
       email: user.email,
     });
-    return { email, accessToken };
+    return { userId: user.id, accessToken };
   }
 
-  it('gecerli_bir_davet_kodu_uretir_ve_gercek_signup_ile_kullanilabilir', async () => {
-    const issuer = await createTestUser();
+  it('seviye_atlayinca_kazanilan_kod_gercek_signupta_kullanilabilir', async () => {
+    const issuer = await createLeveledUpInviter();
 
-    const response = await request(app.getHttpServer())
-      .post('/invites')
-      .set('Authorization', `Bearer ${issuer.accessToken}`)
-      .expect(201);
-
-    const { code } = response.body as { code: string };
-    expect(typeof code).toBe('string');
-    expect(code.length).toBeGreaterThanOrEqual(16);
+    const invite = await prisma.invite.findFirst({
+      where: { issuedById: issuer.userId, usedAt: null },
+    });
+    expect(invite).not.toBeNull();
 
     const newUserEmail = `invited-${randomUUID()}@koqep.local`;
     await request(app.getHttpServer())
       .post('/auth/signup')
       .send({
-        inviteCode: code,
+        inviteCode: invite?.code,
         email: newUserEmail,
         username: `invited-${randomUUID()}`,
         password: 'a-strong-password',
       })
       .expect(201);
+
+    const newUser = await prisma.user.findUnique({
+      where: { email: newUserEmail },
+    });
+    expect(newUser?.inviterId).toBe(issuer.userId);
+    if (newUser) createdUserIds.push(newUser.id);
   });
 
-  it('reddeder_kimliksiz_istegi', async () => {
-    await request(app.getHttpServer()).post('/invites').expect(401);
-  });
+  describe('GET /invites', () => {
+    it('reddeder_kimliksiz_istegi', async () => {
+      await request(app.getHttpServer()).get('/invites').expect(401);
+    });
 
-  it('saatte_bes_davetten_fazlasini_ayni_kullanici_icin_engeller', async () => {
-    const issuer = await createTestUser();
-    const authHeader = { Authorization: `Bearer ${issuer.accessToken}` };
+    it('henuz_seviye_atlamamis_kullanici_icin_bos_liste_doner', async () => {
+      const email = `fresh-${randomUUID()}@koqep.local`;
+      const user = await prisma.user.create({
+        data: {
+          email,
+          username: `fresh-${randomUUID()}`,
+          passwordHash: 'test-not-a-real-hash',
+        },
+      });
+      createdUserIds.push(user.id);
+      const accessToken = await jwtService.signAsync({
+        sub: user.id,
+        email: user.email,
+      });
 
-    for (let i = 0; i < 5; i++) {
-      await request(app.getHttpServer())
-        .post('/invites')
-        .set(authHeader)
-        .expect(201);
-    }
+      const response = await request(app.getHttpServer())
+        .get('/invites')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
 
-    await request(app.getHttpServer())
-      .post('/invites')
-      .set(authHeader)
-      .expect(429);
+      expect(response.body).toEqual([]);
+    });
+
+    it('kazanilan_daveti_kod_ve_durumuyla_listeler', async () => {
+      const issuer = await createLeveledUpInviter();
+
+      const response = await request(app.getHttpServer())
+        .get('/invites')
+        .set('Authorization', `Bearer ${issuer.accessToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveLength(1);
+      const [dto] = response.body as {
+        code: string;
+        createdAt: string;
+        usedAt: string | null;
+      }[];
+      expect(typeof dto.code).toBe('string');
+      expect(dto.code.length).toBeGreaterThanOrEqual(16);
+      expect(dto.usedAt).toBeNull();
+      expect(dto).not.toHaveProperty('usedById');
+    });
   });
 });

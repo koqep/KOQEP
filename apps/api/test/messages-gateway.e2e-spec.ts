@@ -14,6 +14,10 @@ import {
 } from './../src/db/dev-seed.constants';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 import { MAX_MESSAGE_LENGTH } from './../src/services/messages.service';
+import {
+  XP_PER_LEVEL,
+  MESSAGE_SENT_XP,
+} from './../src/services/reputation.service';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
@@ -26,6 +30,7 @@ describe('Messages Gateway (e2e)', () => {
   let baseUrl: string;
   const createdMessageIds: string[] = [];
   const createdReputationEventIds: string[] = [];
+  const createdInviteIds: string[] = [];
   const openSockets: Socket[] = [];
 
   beforeAll(async () => {
@@ -83,6 +88,11 @@ describe('Messages Gateway (e2e)', () => {
 
   afterAll(async () => {
     openSockets.forEach((socket) => socket.close());
+    if (createdInviteIds.length > 0) {
+      await prisma.invite.deleteMany({
+        where: { id: { in: createdInviteIds } },
+      });
+    }
     if (createdReputationEventIds.length > 0) {
       await prisma.reputationEvent.deleteMany({
         where: { id: { in: createdReputationEventIds } },
@@ -378,5 +388,52 @@ describe('Messages Gateway (e2e)', () => {
     });
     expect(updatedUser?.totalXp).toBe(1);
     expect(updatedUser?.level).toBe(0); // XP_PER_LEVEL=35, tek mesaj yetmez
+  }, 10000);
+
+  it('seviye_atlatan_mesaj_gercek_bir_invite_satiri_uretir', async () => {
+    // M4 Slice B: 35 gerçek mesaj göndermek yerine, eşiğin tam bir mesaj
+    // öncesine seed edip TEK gerçek WS mesajıyla eşiği geçiriyoruz - gerçek
+    // yolu (WS -> sendMessage -> awardXp -> grantInvites, tek transaction)
+    // 35 kere tekrarlamadan kanıtlıyor.
+    const jwtService = app.get(JwtService);
+    const user = await prisma.user.create({
+      data: {
+        email: `levelup-${randomUUID()}@koqep.local`,
+        username: `levelup-${randomUUID()}`,
+        passwordHash: 'test-not-a-real-hash',
+        totalXp: XP_PER_LEVEL - MESSAGE_SENT_XP,
+        level: 0,
+      },
+    });
+    const token = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+    const client = connect(token);
+    await waitForEvent(client, 'ready');
+
+    const content = `levelup-testi-${randomUUID()}`;
+    const receivedPromise = waitForEvent<{ id: string }>(client, 'message:new');
+    client.emit('message:send', { content });
+    const message = await receivedPromise;
+    createdMessageIds.push(message.id);
+
+    const event = await prisma.reputationEvent.findFirst({
+      where: { sourceMessageId: message.id },
+    });
+    if (event) createdReputationEventIds.push(event.id);
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
+    expect(updatedUser?.totalXp).toBe(XP_PER_LEVEL);
+    expect(updatedUser?.level).toBe(1);
+
+    const invites = await prisma.invite.findMany({
+      where: { issuedById: user.id },
+    });
+    createdInviteIds.push(...invites.map((invite) => invite.id));
+    expect(invites).toHaveLength(1);
+    expect(invites[0].usedAt).toBeNull();
   }, 10000);
 });

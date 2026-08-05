@@ -29,40 +29,34 @@ async function login(page: import("@playwright/test").Page) {
   await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
 }
 
-test("gosters_bos_durum_sonra_olusturunca_koda_ekler", async ({ page }) => {
+test("henuz_kazanilmis_davet_yoksa_aciklayici_bos_durum_gosterir", async ({
+  page,
+}) => {
   await login(page);
-  let callCount = 0;
-  await page.route("**/invites", async (route) => {
-    callCount += 1;
-    await route.fulfill({ json: { code: `INVITE-${callCount}` } });
-  });
+  await page.route("**/invites", (route) => route.fulfill({ json: [] }));
 
   await page.getByRole("button", { name: "invites" }).click();
 
-  await expect(page.getByText("no invites yet")).toBeVisible();
-
-  await page.getByRole("button", { name: "create invite" }).click();
-  await expect(page.getByText("INVITE-1")).toBeVisible();
-
-  await page.getByRole("button", { name: "create invite" }).click();
-  await expect(page.getByText("INVITE-2")).toBeVisible();
-  await expect(page.getByText("INVITE-1")).toBeVisible();
+  await expect(
+    page.getByText("henüz kazanılmış bir davetin yok"),
+  ).toBeVisible();
 });
 
-test("hiz_limiti_asilinca_dostane_mesaj_gosterir", async ({ page }) => {
+test("kazanilan_davetleri_kod_ve_durumuyla_listeler", async ({ page }) => {
   await login(page);
   await page.route("**/invites", (route) =>
     route.fulfill({
-      status: 429,
-      json: { statusCode: 429, message: "ThrottlerException: Too Many Requests" },
+      json: [
+        { code: "USED-CODE", createdAt: "2026-08-01T00:00:00.000Z", usedAt: "2026-08-02T00:00:00.000Z" },
+        { code: "FRESH-CODE", createdAt: "2026-08-03T00:00:00.000Z", usedAt: null },
+      ],
     }),
   );
 
   await page.getByRole("button", { name: "invites" }).click();
-  await page.getByRole("button", { name: "create invite" }).click();
 
-  await expect(
-    page.getByText("You can create up to 5 invites per hour."),
-  ).toBeVisible();
-  await expect(page.getByText("ThrottlerException")).toHaveCount(0);
+  await expect(page.getByText("FRESH-CODE")).toBeVisible();
+  await expect(page.getByText("USED-CODE")).toBeVisible();
+  await expect(page.getByText("kullanılabilir")).toBeVisible();
+  await expect(page.getByText("kullanıldı")).toBeVisible();
 });

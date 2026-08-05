@@ -12,6 +12,7 @@ import {
   MESSAGE_SENT_ACTION,
   MESSAGE_SENT_XP,
 } from './reputation.service';
+import { InvitesService } from './invites.service';
 
 export const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_PAGE_SIZE = 50;
@@ -48,6 +49,7 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly blocksService: BlocksService,
     private readonly reputationService: ReputationService,
+    private readonly invitesService: InvitesService,
   ) {}
 
   async sendMessage(
@@ -78,13 +80,19 @@ export class MessagesService {
       // M4 Slice A: ADR-0004'ün itibar günlüğü - mesaj gönderimi XP
       // kazandırıyor, aynı transaction içinde (mesaj var ama olayı yoksa
       // günlük tutarsız kalırdı).
-      await this.reputationService.awardXp(
+      const { oldLevel, newLevel } = await this.reputationService.awardXp(
         tx,
         userId,
         MESSAGE_SENT_ACTION,
         MESSAGE_SENT_XP,
         created.id,
       );
+      // M4 Slice B: seviye atlayınca 1 davet/seviye kazanılır (bir mesaj
+      // birden fazla seviye atlatabilir - bkz. reputation.service.ts).
+      // Aynı transaction'da, XP yazımıyla atomik.
+      if (newLevel > oldLevel) {
+        await this.invitesService.grantInvites(tx, userId, newLevel - oldLevel);
+      }
       return created;
     });
 

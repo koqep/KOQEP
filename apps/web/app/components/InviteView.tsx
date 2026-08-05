@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { createInvite, ApiError } from "../../lib/api";
+import { useEffect, useState } from "react";
+import { listInvites, type InviteDto } from "../../lib/api";
 
 interface Props {
   accessToken: string;
@@ -9,30 +9,21 @@ interface Props {
 }
 
 export default function InviteView({ accessToken, onClose }: Props) {
-  const [codes, setCodes] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [invites, setInvites] = useState<InviteDto[] | null>(null);
 
-  async function handleCreate() {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      const { code } = await createInvite(accessToken);
-      setCodes((prev) => [code, ...prev]);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 429) {
-        setError("You can create up to 5 invites per hour. Try again later.");
-      } else {
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Connection error. Try again.",
-        );
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  useEffect(() => {
+    let cancelled = false;
+    listInvites(accessToken)
+      .then((result) => {
+        if (!cancelled) setInvites(result);
+      })
+      .catch(() => {
+        if (!cancelled) setInvites([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
@@ -49,27 +40,26 @@ export default function InviteView({ accessToken, onClose }: Props) {
         </button>
       </div>
 
-      {error && <p className="mb-4 text-red-400">{error}</p>}
-
-      <button
-        type="button"
-        onClick={() => void handleCreate()}
-        disabled={isSubmitting}
-        className="mb-6 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        create invite
-      </button>
-
-      {codes.length === 0 ? (
-        <p>no invites yet</p>
+      {invites === null ? (
+        <p>yükleniyor...</p>
+      ) : invites.length === 0 ? (
+        <p>
+          henüz kazanılmış bir davetin yok — mesaj gönderip seviye atladıkça
+          burada görünecek.
+        </p>
       ) : (
         <ul className="space-y-2">
-          {codes.map((code) => (
+          {invites.map((invite) => (
             <li
-              key={code}
-              className="select-all font-mono text-neutral-200"
+              key={invite.code}
+              className="flex items-center justify-between gap-4"
             >
-              {code}
+              <span className="select-all font-mono text-neutral-200">
+                {invite.code}
+              </span>
+              <span className="text-neutral-600">
+                {invite.usedAt ? "kullanıldı" : "kullanılabilir"}
+              </span>
             </li>
           ))}
         </ul>
