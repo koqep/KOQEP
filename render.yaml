@@ -20,6 +20,11 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Kanonik, www'suz origin (ör. https://koqep.com) - e-posta
+      # doğrulama/şifre sıfırlama linklerinin (auth.service.ts) TEK taban
+      # URL'i olarak kullanılıyor. CORS (main.ts, messages.gateway.ts) ayrıca
+      # buradan www. karşılığını da otomatik türetip ikisine birden izin
+      # veriyor (bkz. allowed-origins.ts) - www için AYRI bir env var YOK.
       - key: WEB_ORIGIN
         sync: false
       # M1 Slice C: sifre sifirlama e-postalari icin. Hesap + API key

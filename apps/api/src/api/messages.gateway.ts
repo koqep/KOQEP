@@ -27,6 +27,7 @@ import type { MessageDto } from '../services/messages.service';
 import { BlocksService } from '../services/blocks.service';
 import { WsThrottlerGuard } from './ws-throttler.guard';
 import { SocketRegistryService } from '../services/socket-registry.service';
+import { getAllowedOrigins } from '../allowed-origins';
 
 const MESSAGE_SEND_LIMIT = 10;
 const MESSAGE_SEND_TTL_MS = 10 * 1000;
@@ -40,7 +41,7 @@ interface AckResponse {
 }
 
 @WebSocketGateway({
-  cors: { origin: process.env.WEB_ORIGIN },
+  cors: { origin: getAllowedOrigins(process.env.WEB_ORIGIN) },
 })
 export class MessagesGateway
   implements OnGatewayConnection, OnGatewayDisconnect
