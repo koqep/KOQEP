@@ -16,6 +16,8 @@ import { InvitesService } from './invites.service';
 
 export const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_PAGE_SIZE = 50;
+export const MODERATOR_REMOVED_CONTENT =
+  '[Bu mesaj bir moderatör tarafından kaldırıldı.]';
 
 export interface MessageDto {
   id: string;
@@ -186,6 +188,38 @@ export class MessagesService {
     });
 
     return toMessageDto(updated);
+  }
+
+  // M5 Slice A: editMessage'ın MessageEdit-yazma deseniyle AYNI (aynı
+  // transaction şekli, orijinal içerik MessageEdit'e taşınır) ama yazar
+  // kontrolü YOK - bu metot sadece ReportsService.removeContent'ten,
+  // zaten ModeratorGuard arkasından çağrılıyor. CLAUDE.md'nin "mesaj
+  // içeriği asla hard-delete edilmez" kuralına uyuyor - Message satırı
+  // silinmiyor, içeriği değişiyor. Oda durumu (arşiv) BİLEREK kontrol
+  // edilmiyor - "salt-okunur" kısıtlaması sıradan kullanıcı yazımı için,
+  // moderatör aksiyonu odanın durumundan bağımsız çalışmalı.
+  async removeMessageContent(
+    messageId: string,
+  ): Promise<{ dto: MessageDto; authorId: string | null }> {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.messageEdit.create({
+        data: { messageId, previousContent: message.content },
+      });
+      return tx.message.update({
+        where: { id: messageId },
+        data: { content: MODERATOR_REMOVED_CONTENT },
+        include: { author: { select: { username: true } } },
+      });
+    });
+
+    return { dto: toMessageDto(updated), authorId: updated.authorId };
   }
 
   async getMessageEditHistory(

@@ -3,7 +3,7 @@ import {
   GoneException,
   NotFoundException,
 } from '@nestjs/common';
-import { MessagesService } from './messages.service';
+import { MessagesService, MODERATOR_REMOVED_CONTENT } from './messages.service';
 import { BlocksService } from './blocks.service';
 import {
   ReputationService,
@@ -536,6 +536,82 @@ describe('MessagesService', () => {
       await expect(
         service.editMessage('user-1', 'msg-1', 'yeni icerik'),
       ).rejects.toThrow(GoneException);
+    });
+  });
+
+  describe('removeMessageContent', () => {
+    function buildRemovalPrismaMock(
+      existingMessage: { id: string; content: string; authorId: string | null },
+      updated: unknown,
+    ): {
+      prismaMock: Partial<PrismaService>;
+      createSpy: jest.Mock;
+      updateSpy: jest.Mock;
+    } {
+      const createSpy = jest.fn().mockResolvedValue({});
+      const updateSpy = jest.fn().mockResolvedValue(updated);
+      const txMock = {
+        messageEdit: { create: createSpy },
+        message: { update: updateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue(existingMessage),
+        } as unknown as PrismaService['message'],
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+      return { prismaMock, createSpy, updateSpy };
+    }
+
+    it('yazar_kontrolu_olmadan_icerigi_placeholderla_degistirir_ve_eskisini_gecmise_yazar', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'saldirgan icerik',
+        authorId: 'baska-kullanici',
+      };
+      const updated = {
+        id: 'msg-1',
+        content: MODERATOR_REMOVED_CONTENT,
+        createdAt: new Date('2026-01-01'),
+        roomId: 'room-1',
+        authorId: 'baska-kullanici',
+        author: { username: 'saldirgan' },
+      };
+      const { prismaMock, createSpy, updateSpy } = buildRemovalPrismaMock(
+        existing,
+        updated,
+      );
+
+      const service = buildService(prismaMock);
+      const result = await service.removeMessageContent('msg-1');
+
+      expect(createSpy).toHaveBeenCalledWith({
+        data: { messageId: 'msg-1', previousContent: 'saldirgan icerik' },
+      });
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'msg-1' },
+          data: { content: MODERATOR_REMOVED_CONTENT },
+        }),
+      );
+      expect(result.dto.content).toBe(MODERATOR_REMOVED_CONTENT);
+      expect(result.authorId).toBe('baska-kullanici');
+    });
+
+    it('reddeder_bilinmeyen_mesaji', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.removeMessageContent('yok-mesaj')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
