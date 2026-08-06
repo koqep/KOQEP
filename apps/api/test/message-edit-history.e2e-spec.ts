@@ -13,6 +13,7 @@ describe('Message edit history access control (e2e)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let roomId: string;
+  const createdReportIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -33,6 +34,15 @@ describe('Message edit history access control (e2e)', () => {
   });
 
   afterAll(async () => {
+    // M5 Slice A: bu dosyanın moderatör testi gerçek bir Report satırı
+    // oluşturuyor (bkz. aşağı) - o satır temizlenmeli. Bu dosyanın
+    // kendi kullanıcı/mesaj satırlarını hiç temizlemediği (pre-existing)
+    // ayrı bir konu, bu değişikliğin kapsamı değil.
+    if (createdReportIds.length > 0) {
+      await prisma.report.deleteMany({
+        where: { id: { in: createdReportIds } },
+      });
+    }
     await app.close();
   });
 
@@ -104,7 +114,7 @@ describe('Message edit history access control (e2e)', () => {
     // M5 Slice A: moderatör erişimi artık bu mesaja ait EN AZ BİR Report
     // satırı gerektiriyor (docs/THREAT-MODEL.md satır 12) - rapor DURUMU
     // önemsiz, sadece var olması yeterli.
-    await prisma.report.create({
+    const report = await prisma.report.create({
       data: {
         reporterId: reporter.id,
         messageId,
@@ -112,6 +122,7 @@ describe('Message edit history access control (e2e)', () => {
         reportedContent: 'rapor edilen icerik',
       },
     });
+    createdReportIds.push(report.id);
 
     const response = await request(app.getHttpServer())
       .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/edits`)

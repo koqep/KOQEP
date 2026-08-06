@@ -59,7 +59,10 @@ export class MessagesController {
     @Param('id') id: string,
     @Body() dto: ReportMessageDto,
   ): Promise<{ ok: true }> {
-    await this.reportsService.createReport(req.user.sub, id, dto.reason);
+    // dto tamamen boş bir istek gövdesinde (Content-Type/body hiç
+    // gönderilmemişse) undefined olabilir - reason zaten opsiyonel,
+    // gövdenin kendisi de opsiyonel olmalı.
+    await this.reportsService.createReport(req.user.sub, id, dto?.reason);
     return { ok: true };
   }
 }
