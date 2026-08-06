@@ -18,6 +18,12 @@ enum UserRole {
   moderator
 }
 
+enum ReportStatus {
+  open
+  resolved
+  dismissed
+}
+
 model User {
   id              String    @id @default(uuid())
   email           String    @unique
@@ -46,6 +52,10 @@ model User {
   blocksReceived          Block[]                  @relation("Blocked")
   createdRooms            Room[]                   @relation("RoomCreator")
   reputationEvents        ReputationEvent[]
+  reportsFiled            Report[]                 @relation("ReportReporter")
+  reportsAgainst          Report[]                 @relation("ReportedUser")
+  reportsResolved         Report[]                 @relation("ReportResolver")
+  moderationActions       ModerationAuditLog[]     @relation("ModerationActor")
 }
 
 model Invite {
@@ -154,6 +164,8 @@ model Message {
 
   edits            MessageEdit[]
   reputationEvents ReputationEvent[]
+  reports          Report[]
+  moderationLogs   ModerationAuditLog[]
 
   @@index([roomId, createdAt])
 }
@@ -182,4 +194,58 @@ model ReputationEvent {
   sourceMessage   Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+}
+
+model Report {
+  id              String       @id @default(uuid())
+  createdAt       DateTime     @default(now())
+  status          ReportStatus @default(open)
+  resolvedAt      DateTime?
+  reason          String?
+  // Raporlanan içeriğin o anki bir snapshot'ı - messageId sadece canlı bir
+  // referans olsaydı, raporlanan kullanıcı moderatör bakmadan önce mesajını
+  // editMessage ile (hâlâ engelsiz) değiştirip kanıtı silebilirdi.
+  reportedContent String
+
+  reporterId String?
+  reporter   User?   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  messageId String?
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  // message.authorId'den DENORMALİZE edilerek oluşturulurken yazılır - sadece
+  // messageId üzerinden dolaylı kalsaydı hem hesap silme (authorId NULL) hem
+  // oda purge (messageId NULL) zincirini koparıp Slice C'nin "aynı kullanıcıya
+  // çoklu rapor" sayımını güvenilmez yapardı.
+  reportedUserId String?
+  reportedUser   User?   @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+
+  resolvedById String?
+  resolvedBy   User?   @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  auditEntries ModerationAuditLog[]
+
+  @@index([messageId])
+  @@index([status])
+  @@index([reportedUserId])
+}
+
+model ModerationAuditLog {
+  id         String   @id @default(uuid())
+  // Plain string, ReputationEvent (ADR-0004) ile aynı ilke - yeni aksiyon
+  // tipi (Slice B: MUTE_APPLIED/LIFTED, Slice D: ROOM_RENAMED/DELETED)
+  // migration istemesin.
+  actionType String
+  createdAt  DateTime @default(now())
+
+  moderatorId String?
+  moderator   User?   @relation("ModerationActor", fields: [moderatorId], references: [id], onDelete: SetNull)
+
+  targetMessageId String?
+  targetMessage   Message? @relation(fields: [targetMessageId], references: [id], onDelete: SetNull)
+
+  reportId String?
+  report   Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([moderatorId])
 }
