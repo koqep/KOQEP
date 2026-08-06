@@ -19,6 +19,7 @@ interface Props {
   canViewHistory: boolean;
   onSubmitEdit: (messageId: string, content: string) => void;
   fetchHistory: (messageId: string) => Promise<MessageEdit[]>;
+  onReport: (messageId: string) => Promise<void>;
 }
 
 const inputClassName =
@@ -37,6 +38,7 @@ export default function MessageItem({
   canViewHistory,
   onSubmitEdit,
   fetchHistory,
+  onReport,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
@@ -45,6 +47,19 @@ export default function MessageItem({
     null,
   );
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [reportState, setReportState] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
+
+  async function handleReport() {
+    setReportState("sending");
+    try {
+      await onReport(message.id);
+      setReportState("sent");
+    } catch {
+      setReportState("error");
+    }
+  }
 
   function startEditing() {
     setDraft(message.content);
@@ -133,6 +148,23 @@ export default function MessageItem({
               {isHistoryOpen ? "geçmişi gizle" : "geçmiş"}
             </button>
           )}
+          {!isMine &&
+            (reportState === "sent" ? (
+              <span className="text-neutral-600">raporlandı</span>
+            ) : (
+              <button
+                type="button"
+                disabled={reportState === "sending"}
+                onClick={() => void handleReport()}
+                className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+              >
+                {reportState === "error"
+                  ? "tekrar dene"
+                  : reportState === "sending"
+                    ? "raporlanıyor..."
+                    : "raporla"}
+              </button>
+            ))}
         </div>
       )}
 

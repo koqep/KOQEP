@@ -1,0 +1,127 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  listOpenReports,
+  removeReportedContent,
+  dismissReport,
+  type ReportSummary,
+} from "../../lib/api";
+import MessageContent from "./MessageContent";
+
+interface Props {
+  accessToken: string;
+  onClose: () => void;
+}
+
+export default function ModerationQueueView({ accessToken, onClose }: Props) {
+  const [reports, setReports] = useState<ReportSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listOpenReports(accessToken)
+      .then((result) => {
+        if (!cancelled) setReports(result);
+      })
+      .catch(() => {
+        if (!cancelled) setReports([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  function removeFromQueue(reportId: string) {
+    setReports((prev) => (prev ?? []).filter((r) => r.id !== reportId));
+  }
+
+  async function handleRemoveContent(reportId: string) {
+    setError(null);
+    setPendingId(reportId);
+    try {
+      await removeReportedContent(accessToken, reportId);
+      removeFromQueue(reportId);
+    } catch {
+      setError("İçerik kaldırılamadı, tekrar dene.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleDismiss(reportId: string) {
+    setError(null);
+    setPendingId(reportId);
+    try {
+      await dismissReport(accessToken, reportId);
+      removeFromQueue(reportId);
+    } catch {
+      setError("Rapor reddedilemedi, tekrar dene.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  return (
+    <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-neutral-400">
+          <span className="text-neutral-600">#</span> moderasyon
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-neutral-600 hover:text-neutral-400"
+        >
+          close
+        </button>
+      </div>
+
+      {error && <p className="mb-4 text-red-400">{error}</p>}
+
+      {reports === null ? (
+        <p>yükleniyor...</p>
+      ) : reports.length === 0 ? (
+        <p>açık rapor yok</p>
+      ) : (
+        <ul className="space-y-4">
+          {reports.map((report) => (
+            <li
+              key={report.id}
+              className="border border-neutral-800 p-2"
+            >
+              <p className="mb-1 text-neutral-500">
+                {report.reportedUsername ?? "silinmiş kullanıcı"}
+                {report.reason && (
+                  <span className="text-neutral-600"> — {report.reason}</span>
+                )}
+              </p>
+              <p className="mb-2 text-neutral-200">
+                <MessageContent content={report.reportedContent} />
+              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  disabled={pendingId === report.id}
+                  onClick={() => void handleRemoveContent(report.id)}
+                  className="text-neutral-600 hover:text-red-400 disabled:cursor-not-allowed"
+                >
+                  içeriği kaldır
+                </button>
+                <button
+                  type="button"
+                  disabled={pendingId === report.id}
+                  onClick={() => void handleDismiss(report.id)}
+                  className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                >
+                  reddet
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

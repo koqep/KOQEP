@@ -13,6 +13,7 @@ import {
   getCurrentUser,
   getMessageEditHistory,
   listRooms,
+  reportMessage,
   type UserProfile,
   type MessageEdit,
   type Room,
@@ -22,6 +23,7 @@ import BlockedUsersView from "./BlockedUsersView";
 import InviteView from "./InviteView";
 import DeleteAccountView from "./DeleteAccountView";
 import CreateRoomView from "./CreateRoomView";
+import ModerationQueueView from "./ModerationQueueView";
 import RoomHeader from "./RoomHeader";
 import ChatPanel from "./ChatPanel";
 
@@ -31,7 +33,8 @@ type ActivePanel =
   | "blocked"
   | "invites"
   | "delete-account"
-  | "create-room";
+  | "create-room"
+  | "moderation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -319,6 +322,11 @@ export default function RoomView({
     return getMessageEditHistory(accessToken, activeRoom.name, messageId);
   }
 
+  function handleReportMessage(messageId: string): Promise<void> {
+    if (!activeRoom) return Promise.reject(new Error("aktif oda yok"));
+    return reportMessage(accessToken, activeRoom.name, messageId);
+  }
+
   async function handleLogout() {
     socketRef.current?.close();
     try {
@@ -349,6 +357,8 @@ export default function RoomView({
         onOpenInvites={() => setActivePanel("invites")}
         onOpenDeleteAccount={() => setActivePanel("delete-account")}
         onLogout={() => void handleLogout()}
+        isModerator={myProfile?.role === "moderator"}
+        onOpenModeration={() => setActivePanel("moderation")}
       />
 
       {activePanel === "totp" ? (
@@ -384,6 +394,11 @@ export default function RoomView({
           }}
           onClose={() => setActivePanel("none")}
         />
+      ) : activePanel === "moderation" ? (
+        <ModerationQueueView
+          accessToken={accessToken}
+          onClose={() => setActivePanel("none")}
+        />
       ) : (
         <ChatPanel
           messagesSectionRef={messagesSectionRef}
@@ -391,6 +406,7 @@ export default function RoomView({
           myProfile={myProfile}
           onMessageEditSubmit={handleMessageEdit}
           fetchHistoryForMessage={fetchHistoryForMessage}
+          onReportMessage={handleReportMessage}
           nextCursor={nextCursor}
           isLoadingOlder={isLoadingOlder}
           onLoadOlder={() => void handleLoadOlder()}
