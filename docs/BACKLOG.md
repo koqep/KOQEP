@@ -276,13 +276,14 @@ maddelik incelemesi) ertelemeleri:**
   modele bağımlı, ayrı bir madde değil. **Somut tetikleyici:** aktif
   kullanıcı sayısı >50 VEYA aktif oda sayısı >15 VEYA gerçek bir özel-oda
   talebi gelirse. → `M3` sonrası.
-- **Oda moderasyonu (silme/yeniden adlandırma):** 20-30 kişilik,
+- **Oda moderasyonu (silme/yeniden adlandırma):** ~~20-30 kişilik,
   "dikkatli tek moderatör" varsayımlı bir toplulukta (THREAT-MODEL satır 7)
   nadir bir kötü-isimli oda için founder'ın manuel Postgres düzeltmesi
-  kabul edilebilir — TOTP kilitlenme/resend-endpoint kararlarındaki AYNI
-  kurulu desen. **Somut tetikleyici:** bu manuel düzeltme ikinci kez
-  gerekirse VEYA M4 (moderasyon) şipse, hangisi önce gelirse. →
-  `M4` ya da tetiklenirse daha erken.
+  kabul edilebilir~~ — **ÇÖZÜLDÜ (2026-08-05, M5 ikinci tur kapsam
+  gözden geçirmesi):** tetikleyici zaten fırlamıştı — bu satırın "M4
+  (moderasyon) şipse" tetikleyicisi, milestone numaralandırması
+  kaydıktan sonra (moderasyon artık M5) hiç güncellenmemişti. `M5 Slice
+  D` olarak eklendi (`docs/milestones/M5-moderation-abuse.md`).
 
 ---
 

@@ -35,7 +35,11 @@ describing these as active controls.
   rate-limited," not reputation-gated; that gating is M4's job.
 - Self-service moderator management — the founder's own `role` is set once via manual
   SQL (same pattern as this session's production user-bootstrap). A real role-management
-  UI/endpoint is M5 (moderation tooling) scope.
+  UI/endpoint is M5 (moderation tooling) scope. **Çözüldü (2026-08-05, M5'in ikinci tur
+  kapsam gözden geçirmesi):** M5'in kendi Out-of-scope'u "multi-moderator management"ı
+  reddediyor, ve TEK moderatörün kendi rolünü BİR KERE ayarlaması zaten tek-seferlik bir
+  bootstrap adımı — M5'e endpoint olarak EKLENMEDİ, manuel prosedür olarak kalıyor
+  (`docs/THREAT-MODEL.md` Open items).
 
 ## Acceptance criteria
 - [x] #general and #meta exist, are seeded on deploy, and are usable — a user can send
