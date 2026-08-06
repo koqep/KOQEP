@@ -3,6 +3,7 @@ import {
   GoneException,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { MessagesService, MODERATOR_REMOVED_CONTENT } from './messages.service';
 import { BlocksService } from './blocks.service';
 import {
@@ -540,29 +541,23 @@ describe('MessagesService', () => {
   });
 
   describe('removeMessageContent', () => {
-    function buildRemovalPrismaMock(
-      existingMessage: { id: string; content: string; authorId: string | null },
+    function buildTxMock(
+      existingMessage: unknown,
       updated: unknown,
     ): {
-      prismaMock: Partial<PrismaService>;
+      tx: Prisma.TransactionClient;
+      findUniqueSpy: jest.Mock;
       createSpy: jest.Mock;
       updateSpy: jest.Mock;
     } {
+      const findUniqueSpy = jest.fn().mockResolvedValue(existingMessage);
       const createSpy = jest.fn().mockResolvedValue({});
       const updateSpy = jest.fn().mockResolvedValue(updated);
-      const txMock = {
+      const tx = {
+        message: { findUnique: findUniqueSpy, update: updateSpy },
         messageEdit: { create: createSpy },
-        message: { update: updateSpy },
-      };
-      const prismaMock: Partial<PrismaService> = {
-        message: {
-          findUnique: jest.fn().mockResolvedValue(existingMessage),
-        } as unknown as PrismaService['message'],
-        $transaction: jest
-          .fn()
-          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
-      };
-      return { prismaMock, createSpy, updateSpy };
+      } as unknown as Prisma.TransactionClient;
+      return { tx, findUniqueSpy, createSpy, updateSpy };
     }
 
     it('yazar_kontrolu_olmadan_icerigi_placeholderla_degistirir_ve_eskisini_gecmise_yazar', async () => {
@@ -579,13 +574,10 @@ describe('MessagesService', () => {
         authorId: 'baska-kullanici',
         author: { username: 'saldirgan' },
       };
-      const { prismaMock, createSpy, updateSpy } = buildRemovalPrismaMock(
-        existing,
-        updated,
-      );
+      const { tx, createSpy, updateSpy } = buildTxMock(existing, updated);
 
-      const service = buildService(prismaMock);
-      const result = await service.removeMessageContent('msg-1');
+      const service = buildService({});
+      const result = await service.removeMessageContent(tx, 'msg-1');
 
       expect(createSpy).toHaveBeenCalledWith({
         data: { messageId: 'msg-1', previousContent: 'saldirgan icerik' },
@@ -601,17 +593,13 @@ describe('MessagesService', () => {
     });
 
     it('reddeder_bilinmeyen_mesaji', async () => {
-      const prismaMock: Partial<PrismaService> = {
-        message: {
-          findUnique: jest.fn().mockResolvedValue(null),
-        } as unknown as PrismaService['message'],
-      };
+      const { tx } = buildTxMock(null, {});
 
-      const service = buildService(prismaMock);
+      const service = buildService({});
 
-      await expect(service.removeMessageContent('yok-mesaj')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.removeMessageContent(tx, 'yok-mesaj'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

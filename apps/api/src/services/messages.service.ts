@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Room } from '@prisma/client';
+import { Prisma, Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { BlocksService } from './blocks.service';
 import {
@@ -190,33 +190,36 @@ export class MessagesService {
     return toMessageDto(updated);
   }
 
-  // M5 Slice A: editMessage'ın MessageEdit-yazma deseniyle AYNI (aynı
-  // transaction şekli, orijinal içerik MessageEdit'e taşınır) ama yazar
-  // kontrolü YOK - bu metot sadece ReportsService.removeContent'ten,
-  // zaten ModeratorGuard arkasından çağrılıyor. CLAUDE.md'nin "mesaj
-  // içeriği asla hard-delete edilmez" kuralına uyuyor - Message satırı
-  // silinmiyor, içeriği değişiyor. Oda durumu (arşiv) BİLEREK kontrol
-  // edilmiyor - "salt-okunur" kısıtlaması sıradan kullanıcı yazımı için,
-  // moderatör aksiyonu odanın durumundan bağımsız çalışmalı.
+  // M5 Slice A: editMessage'ın MessageEdit-yazma deseniyle AYNI (orijinal
+  // içerik MessageEdit'e taşınır) ama yazar kontrolü YOK - bu metot sadece
+  // ReportsService.removeContent'ten, zaten ModeratorGuard arkasından
+  // çağrılıyor. CLAUDE.md'nin "mesaj içeriği asla hard-delete edilmez"
+  // kuralına uyuyor - Message satırı silinmiyor, içeriği değişiyor. Oda
+  // durumu (arşiv) BİLEREK kontrol edilmiyor - "salt-okunur" kısıtlaması
+  // sıradan kullanıcı yazımı için, moderatör aksiyonu odanın durumundan
+  // bağımsız çalışmalı.
+  //
+  // awardXp/grantInvites (M4) ile AYNI desen: kendi transaction'ını
+  // AÇMIYOR, çağıranın açık tx'ini alıyor - ReportsService.removeContent
+  // bunu Report.status güncellemesi + ModerationAuditLog yazımıyla TEK
+  // atomik transaction'a komponse edebilsin diye (mesaj içeriği değişti
+  // ama rapor hâlâ "açık" görünen bir ara durum olmasın).
   async removeMessageContent(
+    tx: Prisma.TransactionClient,
     messageId: string,
   ): Promise<{ dto: MessageDto; authorId: string | null }> {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
+    const message = await tx.message.findUnique({ where: { id: messageId } });
     if (!message) {
       throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.messageEdit.create({
-        data: { messageId, previousContent: message.content },
-      });
-      return tx.message.update({
-        where: { id: messageId },
-        data: { content: MODERATOR_REMOVED_CONTENT },
-        include: { author: { select: { username: true } } },
-      });
+    await tx.messageEdit.create({
+      data: { messageId, previousContent: message.content },
+    });
+    const updated = await tx.message.update({
+      where: { id: messageId },
+      data: { content: MODERATOR_REMOVED_CONTENT },
+      include: { author: { select: { username: true } } },
     });
 
     return { dto: toMessageDto(updated), authorId: updated.authorId };
