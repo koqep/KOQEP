@@ -13,6 +13,7 @@ describe('Message edit history access control (e2e)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let roomId: string;
+  const createdReportIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -33,6 +34,15 @@ describe('Message edit history access control (e2e)', () => {
   });
 
   afterAll(async () => {
+    // M5 Slice A: bu dosyanın moderatör testi gerçek bir Report satırı
+    // oluşturuyor (bkz. aşağı) - o satır temizlenmeli. Bu dosyanın
+    // kendi kullanıcı/mesaj satırlarını hiç temizlemediği (pre-existing)
+    // ayrı bir konu, bu değişikliğin kapsamı değil.
+    if (createdReportIds.length > 0) {
+      await prisma.report.deleteMany({
+        where: { id: { in: createdReportIds } },
+      });
+    }
     await app.close();
   });
 
@@ -90,8 +100,9 @@ describe('Message edit history access control (e2e)', () => {
     expect(edits.map((e) => e.previousContent)).toContain(previousContent);
   });
 
-  it('moderator_baskasinin_mesajinin_gecmisini_gorebilir', async () => {
+  it('moderator_raporlanmis_bir_mesajin_gecmisini_gorebilir', async () => {
     const author = await createTestUser();
+    const reporter = await createTestUser();
     const moderator = await createTestUser();
     await prisma.user.update({
       where: { id: moderator.id },
@@ -100,6 +111,18 @@ describe('Message edit history access control (e2e)', () => {
     const { messageId, previousContent } = await createMessageWithEditHistory(
       author.id,
     );
+    // M5 Slice A: moderatör erişimi artık bu mesaja ait EN AZ BİR Report
+    // satırı gerektiriyor (docs/THREAT-MODEL.md satır 12) - rapor DURUMU
+    // önemsiz, sadece var olması yeterli.
+    const report = await prisma.report.create({
+      data: {
+        reporterId: reporter.id,
+        messageId,
+        reportedUserId: author.id,
+        reportedContent: 'rapor edilen icerik',
+      },
+    });
+    createdReportIds.push(report.id);
 
     const response = await request(app.getHttpServer())
       .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/edits`)
@@ -108,6 +131,21 @@ describe('Message edit history access control (e2e)', () => {
 
     const edits = response.body as { previousContent: string }[];
     expect(edits.map((e) => e.previousContent)).toContain(previousContent);
+  });
+
+  it('rapor_olmayan_bir_mesaj_icin_moderator_bile_reddedilir', async () => {
+    const author = await createTestUser();
+    const moderator = await createTestUser();
+    await prisma.user.update({
+      where: { id: moderator.id },
+      data: { role: 'moderator' },
+    });
+    const { messageId } = await createMessageWithEditHistory(author.id);
+
+    await request(app.getHttpServer())
+      .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/edits`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .expect(403);
   });
 
   it('ne_yazar_ne_moderator_olan_kullanici_reddedilir', async () => {

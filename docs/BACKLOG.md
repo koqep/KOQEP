@@ -285,6 +285,16 @@ maddelik incelemesi) ertelemeleri:**
   kaydıktan sonra (moderasyon artık M5) hiç güncellenmemişti. `M5 Slice
   D` olarak eklendi (`docs/milestones/M5-moderation-abuse.md`).
 
+**2026-08-06 — M5 Slice A uygulaması ertelemesi:**
+- **Raporlayana durum takibi (raporum ne oldu?):** Slice A'da raporlayan
+  gönderim anında bir onay görüyor ("raporlandı") ama SONRASINDA
+  raporun çözülüp çözülmediğini/nasıl sonuçlandığını göremiyor — Faz
+  1'in zaten kaydettiği "abuse-SLA" boşluğu (`docs/review/CRITIQUE.md`
+  satır 135) ile aynı kategori. 20-30 kişilik bir toplulukta anlık
+  onay yeterli bir taban çizgisi; kalıcı bir "raporlarım" görünümü şu an
+  için cila. **Somut tetikleyici:** raporlayanlar "raporuma ne oldu"
+  diye ikinci kez sorarsa VEYA M6 cila turu şipse, hangisi önce gelirse.
+
 ---
 
 ## A. EKSİK ZORUNLULUKLAR — bunlar "özellik" değil, açık

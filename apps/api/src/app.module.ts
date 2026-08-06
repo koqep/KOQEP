@@ -12,6 +12,7 @@ import { RoomsController } from './api/rooms.controller';
 import { RoomsLifecycleController } from './api/rooms-lifecycle.controller';
 import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
+import { ModerationController } from './api/moderation.controller';
 import { InvitesController } from './api/invites.controller';
 import { AuthService } from './services/auth.service';
 import { InvitesService } from './services/invites.service';
@@ -24,6 +25,7 @@ import { UsersService } from './services/users.service';
 import { RoomsService } from './services/rooms.service';
 import { MessagesService } from './services/messages.service';
 import { ReputationService } from './services/reputation.service';
+import { ReportsService } from './services/reports.service';
 import { SocketRegistryService } from './services/socket-registry.service';
 import { PrismaModule } from './db/prisma.module';
 
@@ -64,6 +66,7 @@ const DEFAULT_RATE_LIMIT = 100;
     RoomsController,
     RoomsLifecycleController,
     MessagesController,
+    ModerationController,
     InvitesController,
   ],
   providers: [
@@ -78,6 +81,7 @@ const DEFAULT_RATE_LIMIT = 100;
     RoomsService,
     MessagesService,
     ReputationService,
+    ReportsService,
     SocketRegistryService,
     MessagesGateway,
     { provide: APP_GUARD, useClass: ThrottlerGuard },

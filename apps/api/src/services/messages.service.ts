@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Room } from '@prisma/client';
+import { Prisma, Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { BlocksService } from './blocks.service';
 import {
@@ -16,6 +16,8 @@ import { InvitesService } from './invites.service';
 
 export const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_PAGE_SIZE = 50;
+export const MODERATOR_REMOVED_CONTENT =
+  '[Bu mesaj bir moderatör tarafından kaldırıldı.]';
 
 export interface MessageDto {
   id: string;
@@ -188,6 +190,41 @@ export class MessagesService {
     return toMessageDto(updated);
   }
 
+  // M5 Slice A: editMessage'ın MessageEdit-yazma deseniyle AYNI (orijinal
+  // içerik MessageEdit'e taşınır) ama yazar kontrolü YOK - bu metot sadece
+  // ReportsService.removeContent'ten, zaten ModeratorGuard arkasından
+  // çağrılıyor. CLAUDE.md'nin "mesaj içeriği asla hard-delete edilmez"
+  // kuralına uyuyor - Message satırı silinmiyor, içeriği değişiyor. Oda
+  // durumu (arşiv) BİLEREK kontrol edilmiyor - "salt-okunur" kısıtlaması
+  // sıradan kullanıcı yazımı için, moderatör aksiyonu odanın durumundan
+  // bağımsız çalışmalı.
+  //
+  // awardXp/grantInvites (M4) ile AYNI desen: kendi transaction'ını
+  // AÇMIYOR, çağıranın açık tx'ini alıyor - ReportsService.removeContent
+  // bunu Report.status güncellemesi + ModerationAuditLog yazımıyla TEK
+  // atomik transaction'a komponse edebilsin diye (mesaj içeriği değişti
+  // ama rapor hâlâ "açık" görünen bir ara durum olmasın).
+  async removeMessageContent(
+    tx: Prisma.TransactionClient,
+    messageId: string,
+  ): Promise<{ dto: MessageDto; authorId: string | null }> {
+    const message = await tx.message.findUnique({ where: { id: messageId } });
+    if (!message) {
+      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+    }
+
+    await tx.messageEdit.create({
+      data: { messageId, previousContent: message.content },
+    });
+    const updated = await tx.message.update({
+      where: { id: messageId },
+      data: { content: MODERATOR_REMOVED_CONTENT },
+      include: { author: { select: { username: true } } },
+    });
+
+    return { dto: toMessageDto(updated), authorId: updated.authorId };
+  }
+
   async getMessageEditHistory(
     requesterId: string,
     messageId: string,
@@ -206,6 +243,20 @@ export class MessagesService {
         select: { role: true },
       });
       if (requester?.role !== 'moderator') {
+        throw new ForbiddenException(
+          'Bu mesajın düzenleme geçmişini görme yetkin yok.',
+        );
+      }
+      // M5 Slice A: docs/THREAT-MODEL.md satır 12 "scoped to an active
+      // report" diyordu ama Report hiç yokken bu doğrulanamaz bir iddiaydı
+      // - şimdi gerçek hale getiriliyor. Rapor DURUMU önemsiz (çözülmüş bir
+      // rapor bile geçmiş bir vaka olarak incelenebilmeli), sadece bu
+      // mesaja ait EN AZ BİR rapor olması yeterli.
+      const hasReport = await this.prisma.report.findFirst({
+        where: { messageId },
+        select: { id: true },
+      });
+      if (!hasReport) {
         throw new ForbiddenException(
           'Bu mesajın düzenleme geçmişini görme yetkin yok.',
         );

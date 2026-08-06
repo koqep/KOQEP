@@ -18,6 +18,7 @@ interface Props {
   myProfile: UserProfile | null;
   onMessageEditSubmit: (messageId: string, content: string) => void;
   fetchHistoryForMessage: (messageId: string) => Promise<MessageEdit[]>;
+  onReportMessage: (messageId: string) => Promise<void>;
   nextCursor: string | null;
   isLoadingOlder: boolean;
   onLoadOlder: () => void;
@@ -37,6 +38,7 @@ export default function ChatPanel({
   myProfile,
   onMessageEditSubmit,
   fetchHistoryForMessage,
+  onReportMessage,
   nextCursor,
   isLoadingOlder,
   onLoadOlder,
@@ -82,6 +84,7 @@ export default function ChatPanel({
                   canViewHistory={canViewHistory}
                   onSubmitEdit={onMessageEditSubmit}
                   fetchHistory={fetchHistoryForMessage}
+                  onReport={onReportMessage}
                 />
               );
             })}

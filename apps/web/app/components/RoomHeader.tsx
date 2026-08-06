@@ -14,6 +14,8 @@ interface Props {
   onOpenInvites: () => void;
   onOpenDeleteAccount: () => void;
   onLogout: () => void;
+  isModerator: boolean;
+  onOpenModeration: () => void;
 }
 
 // Odanın son ne zaman aktif olduğunu kabaca gösteriyor - tam bir "keşfet"
@@ -43,6 +45,8 @@ export default function RoomHeader({
   onOpenInvites,
   onOpenDeleteAccount,
   onLogout,
+  isModerator,
+  onOpenModeration,
 }: Props) {
   return (
     <header className="flex items-center justify-between border-b border-neutral-800 pb-2">
@@ -110,6 +114,15 @@ export default function RoomHeader({
         >
           invites
         </button>
+        {isModerator && (
+          <button
+            type="button"
+            onClick={onOpenModeration}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            moderasyon
+          </button>
+        )}
         <button
           type="button"
           onClick={onOpenDeleteAccount}

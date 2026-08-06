@@ -215,3 +215,47 @@ export function createRoom(
     description: description || undefined,
   });
 }
+
+export async function reportMessage(
+  accessToken: string,
+  roomName: string,
+  messageId: string,
+  reason?: string,
+): Promise<void> {
+  await authedPostJson(
+    `/rooms/${roomName}/messages/${messageId}/report`,
+    accessToken,
+    reason ? { reason } : undefined,
+  );
+}
+
+export interface ReportSummary {
+  id: string;
+  createdAt: string;
+  reason: string | null;
+  reportedContent: string;
+  reportedUsername: string | null;
+}
+
+export function listOpenReports(
+  accessToken: string,
+): Promise<ReportSummary[]> {
+  return authedGetJson<ReportSummary[]>("/moderation/reports", accessToken);
+}
+
+export async function removeReportedContent(
+  accessToken: string,
+  reportId: string,
+): Promise<void> {
+  await authedPostJson(
+    `/moderation/reports/${reportId}/remove-content`,
+    accessToken,
+  );
+}
+
+export async function dismissReport(
+  accessToken: string,
+  reportId: string,
+): Promise<void> {
+  await authedPostJson(`/moderation/reports/${reportId}/dismiss`, accessToken);
+}

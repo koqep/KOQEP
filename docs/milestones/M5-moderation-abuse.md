@@ -13,12 +13,12 @@
 - Invite-issuance audit tablosu (`User` FK'sinden bağımsız, silinen davetçileri geriye dönük izlemek için) — `docs/BACKLOG.md`'nin zaten kaydettiği gibi SADECE Slice E'nin tasarımı bunu gerçekten gerektirirse inşa edilir, önceden varsayılmıyor.
 
 ## Acceptance criteria
-- [ ] A user can report a message; the report exposes only the reported content to the moderator (`docs/THREAT-MODEL.md` row 10) — not ambient access to all of a user's messages. (DM raporlama, DM şipince — bkz. Out of scope.)
-- [ ] A moderator can resolve a report by removing the message's content — NEVER a hard delete (CLAUDE.md'nin "mesaj içeriği asla hard-delete edilmez" kuralı, tek istisna oda purge, ADR-0006) — or dismissing it as not-actionable; the report's status reflects the outcome.
-- [ ] A moderator can apply a temp-mute; the muted user is visibly notified in real time (WS) — no shadow ban. Mute, hem yeni mesaj göndermeyi HEM mevcut mesaj düzenlemeyi kapsar (`docs/THREAT-MODEL.md` satır 3'ün tarif ettiği "önce masum mesaj at, sonra düzenleyip saldırıya çevir" vektörü).
-- [ ] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when.
-- [ ] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli.
-- [ ] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları).
+- [x] A user can report a message; the report exposes only the reported content to the moderator (`docs/THREAT-MODEL.md` row 10) — not ambient access to all of a user's messages. (DM raporlama, DM şipince — bkz. Out of scope.)
+- [x] A moderator can resolve a report by removing the message's content — NEVER a hard delete (CLAUDE.md'nin "mesaj içeriği asla hard-delete edilmez" kuralı, tek istisna oda purge, ADR-0006) — or dismissing it as not-actionable; the report's status reflects the outcome.
+- [ ] A moderator can apply a temp-mute; the muted user is visibly notified in real time (WS) — no shadow ban. Mute, hem yeni mesaj göndermeyi HEM mevcut mesaj düzenlemeyi kapsar (`docs/THREAT-MODEL.md` satır 3'ün tarif ettiği "önce masum mesaj at, sonra düzenleyip saldırıya çevir" vektörü). Slice B.
+- [x] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when. (Slice A: erişim + içerik kaldırma/reddetme kapsandı; Slice B/D kendi aksiyon tiplerini ekleyecek.)
+- [ ] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli. Slice C.
+- [ ] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları). Slice D.
 - [ ] When a user is banned/temp-muted for real abuse, their inviter's invite
       quota/trust is visibly affected (`docs/BACKLOG.md` `B15` — "davetçi
       hesap verebilirliği," the platform's most distinctive moderation
@@ -26,7 +26,7 @@
 
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M4'ün kullandığı aynı ritim). 2026-08-05 kapsam gözden geçirmesinde (iki tur) A/B/C/D/E dilimlerine bölündü (aşağıdaki Plan notları):
-- [ ] **M5 Slice A — Rapor akışı + moderatöre kapsamlı görünürlük + çözüm eylemi + durum + denetim günlüğü temeli.** `Report` tablosu (oda mesajları, DM DEĞİL — bkz. Out of scope), `status` alanıyla (açık/çözüldü/reddedildi). Moderatöre SADECE raporlanan içeriği gösteren bir review queue — `messages.service.ts`'in zaten kurduğu `role === 'moderator'` deseniyle aynı (`getMessageEditHistory`). Moderatörün gerçek bir çözüm eylemi VAR: içeriği kaldırma — `editMessage`'ın zaten kurduğu `MessageEdit`-denetim-izi desenini yeniden kullanan, ama moderatör-yetkili farklı bir yoldan çağrılan bir "moderatör kaldırması" (hard-delete DEĞİL, içerik bir placeholder'a değişir, orijinal `MessageEdit`'te saklanır). Rapor gönderimi kendi rate limitine sahip (`room-creation-throttler.guard.ts`'in bağımsız `CanActivate` deseni). Her moderatör erişimi VE aksiyonu append-only bir denetim günlüğüne yazılır (ADR-0004'ün `ReputationEvent` deseni).
+- [x] **M5 Slice A — Rapor akışı + moderatöre kapsamlı görünürlük + çözüm eylemi + durum + denetim günlüğü temeli.** Tamamlandı (2026-08-06) — detay için aşağıdaki "Plan notları — Slice A uygulaması" bölümüne bakın. `Report` tablosu (oda mesajları, DM DEĞİL — bkz. Out of scope), `status` alanıyla (açık/çözüldü/reddedildi). Moderatöre SADECE raporlanan içeriği gösteren bir review queue — `messages.service.ts`'in zaten kurduğu `role === 'moderator'` deseniyle aynı (`getMessageEditHistory`). Moderatörün gerçek bir çözüm eylemi VAR: içeriği kaldırma — `editMessage`'ın zaten kurduğu `MessageEdit`-denetim-izi desenini yeniden kullanan, ama moderatör-yetkili farklı bir yoldan çağrılan bir "moderatör kaldırması" (hard-delete DEĞİL, içerik bir placeholder'a değişir, orijinal `MessageEdit`'te saklanır). Rapor gönderimi kendi rate limitine sahip (`room-creation-throttler.guard.ts`'in bağımsız `CanActivate` deseni). Her moderatör erişimi VE aksiyonu append-only bir denetim günlüğüne yazılır (ADR-0004'ün `ReputationEvent` deseni).
 - [ ] **M5 Slice B — Geçici susturma (tam kapsam) + gerçek zamanlı bildirim + denetim günlüğü aksiyonları.** `User.mutedUntil` (canlı durum, ODA-BAĞIMSIZ/global) + Slice A'nın denetim günlüğüne MUTE/UNMUTE aksiyon satırları — `User.totalXp`/`level` (canlı önbellek) + `ReputationEvent` (günlük) ikilisiyle aynı mimari desen. `sendMessage` VE `editMessage` ikisi de susturulmuş kullanıcıyı reddeder (M3 Slice B'nin arşivlenmiş-oda `GoneException` deseninin TAM uygulanışı — ilk taslak sadece `sendMessage`'ı kapsıyordu, THREAT-MODEL satır 3'ün "post benign, edit into abuse" vektörünü kapatmak için ikisi de gerekli). Oda oluşturma/davet kazanımına AYRICA dokunulmuyor (gerekçe Plan notları'nda). Bildirim `SocketRegistryService.getSockets(userId)` ile gerçek zamanlı WS push (zaten var olan, bağımlılıksız bir servis — yeni bir mekanizma gerekmiyor).
 - [ ] **M5 Slice C — Aynı-aktör çoklu-rapor deseni tespiti.** Aynı kullanıcı kısa bir pencerede birden fazla farklı kullanıcı tarafından raporlanınca moderatöre otomatik flag — SADECE `status: açık` raporlar sayılır (Slice A'nın durum alanına bağımlı). Pencere/eşik sayıları bu slice'ın kendi plan-modu turunda kesinleşecek (Slice A'nın XP formülü sayılarıyla aynı "tahmini, sonradan ayarlanabilir" ilkesi).
 - [ ] **M5 Slice D — Oda moderasyonu (silme/yeniden adlandırma).** Kötü-isimli/kötüye kullanılan bir oda için moderatör doğrudan aksiyon alabilir — rapor kuyruğundan bağımsız, mevcut `role === 'moderator'` deseniyle korunan basit bir endpoint. `docs/BACKLOG.md`'nin M3'ten beri ertelenmiş maddesi, tetikleyicisi zaten fırlamış (Plan notları). Aksiyon Slice A'nın denetim günlüğüne yazılır.
@@ -197,7 +197,94 @@ tekrar eden bir işlem değil, ve tek gerçek kullanım senaryosu
 öngörüsüne bu kararı işaret eden bir not eklendi (tarihi kaydı silmeden).
 
 ### Sıradaki
-Kapsam gözden geçirmesi (iki tur) onaylanmayı bekliyor, uygulama henüz
-başlamadı. Onay sonrası Slice A (rapor akışı + moderatöre kapsamlı
-görünürlük + çözüm eylemi + durum + denetim günlüğü temeli) kendi
-plan-modu turuyla başlayacak.
+Kapsam gözden geçirmesi (iki tur) onaylandı. Slice A kendi plan-modu
+turuyla başladı ve tamamlandı — detay aşağıdaki "Plan notları — Slice
+A uygulaması" bölümünde.
+
+## Plan notları — Slice A uygulaması (2026-08-06)
+
+Plan-modu turunda kod okunarak tasarlandı, bir Plan agent'ıyla çapraz
+kontrol edildi, sonra kullanıcının ikinci bir gözden geçirmesiyle üç
+nokta daha eklendi (aşağıda). Uygulama sırasında testler iki gerçek
+bug daha buldu.
+
+**Agent'ın ilk turda bulduğu üç şey (plana işlendi, uygulandı):**
+- `Report.messageId`/`reportedUserId` ve `ModerationAuditLog.
+  targetMessageId` NULLABLE + `SetNull` — `RoomsService.
+  purgeArchivedRooms`'un (M3 Slice C) hard-delete sırasını ve
+  `AuthService.deleteAccount()`'u `ReputationEvent`'le AYNI gerekçeyle
+  bozmuyor (migration SQL'de doğrulandı).
+- `ModeratorGuard`'ı `getMessageEditHistory`'ye BLANKET bir guard
+  olarak takmak REDDEDİLDİ — o metot yazar-VEYA-moderatör izin veriyor,
+  guard yazarın kendi geçmişini görmesini kırardı. Guard sadece 3 yeni
+  moderatör-only endpoint'te kullanıldı, `getMessageEditHistory`'nin
+  kendi mantığı korunup rapor-şartı EKLENDİ (ayrı bir konu, aşağıya
+  bakın).
+- Denetim günlüğü granülerliği: rapor-başına değil, `GET /moderation/
+  reports` çağrısı başına TEK `REPORT_QUEUE_VIEWED` satırı — panel'lerin
+  (`InviteView.tsx` deseni) her mount'ta yeniden çekmesiyle birleşince
+  rapor-başına loglamak gürültü üretirdi.
+
+**İkinci turdan gelen üç ekleme (uygulandı):**
+- `Report.reportedUserId` (denormalize, `message.authorId`'den) +
+  `@@index([reportedUserId])` — Slice C'nin sayım sorgusu bu kolonu
+  KULLANACAK, önceden eklemek Slice C'de ikinci bir migration'ı
+  önlüyor.
+- Frontend'de anlık gönderim onayı ("raporlandı") — raporlayan artık
+  hiçbir geri bildirim almıyor değil.
+- `docs/THREAT-MODEL.md`'ye içerik-kaldırma-geri-alma manuel prosedürü
+  eklendi (aşağıya bakın, ayrı commit).
+
+**`getMessageEditHistory` gerçek hale getirildi (agent'ın bulduğu
+doc/kod uyuşmazlığı):** `docs/THREAT-MODEL.md` satır 12 zaten "scoped
+to an active report" diyordu ama Report hiç yokken bu doğrulanamaz bir
+iddiaydı. Report artık var — moderatör dalı artık bu mesaja ait EN AZ
+BİR Report satırı gerektiriyor (durum önemsiz). Mevcut e2e test
+(`message-edit-history.e2e-spec.ts`) rapor oluşturacak şekilde
+güncellendi, yeni bir test raporsuz mesaj için moderatörün de
+reddedildiğini kanıtlıyor.
+
+**`removeMessageContent`'in tasarımı düzeltildi (uygulama sırasında,
+kendi kendine yakalanan bir hata):** İlk taslak kendi `$transaction`'ını
+açıyordu — ama `ReportsService.removeContent`'in mesaj içeriği
+değişikliğini `Report.status` güncellemesi + `ModerationAuditLog`
+yazımıyla TEK atomik işleme komponse edebilmesi için `awardXp`/
+`grantInvites` (M4) ile AYNI desene çekildi: kendi tx'ini açmıyor,
+çağıranın açık tx'ini alıyor. Committed öncesi düzeltildi.
+
+**Testlerin bulduğu iki gerçek bug:**
+- `messages.controller.ts`: boş istek gövdesinde (`Content-Type`/body
+  hiç gönderilmemişse) `@Body() dto` `undefined` dönüyordu, `dto.reason`
+  500 atıyordu — `dto?.reason` ile düzeltildi. Frontend'in `reportMessage`'ı
+  `reason` boşsa gövdeyi hiç göndermediği için bu, GERÇEK bir prod yolu.
+- e2e temizlik: `REPORT_QUEUE_VIEWED` denetim satırları `reportId: null`
+  taşıyor (rapor-başına değil, "kuyruk görüntülendi" olayı) — mevcut
+  `reportId IN (...)` temizlik filtresi bunları hiç yakalamıyordu,
+  `moderatorId` bazlı ayrı bir temizlik eklendi. `message-edit-history.
+  e2e-spec.ts`'in kendi rapor satırı da hiç temizlenmiyordu, eklendi.
+  İki e2e koşusu üst üste çalıştırılıp sıfır kalıntı doğrulandı.
+
+**Gerçek zamanlı bildirim (agent'ın bulduğu, ilk taslağın atladığı
+eksik):** Moderatör içerik kaldırma REST üzerinden çalışıyor ama oda WS
+ile canlı — `MessagesGateway`'e yeni bir PUBLIC `broadcastMessageUpdate`
+metodu eklendi (var olan private `broadcastToRoom`'u sarıyor,
+`handleMessageEdit`'in zaten kullandığı `message:updated` event'ini
+yeniden kullanıyor). Bu kod tabanında İLK KEZ REST'ten WS broadcast
+tetiklenmesi, controller katmanında (servis gateway'e bağımlı olmuyor).
+Frontend'de SIFIR yeni WS-dinleme kodu gerekti.
+
+**Frontend `docs/BACKLOG.md`'de bir erteleme notu OLMADIĞI için (agent
+bağımsız doğruladı) bu dilimin kapsamındaydı** — M4 Slice C'nin
+backend-only kararının AKSİNE. `ModerationQueueView.tsx`
+(`InviteView.tsx` deseni), `MessageItem.tsx`'e "raporla" butonu,
+`RoomHeader.tsx`'e SADECE moderatörler için görünen "moderasyon"
+butonu.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, birim + e2e yeşil
+(iki üst üste e2e koşusu sıfır kalıntı doğruladı). `apps/web`
+lint/typecheck/build temiz, Playwright 49/49 (6 yeni test dahil). Dal
+`m5/slice-a-report-flow`, push kullanıcının onayına kalıyor.
+
+### Sıradaki
+Slice A tamam. Slice B (geçici susturma, tam kapsam) kendi plan-modu
+turuyla başlayacak.

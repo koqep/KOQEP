@@ -3,7 +3,8 @@ import {
   GoneException,
   NotFoundException,
 } from '@nestjs/common';
-import { MessagesService } from './messages.service';
+import { Prisma } from '@prisma/client';
+import { MessagesService, MODERATOR_REMOVED_CONTENT } from './messages.service';
 import { BlocksService } from './blocks.service';
 import {
   ReputationService,
@@ -539,6 +540,69 @@ describe('MessagesService', () => {
     });
   });
 
+  describe('removeMessageContent', () => {
+    function buildTxMock(
+      existingMessage: unknown,
+      updated: unknown,
+    ): {
+      tx: Prisma.TransactionClient;
+      findUniqueSpy: jest.Mock;
+      createSpy: jest.Mock;
+      updateSpy: jest.Mock;
+    } {
+      const findUniqueSpy = jest.fn().mockResolvedValue(existingMessage);
+      const createSpy = jest.fn().mockResolvedValue({});
+      const updateSpy = jest.fn().mockResolvedValue(updated);
+      const tx = {
+        message: { findUnique: findUniqueSpy, update: updateSpy },
+        messageEdit: { create: createSpy },
+      } as unknown as Prisma.TransactionClient;
+      return { tx, findUniqueSpy, createSpy, updateSpy };
+    }
+
+    it('yazar_kontrolu_olmadan_icerigi_placeholderla_degistirir_ve_eskisini_gecmise_yazar', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'saldirgan icerik',
+        authorId: 'baska-kullanici',
+      };
+      const updated = {
+        id: 'msg-1',
+        content: MODERATOR_REMOVED_CONTENT,
+        createdAt: new Date('2026-01-01'),
+        roomId: 'room-1',
+        authorId: 'baska-kullanici',
+        author: { username: 'saldirgan' },
+      };
+      const { tx, createSpy, updateSpy } = buildTxMock(existing, updated);
+
+      const service = buildService({});
+      const result = await service.removeMessageContent(tx, 'msg-1');
+
+      expect(createSpy).toHaveBeenCalledWith({
+        data: { messageId: 'msg-1', previousContent: 'saldirgan icerik' },
+      });
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'msg-1' },
+          data: { content: MODERATOR_REMOVED_CONTENT },
+        }),
+      );
+      expect(result.dto.content).toBe(MODERATOR_REMOVED_CONTENT);
+      expect(result.authorId).toBe('baska-kullanici');
+    });
+
+    it('reddeder_bilinmeyen_mesaji', async () => {
+      const { tx } = buildTxMock(null, {});
+
+      const service = buildService({});
+
+      await expect(
+        service.removeMessageContent(tx, 'yok-mesaj'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('getMessageEditHistory', () => {
     const edits = [
       {
@@ -579,7 +643,7 @@ describe('MessagesService', () => {
       ]);
     });
 
-    it('moderatorun_baskasinin_gecmisini_gormesine_izin_verir', async () => {
+    it('rapor_var_olan_bir_moderatorun_baskasinin_gecmisini_gormesine_izin_verir', async () => {
       const prismaMock: Partial<PrismaService> = {
         message: {
           findUnique: jest
@@ -589,6 +653,9 @@ describe('MessagesService', () => {
         user: {
           findUnique: jest.fn().mockResolvedValue({ role: 'moderator' }),
         } as unknown as PrismaService['user'],
+        report: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'report-1' }),
+        } as unknown as PrismaService['report'],
         messageEdit: {
           findMany: jest.fn().mockResolvedValue([]),
         } as unknown as PrismaService['messageEdit'],
@@ -599,6 +666,28 @@ describe('MessagesService', () => {
       await expect(
         service.getMessageEditHistory('moderator-1', 'msg-1'),
       ).resolves.toEqual([]);
+    });
+
+    it('reddeder_rapor_olmayan_bir_mesaj_icin_moderatoru_bile', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'msg-1', authorId: 'yazar-1' }),
+        } as unknown as PrismaService['message'],
+        user: {
+          findUnique: jest.fn().mockResolvedValue({ role: 'moderator' }),
+        } as unknown as PrismaService['user'],
+        report: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['report'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getMessageEditHistory('moderator-1', 'msg-1'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('reddeder_ne_yazar_ne_moderator_olan_kullaniciyi', async () => {
