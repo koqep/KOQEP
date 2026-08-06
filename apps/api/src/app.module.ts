@@ -12,6 +12,7 @@ import { RoomsController } from './api/rooms.controller';
 import { RoomsLifecycleController } from './api/rooms-lifecycle.controller';
 import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
+import { ModerationController } from './api/moderation.controller';
 import { InvitesController } from './api/invites.controller';
 import { AuthService } from './services/auth.service';
 import { InvitesService } from './services/invites.service';
@@ -65,6 +66,7 @@ const DEFAULT_RATE_LIMIT = 100;
     RoomsController,
     RoomsLifecycleController,
     MessagesController,
+    ModerationController,
     InvitesController,
   ],
   providers: [

@@ -221,12 +221,14 @@ export class MessagesGateway
   // ikisi de bunu kullanıyor.
   private async broadcastToRoom(
     message: MessageDto,
-    authorId: string,
+    authorId: string | null,
     eventName: string,
   ): Promise<void> {
-    const blockerIds = new Set(
-      await this.blocksService.getBlockerIdsOf(authorId),
-    );
+    // authorId null olabilir (hesabı silinmiş/anonimleştirilmiş yazar,
+    // ADR-0005) - engellenecek bir yazar yoksa filtre uygulanmaz.
+    const blockerIds = authorId
+      ? new Set(await this.blocksService.getBlockerIdsOf(authorId))
+      : new Set<string>();
     const socketsInRoom = await this.server.in(message.roomId).fetchSockets();
     for (const socket of socketsInRoom) {
       const socketData = socket.data as SocketData;
@@ -234,5 +236,17 @@ export class MessagesGateway
         socket.emit(eventName, message);
       }
     }
+  }
+
+  // M5 Slice A: moderatör içerik kaldırma REST üzerinden çalışıyor
+  // (ModerationController) ama oda WS ile canlı - handleMessageEdit'in
+  // zaten kullandığı broadcastToRoom'u PUBLIC olarak dışarı açıyor,
+  // ModerationController bunu çağırıyor. Yeni bir mekanizma değil, var
+  // olanın REST'ten de tetiklenebilir hale gelmesi.
+  async broadcastMessageUpdate(
+    message: MessageDto,
+    authorId: string | null,
+  ): Promise<void> {
+    await this.broadcastToRoom(message, authorId, 'message:updated');
   }
 }

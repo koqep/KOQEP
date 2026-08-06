@@ -1,16 +1,31 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   MessageEditDto,
   MessagePage,
   MessagesService,
 } from '../services/messages.service';
+import { ReportsService } from '../services/reports.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
+import { ReportThrottlerGuard } from './report-throttler.guard';
+import { ReportMessageDto } from './dto/report-message.dto';
 
 @Controller('rooms/:name/messages')
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(
+    private readonly messagesService: MessagesService,
+    private readonly reportsService: ReportsService,
+  ) {}
 
   @Get()
   getRecentMessages(
@@ -35,5 +50,16 @@ export class MessagesController {
     @Param('id') id: string,
   ): Promise<MessageEditDto[]> {
     return this.messagesService.getMessageEditHistory(req.user.sub, id);
+  }
+
+  @Post(':id/report')
+  @UseGuards(ReportThrottlerGuard)
+  async reportMessage(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ReportMessageDto,
+  ): Promise<{ ok: true }> {
+    await this.reportsService.createReport(req.user.sub, id, dto.reason);
+    return { ok: true };
   }
 }
