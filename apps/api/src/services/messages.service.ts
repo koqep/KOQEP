@@ -247,6 +247,20 @@ export class MessagesService {
           'Bu mesajın düzenleme geçmişini görme yetkin yok.',
         );
       }
+      // M5 Slice A: docs/THREAT-MODEL.md satır 12 "scoped to an active
+      // report" diyordu ama Report hiç yokken bu doğrulanamaz bir iddiaydı
+      // - şimdi gerçek hale getiriliyor. Rapor DURUMU önemsiz (çözülmüş bir
+      // rapor bile geçmiş bir vaka olarak incelenebilmeli), sadece bu
+      // mesaja ait EN AZ BİR rapor olması yeterli.
+      const hasReport = await this.prisma.report.findFirst({
+        where: { messageId },
+        select: { id: true },
+      });
+      if (!hasReport) {
+        throw new ForbiddenException(
+          'Bu mesajın düzenleme geçmişini görme yetkin yok.',
+        );
+      }
     }
 
     const edits = await this.prisma.messageEdit.findMany({

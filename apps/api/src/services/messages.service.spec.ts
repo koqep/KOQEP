@@ -643,7 +643,7 @@ describe('MessagesService', () => {
       ]);
     });
 
-    it('moderatorun_baskasinin_gecmisini_gormesine_izin_verir', async () => {
+    it('rapor_var_olan_bir_moderatorun_baskasinin_gecmisini_gormesine_izin_verir', async () => {
       const prismaMock: Partial<PrismaService> = {
         message: {
           findUnique: jest
@@ -653,6 +653,9 @@ describe('MessagesService', () => {
         user: {
           findUnique: jest.fn().mockResolvedValue({ role: 'moderator' }),
         } as unknown as PrismaService['user'],
+        report: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'report-1' }),
+        } as unknown as PrismaService['report'],
         messageEdit: {
           findMany: jest.fn().mockResolvedValue([]),
         } as unknown as PrismaService['messageEdit'],
@@ -663,6 +666,28 @@ describe('MessagesService', () => {
       await expect(
         service.getMessageEditHistory('moderator-1', 'msg-1'),
       ).resolves.toEqual([]);
+    });
+
+    it('reddeder_rapor_olmayan_bir_mesaj_icin_moderatoru_bile', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'msg-1', authorId: 'yazar-1' }),
+        } as unknown as PrismaService['message'],
+        user: {
+          findUnique: jest.fn().mockResolvedValue({ role: 'moderator' }),
+        } as unknown as PrismaService['user'],
+        report: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['report'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getMessageEditHistory('moderator-1', 'msg-1'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('reddeder_ne_yazar_ne_moderator_olan_kullaniciyi', async () => {

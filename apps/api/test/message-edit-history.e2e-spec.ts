@@ -90,8 +90,9 @@ describe('Message edit history access control (e2e)', () => {
     expect(edits.map((e) => e.previousContent)).toContain(previousContent);
   });
 
-  it('moderator_baskasinin_mesajinin_gecmisini_gorebilir', async () => {
+  it('moderator_raporlanmis_bir_mesajin_gecmisini_gorebilir', async () => {
     const author = await createTestUser();
+    const reporter = await createTestUser();
     const moderator = await createTestUser();
     await prisma.user.update({
       where: { id: moderator.id },
@@ -100,6 +101,17 @@ describe('Message edit history access control (e2e)', () => {
     const { messageId, previousContent } = await createMessageWithEditHistory(
       author.id,
     );
+    // M5 Slice A: moderatör erişimi artık bu mesaja ait EN AZ BİR Report
+    // satırı gerektiriyor (docs/THREAT-MODEL.md satır 12) - rapor DURUMU
+    // önemsiz, sadece var olması yeterli.
+    await prisma.report.create({
+      data: {
+        reporterId: reporter.id,
+        messageId,
+        reportedUserId: author.id,
+        reportedContent: 'rapor edilen icerik',
+      },
+    });
 
     const response = await request(app.getHttpServer())
       .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/edits`)
@@ -108,6 +120,21 @@ describe('Message edit history access control (e2e)', () => {
 
     const edits = response.body as { previousContent: string }[];
     expect(edits.map((e) => e.previousContent)).toContain(previousContent);
+  });
+
+  it('rapor_olmayan_bir_mesaj_icin_moderator_bile_reddedilir', async () => {
+    const author = await createTestUser();
+    const moderator = await createTestUser();
+    await prisma.user.update({
+      where: { id: moderator.id },
+      data: { role: 'moderator' },
+    });
+    const { messageId } = await createMessageWithEditHistory(author.id);
+
+    await request(app.getHttpServer())
+      .get(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/edits`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .expect(403);
   });
 
   it('ne_yazar_ne_moderator_olan_kullanici_reddedilir', async () => {
