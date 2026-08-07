@@ -153,6 +153,16 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
     expect(report?.reportedUserId).toBe(author.id);
   });
 
+  it('kendi_mesajini_raporlamak_403_doner', async () => {
+    const author = await createTestUser();
+    const messageId = await createMessage(author.id, `mesaj-${randomUUID()}`);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/report`)
+      .set('Authorization', `Bearer ${author.accessToken}`)
+      .expect(403);
+  });
+
   it('bilinmeyen_mesaj_icin_404_doner', async () => {
     const reporter = await createTestUser();
 
@@ -325,4 +335,113 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
     });
     expect(persisted?.reportedContent).toBe(originalContent);
   });
+
+  it('uc_farkli_kullanici_ayni_kisiyi_raporlayinca_isFlagged_true_gorunur', async () => {
+    const author = await createTestUser();
+    const moderator = await createTestUser('moderator');
+    const messageId = await createMessage(author.id, `mesaj-${randomUUID()}`);
+
+    for (let i = 0; i < 3; i++) {
+      const reporter = await createTestUser();
+      await request(app.getHttpServer())
+        .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/report`)
+        .set('Authorization', `Bearer ${reporter.accessToken}`)
+        .expect(201);
+    }
+    const reports = await prisma.report.findMany({ where: { messageId } });
+    createdReportIds.push(...reports.map((r) => r.id));
+
+    const listResponse = await request(app.getHttpServer())
+      .get('/moderation/reports')
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .expect(200);
+    const body = listResponse.body as {
+      id: string;
+      isFlagged: boolean;
+      distinctReporterCount: number;
+    }[];
+    const flaggedRows = body.filter((r) =>
+      reports.some((report) => report.id === r.id),
+    );
+    expect(flaggedRows).toHaveLength(3);
+    expect(flaggedRows.every((r) => r.isFlagged)).toBe(true);
+    expect(flaggedRows.every((r) => r.distinctReporterCount === 3)).toBe(true);
+  }, 15000);
+
+  it('iki_farkli_kullanici_esigi_gecmez', async () => {
+    const author = await createTestUser();
+    const moderator = await createTestUser('moderator');
+    const messageId = await createMessage(author.id, `mesaj-${randomUUID()}`);
+
+    for (let i = 0; i < 2; i++) {
+      const reporter = await createTestUser();
+      await request(app.getHttpServer())
+        .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/report`)
+        .set('Authorization', `Bearer ${reporter.accessToken}`)
+        .expect(201);
+    }
+    const reports = await prisma.report.findMany({ where: { messageId } });
+    createdReportIds.push(...reports.map((r) => r.id));
+
+    const listResponse = await request(app.getHttpServer())
+      .get('/moderation/reports')
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .expect(200);
+    const body = listResponse.body as { id: string; isFlagged: boolean }[];
+    const flaggedRows = body.filter((r) =>
+      reports.some((report) => report.id === r.id),
+    );
+    expect(flaggedRows).toHaveLength(2);
+    expect(flaggedRows.every((r) => !r.isFlagged)).toBe(true);
+  });
+
+  it('susturulmus_kullanici_hala_rapor_atabilir', async () => {
+    const author = await createTestUser();
+    const reporter = await createTestUser();
+    const moderator = await createTestUser('moderator');
+    const messageId = await createMessage(author.id, `mesaj-${randomUUID()}`);
+
+    await request(app.getHttpServer())
+      .post(`/moderation/users/${reporter.id}/mute`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .send({ durationHours: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/report`)
+      .set('Authorization', `Bearer ${reporter.accessToken}`)
+      .expect(201);
+
+    const report = await prisma.report.findFirst({ where: { messageId } });
+    if (report) createdReportIds.push(report.id);
+  });
+
+  it('cozum_aninda_denetim_satirina_distinct_raporcu_sayisi_yazilir', async () => {
+    const author = await createTestUser();
+    const moderator = await createTestUser('moderator');
+    const messageId = await createMessage(author.id, `mesaj-${randomUUID()}`);
+
+    for (let i = 0; i < 3; i++) {
+      const reporter = await createTestUser();
+      await request(app.getHttpServer())
+        .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${messageId}/report`)
+        .set('Authorization', `Bearer ${reporter.accessToken}`)
+        .expect(201);
+    }
+    const reports = await prisma.report.findMany({ where: { messageId } });
+    createdReportIds.push(...reports.map((r) => r.id));
+    const [firstReport] = reports;
+
+    await request(app.getHttpServer())
+      .post(`/moderation/reports/${firstReport.id}/dismiss`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .expect(201);
+
+    const auditEntry = await prisma.moderationAuditLog.findFirst({
+      where: { reportId: firstReport.id, actionType: 'REPORT_DISMISSED' },
+    });
+    // Diğer iki rapor hâlâ 'open' - okuma firstReport'un kendi durumu
+    // değişmeden ÖNCE yapıldığı için o da dahil, 3 çıkması bekleniyor.
+    expect(auditEntry?.distinctReporterCountAtResolution).toBe(3);
+  }, 15000);
 });
