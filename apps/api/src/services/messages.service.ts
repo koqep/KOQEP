@@ -13,6 +13,7 @@ import {
   MESSAGE_SENT_XP,
 } from './reputation.service';
 import { InvitesService } from './invites.service';
+import { UserMutedException } from './user-muted.exception';
 
 export const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_PAGE_SIZE = 50;
@@ -59,6 +60,7 @@ export class MessagesService {
     roomName: string,
     content: string,
   ): Promise<MessageDto> {
+    await this.assertNotMuted(userId);
     const room = await this.findRoomOrThrow(roomName);
     if (room.status !== 'active') {
       // M3 Slice B: "arşivlenince salt-okunur" - sendMessage bugüne kadar
@@ -159,6 +161,11 @@ export class MessagesService {
     messageId: string,
     content: string,
   ): Promise<MessageDto> {
+    // M5 Slice B: susturma HEM gönderim HEM düzenlemeyi kapsıyor - sadece
+    // sendMessage'ı engellemek, susturulmuş birinin eski (susturma öncesi)
+    // bir mesajını saldırgan içeriğe çevirerek bypass etmesine izin verirdi
+    // (docs/THREAT-MODEL.md satır 3).
+    await this.assertNotMuted(userId);
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
       include: { room: { select: { status: true } } },
@@ -272,6 +279,21 @@ export class MessagesService {
       previousContent: edit.previousContent,
       editedAt: edit.editedAt,
     }));
+  }
+
+  // sendMessage/editMessage'ın ikisi de - M5 Slice B, "tam kapsam" talebi.
+  // User.mutedUntil canlı okunuyor (totalXp/level ile aynı önbellek deseni) -
+  // mutedUntil geçmişte/null ise sessizce izin verilir, ayrıca sıfırlanmaz
+  // (pasif sona ermeye tepki veren bir moderatör aksiyonu yok, kaydedecek
+  // bir şey de yok).
+  private async assertNotMuted(userId: string): Promise<void> {
+    const requester = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { mutedUntil: true },
+    });
+    if (requester?.mutedUntil && requester.mutedUntil > new Date()) {
+      throw new UserMutedException(requester.mutedUntil);
+    }
   }
 
   private async findRoomOrThrow(name: string): Promise<Room> {
