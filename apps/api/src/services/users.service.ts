@@ -8,6 +8,7 @@ export interface UserProfile {
   role: UserRole;
   level: number;
   totalXp: number;
+  mutedUntil: Date | null;
 }
 
 @Injectable()
@@ -23,6 +24,7 @@ export class UsersService {
         role: true,
         level: true,
         totalXp: true,
+        mutedUntil: true,
       },
     });
     if (!user) {

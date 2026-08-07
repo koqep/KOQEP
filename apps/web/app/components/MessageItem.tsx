@@ -16,6 +16,7 @@ interface Message {
 interface Props {
   message: Message;
   isMine: boolean;
+  isMuted: boolean;
   canViewHistory: boolean;
   onSubmitEdit: (messageId: string, content: string) => void;
   fetchHistory: (messageId: string) => Promise<MessageEdit[]>;
@@ -35,6 +36,7 @@ function formatTime(iso: string): string {
 export default function MessageItem({
   message,
   isMine,
+  isMuted,
   canViewHistory,
   onSubmitEdit,
   fetchHistory,
@@ -130,7 +132,7 @@ export default function MessageItem({
           <span className="flex-1">
             <MessageContent content={message.content} />
           </span>
-          {isMine && (
+          {isMine && !isMuted && (
             <button
               type="button"
               onClick={startEditing}

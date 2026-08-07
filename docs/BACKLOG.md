@@ -295,6 +295,25 @@ maddelik incelemesi) ertelemeleri:**
   için cila. **Somut tetikleyici:** raporlayanlar "raporuma ne oldu"
   diye ikinci kez sorarsa VEYA M6 cila turu şipse, hangisi önce gelirse.
 
+**2026-08-07 — M5 Slice B uygulaması ertelemeleri:**
+- **"Kaldır-sonra-sustur" sırası çalışmıyor:** `ModerationQueueView.tsx`'in
+  rapor satırı, "içeriği kaldır"/"reddet" tıklanınca hemen listeden
+  kayboluyor (Slice A, test edilmiş, bilerek değiştirilmedi) — üzerindeki
+  "sustur" butonu da onunla kayboluyor. Sadece "önce sustur, sonra kaldır/
+  reddet" sırası çalışıyor. 20-30 kişilik bir toplulukta moderatörün bu
+  sırayı öğrenmesi (buton görsel olarak solda/önce) tek seferlik bir
+  alışkanlık — rapor kuyruğundan bağımsız bir "kullanıcı ara/sustur"
+  affordance'ı şimdiden inşa etmek spekülatif. **Somut tetikleyici:**
+  moderatör bu sırayı gerçekten sorun olarak bildirirse ("önce kaldırdım,
+  sonra susturamadım" gibi).
+- **Susturma süresi sabit (24 saat), seçilebilir değil:** backend
+  (`MuteUserDto.durationHours`) zaten genel — `@Min(1) @Max(720)` — ama
+  frontend v1 her zaman 24 gönderiyor. Tek moderatörlük bir toplulukta
+  ilk sürüm için yeterli taban çizgisi; bir süre seçici UI'ı backend
+  değişikliği gerektirmeyecek. **Somut tetikleyici:** founder gerçekten
+  farklı bir süreye (ör. 1 saatlik uyarı vs. 7 günlük tekrar suç)
+  ihtiyaç duyduğunu bildirirse.
+
 ---
 
 ## A. EKSİK ZORUNLULUKLAR — bunlar "özellik" değil, açık

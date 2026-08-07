@@ -36,6 +36,7 @@ model User {
   emailVerifiedAt DateTime?
   totalXp         Int       @default(0)
   level           Int       @default(0)
+  mutedUntil      DateTime?
 
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
@@ -56,6 +57,7 @@ model User {
   reportsAgainst          Report[]                 @relation("ReportedUser")
   reportsResolved         Report[]                 @relation("ReportResolver")
   moderationActions       ModerationAuditLog[]     @relation("ModerationActor")
+  moderationTargetActions ModerationAuditLog[]     @relation("ModerationTargetUser")
 }
 
 model Invite {
@@ -243,6 +245,12 @@ model ModerationAuditLog {
 
   targetMessageId String?
   targetMessage   Message? @relation(fields: [targetMessageId], references: [id], onDelete: SetNull)
+
+  // M5 Slice B: mute/unmute'un hedefi - moderatörün "ModerationActor" ilişkisinden
+  // AYRI bir isimle, aynı FK-güvenliği gerekçesiyle (AuthService.deleteAccount()
+  // User satırlarını hard-delete ediyor).
+  targetUserId String?
+  targetUser   User?   @relation("ModerationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
 
   reportId String?
   report   Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)

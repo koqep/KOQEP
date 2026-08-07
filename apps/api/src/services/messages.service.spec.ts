@@ -12,8 +12,13 @@ import {
   MESSAGE_SENT_XP,
 } from './reputation.service';
 import { InvitesService } from './invites.service';
+import { UserMutedException } from './user-muted.exception';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
+
+function notMutedUserMock(): jest.Mock {
+  return jest.fn().mockResolvedValue({ mutedUntil: null });
+}
 
 describe('MessagesService', () => {
   const room = { id: 'room-1', name: CORE_ROOM_NAMES[0], status: 'active' };
@@ -47,6 +52,7 @@ describe('MessagesService', () => {
     function buildSendMessagePrismaMock(
       foundRoom: { id: string; name: string },
       created: unknown,
+      userFindUniqueSpy: jest.Mock = notMutedUserMock(),
     ): {
       prismaMock: Partial<PrismaService>;
       findUniqueSpy: jest.Mock;
@@ -64,6 +70,9 @@ describe('MessagesService', () => {
         room: {
           findUnique: findUniqueSpy,
         } as unknown as PrismaService['room'],
+        user: {
+          findUnique: userFindUniqueSpy,
+        } as unknown as PrismaService['user'],
         $transaction: jest
           .fn()
           .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
@@ -218,6 +227,9 @@ describe('MessagesService', () => {
         room: {
           findUnique: jest.fn().mockResolvedValue(null),
         } as unknown as PrismaService['room'],
+        user: {
+          findUnique: notMutedUserMock(),
+        } as unknown as PrismaService['user'],
       };
 
       const service = buildService(prismaMock);
@@ -233,6 +245,9 @@ describe('MessagesService', () => {
         room: {
           findUnique: jest.fn().mockResolvedValue(archivedRoom),
         } as unknown as PrismaService['room'],
+        user: {
+          findUnique: notMutedUserMock(),
+        } as unknown as PrismaService['user'],
       };
 
       const service = buildService(prismaMock);
@@ -240,6 +255,45 @@ describe('MessagesService', () => {
       await expect(
         service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
       ).rejects.toThrow(GoneException);
+    });
+
+    it('reddeder_susturulmus_kullaniciyi', async () => {
+      const mutedUntil = new Date(Date.now() + 60 * 60 * 1000);
+      const { prismaMock } = buildSendMessagePrismaMock(
+        room,
+        {},
+        jest.fn().mockResolvedValue({ mutedUntil }),
+      );
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).rejects.toThrow(UserMutedException);
+    });
+
+    it('izin_verir_suresi_gecmis_susturmaya', async () => {
+      const created = {
+        id: 'msg-1',
+        content: 'merhaba',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+      };
+      const mutedUntil = new Date(Date.now() - 60 * 60 * 1000);
+      const { prismaMock } = buildSendMessagePrismaMock(
+        room,
+        created,
+        jest.fn().mockResolvedValue({ mutedUntil }),
+      );
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).resolves.toEqual(
+        expect.objectContaining({ id: 'msg-1', content: 'merhaba' }),
+      );
     });
   });
 
@@ -432,6 +486,7 @@ describe('MessagesService', () => {
         room?: { status: string };
       },
       updated: unknown,
+      userFindUniqueSpy: jest.Mock = notMutedUserMock(),
     ): {
       prismaMock: Partial<PrismaService>;
       createSpy: jest.Mock;
@@ -450,6 +505,9 @@ describe('MessagesService', () => {
             ...existingMessage,
           }),
         } as unknown as PrismaService['message'],
+        user: {
+          findUnique: userFindUniqueSpy,
+        } as unknown as PrismaService['user'],
         $transaction: jest
           .fn()
           .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
@@ -514,6 +572,9 @@ describe('MessagesService', () => {
         message: {
           findUnique: jest.fn().mockResolvedValue(null),
         } as unknown as PrismaService['message'],
+        user: {
+          findUnique: notMutedUserMock(),
+        } as unknown as PrismaService['user'],
       };
 
       const service = buildService(prismaMock);
@@ -537,6 +598,26 @@ describe('MessagesService', () => {
       await expect(
         service.editMessage('user-1', 'msg-1', 'yeni icerik'),
       ).rejects.toThrow(GoneException);
+    });
+
+    it('reddeder_susturulmus_yazari', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'eski icerik',
+        authorId: 'user-1',
+      };
+      const mutedUntil = new Date(Date.now() + 60 * 60 * 1000);
+      const { prismaMock } = buildTransactionalPrismaMock(
+        existing,
+        {},
+        jest.fn().mockResolvedValue({ mutedUntil }),
+      );
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.editMessage('user-1', 'msg-1', 'yeni icerik'),
+      ).rejects.toThrow(UserMutedException);
     });
   });
 

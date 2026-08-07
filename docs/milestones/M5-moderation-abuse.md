@@ -15,8 +15,8 @@
 ## Acceptance criteria
 - [x] A user can report a message; the report exposes only the reported content to the moderator (`docs/THREAT-MODEL.md` row 10) — not ambient access to all of a user's messages. (DM raporlama, DM şipince — bkz. Out of scope.)
 - [x] A moderator can resolve a report by removing the message's content — NEVER a hard delete (CLAUDE.md'nin "mesaj içeriği asla hard-delete edilmez" kuralı, tek istisna oda purge, ADR-0006) — or dismissing it as not-actionable; the report's status reflects the outcome.
-- [ ] A moderator can apply a temp-mute; the muted user is visibly notified in real time (WS) — no shadow ban. Mute, hem yeni mesaj göndermeyi HEM mevcut mesaj düzenlemeyi kapsar (`docs/THREAT-MODEL.md` satır 3'ün tarif ettiği "önce masum mesaj at, sonra düzenleyip saldırıya çevir" vektörü). Slice B.
-- [x] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when. (Slice A: erişim + içerik kaldırma/reddetme kapsandı; Slice B/D kendi aksiyon tiplerini ekleyecek.)
+- [x] A moderator can apply a temp-mute; the muted user is visibly notified in real time (WS) — no shadow ban. Mute, hem yeni mesaj göndermeyi HEM mevcut mesaj düzenlemeyi kapsar (`docs/THREAT-MODEL.md` satır 3'ün tarif ettiği "önce masum mesaj at, sonra düzenleyip saldırıya çevir" vektörü). Slice B (2026-08-07).
+- [x] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when. (Slice A: erişim + içerik kaldırma/reddetme kapsandı; Slice B: MUTE_APPLIED/MUTE_LIFTED eklendi (2026-08-07); Slice D kendi aksiyon tiplerini ekleyecek.)
 - [ ] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli. Slice C.
 - [ ] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları). Slice D.
 - [ ] When a user is banned/temp-muted for real abuse, their inviter's invite
@@ -27,7 +27,7 @@
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M4'ün kullandığı aynı ritim). 2026-08-05 kapsam gözden geçirmesinde (iki tur) A/B/C/D/E dilimlerine bölündü (aşağıdaki Plan notları):
 - [x] **M5 Slice A — Rapor akışı + moderatöre kapsamlı görünürlük + çözüm eylemi + durum + denetim günlüğü temeli.** Tamamlandı (2026-08-06) — detay için aşağıdaki "Plan notları — Slice A uygulaması" bölümüne bakın. `Report` tablosu (oda mesajları, DM DEĞİL — bkz. Out of scope), `status` alanıyla (açık/çözüldü/reddedildi). Moderatöre SADECE raporlanan içeriği gösteren bir review queue — `messages.service.ts`'in zaten kurduğu `role === 'moderator'` deseniyle aynı (`getMessageEditHistory`). Moderatörün gerçek bir çözüm eylemi VAR: içeriği kaldırma — `editMessage`'ın zaten kurduğu `MessageEdit`-denetim-izi desenini yeniden kullanan, ama moderatör-yetkili farklı bir yoldan çağrılan bir "moderatör kaldırması" (hard-delete DEĞİL, içerik bir placeholder'a değişir, orijinal `MessageEdit`'te saklanır). Rapor gönderimi kendi rate limitine sahip (`room-creation-throttler.guard.ts`'in bağımsız `CanActivate` deseni). Her moderatör erişimi VE aksiyonu append-only bir denetim günlüğüne yazılır (ADR-0004'ün `ReputationEvent` deseni).
-- [ ] **M5 Slice B — Geçici susturma (tam kapsam) + gerçek zamanlı bildirim + denetim günlüğü aksiyonları.** `User.mutedUntil` (canlı durum, ODA-BAĞIMSIZ/global) + Slice A'nın denetim günlüğüne MUTE/UNMUTE aksiyon satırları — `User.totalXp`/`level` (canlı önbellek) + `ReputationEvent` (günlük) ikilisiyle aynı mimari desen. `sendMessage` VE `editMessage` ikisi de susturulmuş kullanıcıyı reddeder (M3 Slice B'nin arşivlenmiş-oda `GoneException` deseninin TAM uygulanışı — ilk taslak sadece `sendMessage`'ı kapsıyordu, THREAT-MODEL satır 3'ün "post benign, edit into abuse" vektörünü kapatmak için ikisi de gerekli). Oda oluşturma/davet kazanımına AYRICA dokunulmuyor (gerekçe Plan notları'nda). Bildirim `SocketRegistryService.getSockets(userId)` ile gerçek zamanlı WS push (zaten var olan, bağımlılıksız bir servis — yeni bir mekanizma gerekmiyor).
+- [x] **M5 Slice B — Geçici susturma (tam kapsam) + gerçek zamanlı bildirim + denetim günlüğü aksiyonları.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. `User.mutedUntil` (canlı durum, ODA-BAĞIMSIZ/global) + Slice A'nın denetim günlüğüne MUTE/UNMUTE aksiyon satırları — `User.totalXp`/`level` (canlı önbellek) + `ReputationEvent` (günlük) ikilisiyle aynı mimari desen. `sendMessage` VE `editMessage` ikisi de susturulmuş kullanıcıyı reddeder (M3 Slice B'nin arşivlenmiş-oda `GoneException` deseninin TAM uygulanışı — ilk taslak sadece `sendMessage`'ı kapsıyordu, THREAT-MODEL satır 3'ün "post benign, edit into abuse" vektörünü kapatmak için ikisi de gerekli). Oda oluşturma/davet kazanımına AYRICA dokunulmuyor (gerekçe Plan notları'nda). Bildirim `SocketRegistryService.getSockets(userId)` ile gerçek zamanlı WS push (zaten var olan, bağımlılıksız bir servis — yeni bir mekanizma gerekmiyor).
 - [ ] **M5 Slice C — Aynı-aktör çoklu-rapor deseni tespiti.** Aynı kullanıcı kısa bir pencerede birden fazla farklı kullanıcı tarafından raporlanınca moderatöre otomatik flag — SADECE `status: açık` raporlar sayılır (Slice A'nın durum alanına bağımlı). Pencere/eşik sayıları bu slice'ın kendi plan-modu turunda kesinleşecek (Slice A'nın XP formülü sayılarıyla aynı "tahmini, sonradan ayarlanabilir" ilkesi).
 - [ ] **M5 Slice D — Oda moderasyonu (silme/yeniden adlandırma).** Kötü-isimli/kötüye kullanılan bir oda için moderatör doğrudan aksiyon alabilir — rapor kuyruğundan bağımsız, mevcut `role === 'moderator'` deseniyle korunan basit bir endpoint. `docs/BACKLOG.md`'nin M3'ten beri ertelenmiş maddesi, tetikleyicisi zaten fırlamış (Plan notları). Aksiyon Slice A'nın denetim günlüğüne yazılır.
 - [ ] **M5 Slice E — Davetçi hesap verebilirliği (B15).** Ban/temp-mute alan bir kullanıcının davetçisinin durumu görünür şekilde etkilenir — tam mekanik (kota düşümü vs. görünür bir güven bayrağı) bu slice'ın kendi turunda kararlaştırılacak, önceden belirlenmiyor (milestone'un kendi notu zaten böyle diyor). Slice B'ye bağımlı (mute/ban olayları önce var olmalı).
@@ -287,4 +287,88 @@ lint/typecheck/build temiz, Playwright 49/49 (6 yeni test dahil). Dal
 
 ### Sıradaki
 Slice A tamam. Slice B (geçici susturma, tam kapsam) kendi plan-modu
-turuyla başlayacak.
+turuyla başladı ve tamamlandı — detay aşağıdaki "Plan notları — Slice
+B uygulaması" bölümünde.
+
+## Plan notları — Slice B uygulaması (2026-08-07)
+
+Plan-modu turunda kod okunarak tasarlandı, bir Plan agent'ıyla çapraz
+kontrol edildi (Slice A'nın kurduğu Report/ModerationAuditLog temeli,
+`messages.service.ts`/`messages.gateway.ts`/`socket-registry.service.ts`
+üzerinden). Agent tasarımı büyük ölçüde doğruladı, bir gerçek UI
+çelişkisi buldu (aşağıda çözüldü) ve iki küçük eksik işaret etti (ikisi
+de işlendi, aşağıda).
+
+**Şema:** `User.mutedUntil` (canlı önbellek, `totalXp`/`level` ile aynı
+desen) + `ModerationAuditLog.targetUserId` (yeni `"ModerationTargetUser"`
+ilişkisi, `moderatorId`'nin `"ModerationActor"`'ından ayrı, aynı
+`onDelete: SetNull` gerekçesiyle). Tek migration, ikisi de nullable,
+backfill gerekmedi.
+
+**Mute rapor yaşam döngüsünden BİLEREK bağımsız tasarlandı** (`POST
+/moderation/users/:id/mute`/`.../unmute`, `POST /moderation/reports/:id/
+mute` DEĞİL): `ReportsService.findOpenReportOrThrow` bir raporu
+`open`→(`resolved`|`dismissed`) TEK YÖNLÜ kilitliyor (Slice A) — mute
+buna bağlı olsaydı moderatör aynı rapor satırından hem "içeriği kaldır"
+hem "sustur" yapamazdı. `MutesService` (yeni, Prisma-only, gateway'e
+bağımlı değil) DB yazımını yapıyor, `ModerationController`
+`MessagesGateway.notifyUserMuted`/`notifyUserUnmuted` (yeni, `broadcastMessageUpdate`'in
+AYNI REST→WS kompozisyon deseni ama `SocketRegistryService.getSockets
+(userId)` ile hedeflenen kullanıcıya doğrudan emit, oda broadcast'i
+DEĞİL) çağrısını AYRICA yapıyor.
+
+**Agent'ın bulduğu gerçek UI çelişkisi (çözüldü, bilerek kabul edilen bir
+kısıt olarak belgelendi):** `ModerationQueueView.tsx`'in mevcut
+`removeFromQueue`'su (Slice A, test edilmiş, DEĞİŞTİRİLMEDİ) "içeriği
+kaldır"/"reddet" başarılı olunca rapor satırını hemen DOM'dan siliyor —
+üzerindeki "sustur" butonu da onunla birlikte kayboluyor. Yani **"sustur"
+ÖNCE, "kaldır"/"reddet" SONRA sırası çalışıyor, tersi çalışmıyor**
+(moderatör önce içeriği kaldırırsa, aynı rapor satırından o kullanıcıyı
+artık susturamaz). **Karar:** sıra kısıtlaması bilerek kabul edildi
+(satırı geç silmek Slice A'nın onaylanmış "kaldırınca hemen kaybolur" UX
+davranışını bozardı) — "sustur" butonu satırda görsel olarak "kaldır"/
+"reddet"'ten ÖNCE/solda gösteriliyor (ipucu). **Somut tetikleyici**
+(`docs/BACKLOG.md`'ye ayrıca yazıldı): moderatör bu sırayı gerçekten
+sorun olarak bildirirse, rapor kuyruğundan bağımsız bir "kullanıcı ara/
+sustur" affordance'ı eklenir.
+
+**Agent'ın bulduğu iki küçük eksik (ikisi de işlendi):**
+- `MutesService`'te hedef kullanıcı yoksa Prisma'nın çıplak `P2025`'i
+  (yakalanmamış 500) yerine temiz bir `NotFoundException` — `findUserOrThrow`
+  eklendi, `ReportsService.findOpenReportOrThrow` ile aynı desen.
+- Susturma doğal sona erdiğinde client tepki vermiyordu: `myProfile.
+  mutedUntil` sadece mount'ta ve WS push'larında güncelleniyor, süre
+  dolduğunda hiçbir re-render tetiklenmiyordu (sessiz bir odada composer
+  süresiz devre dışı kalabilirdi — güvenlik sorunu değil, gerçek bir ürün
+  kusuru). `RoomView.tsx`'e `mutedUntil`'e kadar bir `setTimeout` kurup
+  boş bir re-render tetikleyen yeni bir `useEffect` eklendi.
+
+**Enforcement (`messages.service.ts`):** `sendMessage` VE `editMessage`
+ikisi de yeni bir `assertNotMuted` kontrolüyle başlıyor —
+`UserMutedException` (plain `Error`, Nest `HttpException` DEĞİL, çünkü bu
+iki metot SADECE WS gateway'inden çağrılıyor, REST'ten hiç çağrılmıyor).
+`messages.gateway.ts`'in her iki catch bloğu da bunu `WsException({code:
+'MUTED'})`'e çeviriyor — `handleMessageEdit`'in mevcut sessiz
+`NotFoundException`/`ForbiddenException` yutma dalını ETKİLEMİYOR (ayrı
+class, `instanceof` hiç eşleşmiyor, agent bunu kod okuyarak doğruladı).
+
+**Frontend:** `myProfile.mutedUntil` TEK kaynak (RoomView.tsx) — WS
+`moderation:muted`/`moderation:unmuted` olayları onu yerinde patch
+ediyor, `exception` dinleyicisinin `MUTED` dalı savunmacı senkronizasyon
+sağlıyor (reconnect sonrası bayat profil, ilk gönderim denemesinde kendi
+kendine düzelir). `ChatPanel.tsx` arşivli-oda composer bildirimiyle aynı
+desende yeni bir "susturuldun" bildirimi; `MessageItem.tsx` susturulmuşken
+"düzenle" butonunu gizliyor. `ModerationQueueView.tsx`'e "sustur (24
+saat, tahmini sabit)"/"susturmayı kaldır" — backend `durationHours`'u
+genel kabul ediyor (`@Min(1) @Max(720)`), frontend v1 sadece sabit 24
+gönderiyor, gelecekte bir süre seçici backend değişikliği gerektirmeyecek.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, birim (43+6 test) +
+e2e (gerçek WS, `mute.e2e-spec.ts`, iki üst üste koşu sıfır kalıntı
+doğruladı) yeşil. `apps/web` lint/typecheck/build temiz, Playwright
+52/52 (4 yeni test dahil). Dal `m5/slice-b-temp-mute`, push kullanıcının
+onayına kalıyor.
+
+### Sıradaki
+Slice B tamam. Slice C (aynı-aktör çoklu-rapor tespiti) kendi
+plan-modu turuyla başlayacak.

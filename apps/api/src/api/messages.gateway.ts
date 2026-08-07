@@ -24,6 +24,7 @@ import {
   MessagesService,
 } from '../services/messages.service';
 import type { MessageDto } from '../services/messages.service';
+import { UserMutedException } from '../services/user-muted.exception';
 import { BlocksService } from '../services/blocks.service';
 import { WsThrottlerGuard } from './ws-throttler.guard';
 import { SocketRegistryService } from '../services/socket-registry.service';
@@ -140,6 +141,16 @@ export class MessagesGateway
         content,
       );
     } catch (error) {
+      if (error instanceof UserMutedException) {
+        // M5 Slice B: susturulmuş kullanıcı - RATE_LIMITED/ROOM_ARCHIVED ile
+        // aynı yapısal hata deseni, client'a görünür şekilde ulaşmalı
+        // (acceptance criteria: "visibly notified").
+        throw new WsException({
+          status: 'error',
+          code: 'MUTED',
+          mutedUntil: error.mutedUntil.toISOString(),
+        });
+      }
       if (error instanceof NotFoundException) {
         // Bilinmeyen/gecersiz roomName - sessizce yoksay, client'i
         // guvenilir kabul etme.
@@ -194,6 +205,16 @@ export class MessagesGateway
         content,
       );
     } catch (error) {
+      if (error instanceof UserMutedException) {
+        // M5 Slice B: sessiz yutulan ForbiddenException'dan (yazarı
+        // değilsin) AYRI bir class - handleMessageSend'deki MUTED dalıyla
+        // aynı yapısal hata.
+        throw new WsException({
+          status: 'error',
+          code: 'MUTED',
+          mutedUntil: error.mutedUntil.toISOString(),
+        });
+      }
       if (error instanceof GoneException) {
         // M3 Slice B: oda arşivlenmiş - "yazarı değilsin" durumundan
         // BAĞIMSIZ, sessizce yutulmuyor (ROOM_ARCHIVED yapısal hatası
@@ -248,5 +269,26 @@ export class MessagesGateway
     authorId: string | null,
   ): Promise<void> {
     await this.broadcastToRoom(message, authorId, 'message:updated');
+  }
+
+  // M5 Slice B: broadcastMessageUpdate'in AYNI REST->WS kompozisyon deseni,
+  // ama oda broadcast'i DEĞİL - SocketRegistryService.getSockets(userId)
+  // (M2.5 Slice D, bağımlılıksız) ile SADECE hedeflenen kullanıcının açık
+  // soketlerine doğrudan emit. Senkron - fetchSockets()'in aksine
+  // getSockets() gerçekten async değil. Kullanıcının o an hiç açık soketi
+  // yoksa (ör. handleConnection'ın register() adımını henüz tamamlamadan
+  // önceki dar yarış penceresi) push sessizce kaçar - zararsız, enforcement
+  // (messages.service.ts) her zaman DB'den taze mutedUntil okuyor, bu
+  // sadece bir bildirim kolaylığı, güvenlik sınırı değil.
+  notifyUserMuted(userId: string, mutedUntil: Date): void {
+    for (const socket of this.socketRegistry.getSockets(userId)) {
+      socket.emit('moderation:muted', { mutedUntil: mutedUntil.toISOString() });
+    }
+  }
+
+  notifyUserUnmuted(userId: string): void {
+    for (const socket of this.socketRegistry.getSockets(userId)) {
+      socket.emit('moderation:unmuted', {});
+    }
   }
 }

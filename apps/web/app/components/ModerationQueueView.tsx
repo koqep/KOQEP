@@ -5,9 +5,13 @@ import {
   listOpenReports,
   removeReportedContent,
   dismissReport,
+  muteUser,
+  unmuteUser,
   type ReportSummary,
 } from "../../lib/api";
 import MessageContent from "./MessageContent";
+
+const MUTE_DURATION_HOURS = 24;
 
 interface Props {
   accessToken: string;
@@ -63,6 +67,35 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
     }
   }
 
+  // M5 Slice B: rapor yaşam döngüsünden BAĞIMSIZ - Report.status'a
+  // dokunmuyor, satır kaybolmuyor (removeFromQueue ÇAĞRILMIYOR). "sustur"
+  // butonu görsel olarak "içeriği kaldır"dan ÖNCE geliyor - moderatör hem
+  // içeriği kaldırıp hem susturmak isterse, ÖNCE sustur, sonra kaldır/reddet
+  // sırası gerekiyor (tersi çalışmaz, satır kaldır/reddet'te kayboluyor).
+  async function handleMute(reportId: string, reportedUserId: string) {
+    setError(null);
+    setPendingId(reportId);
+    try {
+      await muteUser(accessToken, reportedUserId, MUTE_DURATION_HOURS);
+    } catch {
+      setError("Kullanıcı susturulamadı, tekrar dene.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleUnmute(reportId: string, reportedUserId: string) {
+    setError(null);
+    setPendingId(reportId);
+    try {
+      await unmuteUser(accessToken, reportedUserId);
+    } catch {
+      setError("Susturma kaldırılamadı, tekrar dene.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
@@ -86,7 +119,9 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
         <p>açık rapor yok</p>
       ) : (
         <ul className="space-y-4">
-          {reports.map((report) => (
+          {reports.map((report) => {
+            const reportedUserId = report.reportedUserId;
+            return (
             <li
               key={report.id}
               className="border border-neutral-800 p-2"
@@ -101,6 +136,28 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                 <MessageContent content={report.reportedContent} />
               </p>
               <div className="flex items-center gap-4">
+                {reportedUserId && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={pendingId === report.id}
+                      onClick={() => void handleMute(report.id, reportedUserId)}
+                      className="text-neutral-600 hover:text-red-400 disabled:cursor-not-allowed"
+                    >
+                      sustur ({MUTE_DURATION_HOURS} saat)
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pendingId === report.id}
+                      onClick={() =>
+                        void handleUnmute(report.id, reportedUserId)
+                      }
+                      className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                    >
+                      susturmayı kaldır
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   disabled={pendingId === report.id}
@@ -119,7 +176,8 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                 </button>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

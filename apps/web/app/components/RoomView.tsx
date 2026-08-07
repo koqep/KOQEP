@@ -105,6 +105,22 @@ export default function RoomView({
     activeRoomRef.current = activeRoom;
   }, [activeRoom]);
 
+  // M5 Slice B: mutedUntil sadece mount'ta ve WS push'larında güncelleniyor
+  // - süre doğal olarak dolduğunda hiçbir re-render tetiklenmez (sessiz bir
+  // oda, başka WS trafiği yoksa composer süresiz devre dışı kalabilirdi).
+  // mutedUntil'e kadar bir zamanlayıcı kurup boş bir re-render tetikliyoruz,
+  // isMuted (aşağıda) yeniden hesaplanır.
+  useEffect(() => {
+    const mutedUntil = myProfile?.mutedUntil;
+    if (!mutedUntil) return;
+    const ms = new Date(mutedUntil).getTime() - Date.now();
+    if (ms <= 0) return;
+    const timer = setTimeout(() => {
+      setMyProfile((prev) => (prev ? { ...prev } : prev));
+    }, ms);
+    return () => clearTimeout(timer);
+  }, [myProfile?.mutedUntil]);
+
   async function fetchRoomHistory(
     roomName: string,
     authHeaders: HeadersInit,
@@ -212,24 +228,50 @@ export default function RoomView({
             );
           }
         });
-        socket.on("exception", (payload: { code?: string }) => {
+        // M5 Slice B: moderatör mute/unmute uyguladığı ANDA, deneme
+        // yapmadan gerçek zamanlı bildirim - myProfile TEK kaynak, ayrı bir
+        // state yok.
+        socket.on("moderation:muted", (payload: { mutedUntil: string }) => {
           if (cancelled) return;
-          setIsSending(false);
-          if (payload?.code === "RATE_LIMITED") {
-            setSendError("Çok hızlı mesaj gönderiyorsun, biraz yavaşla.");
-          } else if (payload?.code === "MESSAGE_TOO_LONG") {
-            setSendError(
-              `Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`,
-            );
-          } else if (payload?.code === "ROOM_ARCHIVED") {
-            // Yedek yol - composer zaten activeRoom.status'a göre proaktif
-            // devre dışı kalıyor, bu sadece WS round-trip'ini bekleyen
-            // nadir bir yarış durumu için.
-            setSendError("Bu oda arşivlenmiş, sadece okunabilir.");
-          } else {
-            setSendError("Mesaj gönderilemedi.");
-          }
+          setMyProfile((prev) =>
+            prev ? { ...prev, mutedUntil: payload.mutedUntil } : prev,
+          );
         });
+        socket.on("moderation:unmuted", () => {
+          if (cancelled) return;
+          setMyProfile((prev) => (prev ? { ...prev, mutedUntil: null } : prev));
+        });
+        socket.on(
+          "exception",
+          (payload: { code?: string; mutedUntil?: string }) => {
+            if (cancelled) return;
+            setIsSending(false);
+            if (payload?.code === "RATE_LIMITED") {
+              setSendError("Çok hızlı mesaj gönderiyorsun, biraz yavaşla.");
+            } else if (payload?.code === "MESSAGE_TOO_LONG") {
+              setSendError(
+                `Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`,
+              );
+            } else if (payload?.code === "ROOM_ARCHIVED") {
+              // Yedek yol - composer zaten activeRoom.status'a göre proaktif
+              // devre dışı kalıyor, bu sadece WS round-trip'ini bekleyen
+              // nadir bir yarış durumu için.
+              setSendError("Bu oda arşivlenmiş, sadece okunabilir.");
+            } else if (payload?.code === "MUTED") {
+              // Savunmacı senkronizasyon: yeniden bağlanma sonrası myProfile
+              // bayat kalmış olabilir (bootstrap'te bir kez çekiliyor,
+              // reconnect'te yenilenmiyor) - ilk gönderim denemesi burada
+              // kendi kendine düzelir.
+              setSendError("Susturuldun, şu an mesaj gönderemezsin.");
+              if (payload.mutedUntil) {
+                const mutedUntil = payload.mutedUntil;
+                setMyProfile((prev) => (prev ? { ...prev, mutedUntil } : prev));
+              }
+            } else {
+              setSendError("Mesaj gönderilemedi.");
+            }
+          },
+        );
       } catch {
         // API'ye ulaşılamıyor: sayfa boş/statik durumda kalır, çökmez.
       }
@@ -338,10 +380,15 @@ export default function RoomView({
     onLoggedOut();
   }
 
+  const isMuted = myProfile?.mutedUntil
+    ? new Date(myProfile.mutedUntil) > new Date()
+    : false;
+
   const canSend =
     isReady &&
     draft.trim().length > 0 &&
-    (activeRoom === null || activeRoom.status === "active");
+    (activeRoom === null || activeRoom.status === "active") &&
+    !isMuted;
 
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-2xl flex-col p-4">
@@ -404,6 +451,8 @@ export default function RoomView({
           messagesSectionRef={messagesSectionRef}
           messages={messages}
           myProfile={myProfile}
+          isMuted={isMuted}
+          mutedUntil={myProfile?.mutedUntil ?? null}
           onMessageEditSubmit={handleMessageEdit}
           fetchHistoryForMessage={fetchHistoryForMessage}
           onReportMessage={handleReportMessage}
