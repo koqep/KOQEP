@@ -157,6 +157,7 @@ export interface UserProfile {
   email: string;
   username: string;
   role: "user" | "moderator";
+  mutedUntil: string | null;
 }
 
 export function getCurrentUser(accessToken: string): Promise<UserProfile> {
@@ -235,6 +236,7 @@ export interface ReportSummary {
   reason: string | null;
   reportedContent: string;
   reportedUsername: string | null;
+  reportedUserId: string | null;
 }
 
 export function listOpenReports(
@@ -258,4 +260,21 @@ export async function dismissReport(
   reportId: string,
 ): Promise<void> {
   await authedPostJson(`/moderation/reports/${reportId}/dismiss`, accessToken);
+}
+
+export async function muteUser(
+  accessToken: string,
+  userId: string,
+  durationHours: number,
+): Promise<{ mutedUntil: string }> {
+  return authedPostJson(`/moderation/users/${userId}/mute`, accessToken, {
+    durationHours,
+  });
+}
+
+export async function unmuteUser(
+  accessToken: string,
+  userId: string,
+): Promise<void> {
+  await authedPostJson(`/moderation/users/${userId}/unmute`, accessToken);
 }

@@ -16,6 +16,8 @@ interface Props {
   messagesSectionRef: RefObject<HTMLElement | null>;
   messages: Message[];
   myProfile: UserProfile | null;
+  isMuted: boolean;
+  mutedUntil: string | null;
   onMessageEditSubmit: (messageId: string, content: string) => void;
   fetchHistoryForMessage: (messageId: string) => Promise<MessageEdit[]>;
   onReportMessage: (messageId: string) => Promise<void>;
@@ -36,6 +38,8 @@ export default function ChatPanel({
   messagesSectionRef,
   messages,
   myProfile,
+  isMuted,
+  mutedUntil,
   onMessageEditSubmit,
   fetchHistoryForMessage,
   onReportMessage,
@@ -81,6 +85,7 @@ export default function ChatPanel({
                   key={message.id}
                   message={message}
                   isMine={isMine}
+                  isMuted={isMuted}
                   canViewHistory={canViewHistory}
                   onSubmitEdit={onMessageEditSubmit}
                   fetchHistory={fetchHistoryForMessage}
@@ -96,6 +101,12 @@ export default function ChatPanel({
       {activeRoom && activeRoom.status !== "active" ? (
         <p className="border-t border-neutral-800 pt-2 text-neutral-600">
           bu oda arşivlenmiş, sadece okunabilir
+        </p>
+      ) : isMuted ? (
+        <p className="border-t border-neutral-800 pt-2 text-neutral-600">
+          susturuldun
+          {mutedUntil &&
+            `, ${new Date(mutedUntil).toLocaleString("tr-TR")} tarihine kadar mesaj gönderemez/düzenleyemezsin`}
         </p>
       ) : (
         <form

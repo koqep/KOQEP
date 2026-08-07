@@ -7,7 +7,8 @@ describe('UsersService', () => {
     return new UsersService(prismaMock as PrismaService);
   }
 
-  it('doner_kendi_email_kullanici_adi_rolunu_seviyesini_ve_xpsini', async () => {
+  it('doner_kendi_email_kullanici_adi_rolunu_seviyesini_xpsini_ve_susturma_durumunu', async () => {
+    const mutedUntil = new Date('2026-01-01');
     const prismaMock: Partial<PrismaService> = {
       user: {
         findUnique: jest.fn().mockResolvedValue({
@@ -16,6 +17,7 @@ describe('UsersService', () => {
           role: 'user',
           level: 2,
           totalXp: 87,
+          mutedUntil,
         }),
       } as unknown as PrismaService['user'],
     };
@@ -28,6 +30,7 @@ describe('UsersService', () => {
       role: 'user',
       level: 2,
       totalXp: 87,
+      mutedUntil,
     });
   });
 
