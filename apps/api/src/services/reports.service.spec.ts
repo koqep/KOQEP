@@ -74,6 +74,7 @@ describe('ReportsService', () => {
           createdAt: new Date('2026-01-01'),
           reason: null,
           reportedContent: 'icerik 1',
+          reportedUserId: 'saldirgan-1',
           reportedUser: { username: 'saldirgan' },
         },
       ];
@@ -108,6 +109,7 @@ describe('ReportsService', () => {
           reason: null,
           reportedContent: 'icerik 1',
           reportedUsername: 'saldirgan',
+          reportedUserId: 'saldirgan-1',
         },
       ]);
     });

@@ -17,6 +17,7 @@ export interface ReportSummary {
   reason: string | null;
   reportedContent: string;
   reportedUsername: string | null;
+  reportedUserId: string | null;
 }
 
 export interface ResolveReportResult {
@@ -81,6 +82,7 @@ export class ReportsService {
       reason: report.reason,
       reportedContent: report.reportedContent,
       reportedUsername: report.reportedUser?.username ?? null,
+      reportedUserId: report.reportedUserId,
     }));
   }
 
