@@ -237,6 +237,10 @@ export interface ReportSummary {
   reportedContent: string;
   reportedUsername: string | null;
   reportedUserId: string | null;
+  // Backend'in 7 günlük penceresinde bu kullanıcıya karşı açılmış,
+  // BİRBİRİNDEN FARKLI raporcu sayısı - tüm-zamanlar sayısı DEĞİL.
+  distinctReporterCount: number;
+  isFlagged: boolean;
 }
 
 export function listOpenReports(
