@@ -150,7 +150,8 @@ model Room {
   creatorId String?
   creator   User?   @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: SetNull)
 
-  messages Message[]
+  messages       Message[]
+  moderationLogs ModerationAuditLog[]
 }
 
 model Message {
@@ -235,8 +236,8 @@ model Report {
 model ModerationAuditLog {
   id         String   @id @default(uuid())
   // Plain string, ReputationEvent (ADR-0004) ile aynı ilke - yeni aksiyon
-  // tipi (Slice B: MUTE_APPLIED/LIFTED, Slice D: ROOM_RENAMED/DELETED)
-  // migration istemesin.
+  // tipi (Slice B: MUTE_APPLIED/LIFTED, Slice D: ROOM_RENAMED/ARCHIVED/
+  // DELETED) migration istemesin.
   actionType String
   createdAt  DateTime @default(now())
 
@@ -262,6 +263,22 @@ model ModerationAuditLog {
   // cevaplayabilir. Diğer actionType'larda (MUTE_APPLIED,
   // REPORT_QUEUE_VIEWED, ...) null.
   distinctReporterCountAtResolution Int?
+
+  // M5 Slice D: rename/archive/delete'in hedefi - targetRoomId delete
+  // sonrası SetNull ile null'a düşer (Postgres FK aksiyonları
+  // statement-anında çalışır, commit'te değil - aynı transaction içinde
+  // audit satırı ÖNCE yazılsa bile). targetRoomName (rename'de ESKİ isim,
+  // delete'de odanın tek kalıcı kaydı) ve targetRoomDescription bu yüzden
+  // üçü için de snapshot'lanır - targetRoomId null'a düşse bile denetim
+  // izi hangi odanın ne hakkında olduğunu kaybetmesin diye.
+  targetRoomId String?
+  targetRoom   Room?   @relation(fields: [targetRoomId], references: [id], onDelete: SetNull)
+
+  targetRoomName        String?
+  targetRoomDescription String?
+  // SADECE ROOM_DELETED'de dolu - kaç mesajın odayla birlikte gittiğini
+  // denetim izinde kalıcı kılıyor.
+  deletedMessageCount Int?
 
   @@index([moderatorId])
 }
