@@ -4,25 +4,24 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-07
-**Aktif milestone:** M5 (`docs/milestones/M5-moderation-abuse.md`) — kapsam gözden geçirmesi İKİ TURDA TAMAMLANDI VE ONAYLANDI (Slice A→B→C→D→E). Slice A `main`'e MERGE EDİLDİ (PR #40). Slice B (geçici susturma, tam kapsam) TAMAMEN BİTTİ, `m5/slice-b-temp-mute` dalında, henüz push/merge edilmedi. M4 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36/#37). CORS düzeltmesi `main`'e MERGE EDİLDİ (PR #38). M3 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33).
+**Aktif milestone:** M5 (`docs/milestones/M5-moderation-abuse.md`) — kapsam gözden geçirmesi İKİ TURDA TAMAMLANDI VE ONAYLANDI (Slice A→B→C→D→E). Slice A ve Slice B `main`'e MERGE EDİLDİ (PR #40/#41). Slice C (aynı-aktör çoklu-rapor tespiti) TAMAMEN BİTTİ, `m5/slice-c-multi-report-flag` dalında, henüz push/merge edilmedi. M4 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36/#37). CORS düzeltmesi `main`'e MERGE EDİLDİ (PR #38). M3 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33).
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 Slice A (tüm milestone'lar/dilimler) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
+- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 Slice A + M5 Slice B (tüm milestone'lar/dilimler) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-08-05 — koqep.com domain taşıması + CORS düzeltmesi.** `WEB_ORIGIN` hem CORS allow-list hem e-posta linklerinin taban URL'i olarak kullanılıyordu — ikinci kullanım tek kanonik domain (koqep.com, www'suz) gerektirdiği için WEB_ORIGIN'e dokunulmadı, yeni `allowed-origins.ts` www karşılığını otomatik türetip CORS'a ekliyor.
 - **2026-08-05 — M5 kapsam gözden geçirmesi (iki tur, A→B→C→D→E) onaylandı.** Detay: milestone dosyasının iki Plan notları bölümü.
-- **2026-08-06 — M5 Slice A tamamlandı, merge edildi.** `Report`/`ModerationAuditLog` + rapor→inceleme→çözüm akışı (REST→WS broadcast ilk kez), `getMessageEditHistory` rapor-scoped. Detay: milestone dosyasının "Plan notları — Slice A uygulaması" bölümü.
-- **2026-08-07 — M5 Slice B tamamlandı.** `User.mutedUntil` (canlı önbellek) + susturma HEM `sendMessage` HEM `editMessage`'ı kapsıyor (THREAT-MODEL satır 3 mitige edildi), mute rapor durumundan BİLEREK bağımsız (kendi endpoint'i), gerçek zamanlı bildirim `SocketRegistryService`'e hedefli emit ile. Detay: milestone dosyasının "Plan notları — Slice B uygulaması" bölümü.
+- **2026-08-07 — M5 Slice C tamamlandı.** Aynı-aktör çoklu-rapor tespiti (7 günlük pencere, ≥3 farklı raporcu) `isFlagged`/`distinctReporterCount` ile kuyrukta görünür — flag SADECE bilgi, hiçbir otomatik aksiyon tetiklemiyor (brigading riski, THREAT-MODEL satır 7). Detay: milestone dosyasının "Plan notları — Slice C uygulaması" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M5 Slice B tamamlandı ve doğrulandı (`m5/slice-b-temp-mute` dalı, 9 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** M5 Slice C (aynı-aktör çoklu-rapor tespiti) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M5 Slice C tamamlandı ve doğrulandı (`m5/slice-c-multi-report-flag` dalı, 5 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** M5 Slice D (oda moderasyonu) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
-- Rate limit sayıları (100/60s global, 5/saat davet, 20/60s signup, 10/10s WS) ayarlanabilir varsayılan — somut tetikleyici: M6 ships VEYA gerçek bir olay (yanlış engelleme ya da kaçan bir suistimal).
+- Rate limit sayıları (100/60s global, 5/saat davet, 20/60s signup, 10/10s WS) + M5'in tahmini sabitleri (Slice B: susturma varsayılan 24 saat; Slice C: çoklu-rapor eşiği 3 farklı raporcu/7 gün) ayarlanabilir varsayılan — somut tetikleyici: M6 ships VEYA gerçek bir olay (yanlış engelleme ya da kaçan bir suistimal).
 - `User.role` alanı var, erişim kontrolü kodda çalışıyor ama production'da henüz kimse `moderator` değil — founder'ın kendi satırını elle SQL ile ayarlaması hâlâ öneriliyor.
 
 ## Yakın zamanda alınan kararlar

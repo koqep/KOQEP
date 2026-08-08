@@ -17,7 +17,7 @@
 - [x] A moderator can resolve a report by removing the message's content — NEVER a hard delete (CLAUDE.md'nin "mesaj içeriği asla hard-delete edilmez" kuralı, tek istisna oda purge, ADR-0006) — or dismissing it as not-actionable; the report's status reflects the outcome.
 - [x] A moderator can apply a temp-mute; the muted user is visibly notified in real time (WS) — no shadow ban. Mute, hem yeni mesaj göndermeyi HEM mevcut mesaj düzenlemeyi kapsar (`docs/THREAT-MODEL.md` satır 3'ün tarif ettiği "önce masum mesaj at, sonra düzenleyip saldırıya çevir" vektörü). Slice B (2026-08-07).
 - [x] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when. (Slice A: erişim + içerik kaldırma/reddetme kapsandı; Slice B: MUTE_APPLIED/MUTE_LIFTED eklendi (2026-08-07); Slice D kendi aksiyon tiplerini ekleyecek.)
-- [ ] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli. Slice C.
+- [x] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli. Flag SADECE bilgi/görünürlük sinyalidir, hiçbir otomatik moderatör aksiyonu tetiklemez (brigading riski, THREAT-MODEL satır 7). Slice C (2026-08-07).
 - [ ] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları). Slice D.
 - [ ] When a user is banned/temp-muted for real abuse, their inviter's invite
       quota/trust is visibly affected (`docs/BACKLOG.md` `B15` — "davetçi
@@ -28,7 +28,7 @@
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M4'ün kullandığı aynı ritim). 2026-08-05 kapsam gözden geçirmesinde (iki tur) A/B/C/D/E dilimlerine bölündü (aşağıdaki Plan notları):
 - [x] **M5 Slice A — Rapor akışı + moderatöre kapsamlı görünürlük + çözüm eylemi + durum + denetim günlüğü temeli.** Tamamlandı (2026-08-06) — detay için aşağıdaki "Plan notları — Slice A uygulaması" bölümüne bakın. `Report` tablosu (oda mesajları, DM DEĞİL — bkz. Out of scope), `status` alanıyla (açık/çözüldü/reddedildi). Moderatöre SADECE raporlanan içeriği gösteren bir review queue — `messages.service.ts`'in zaten kurduğu `role === 'moderator'` deseniyle aynı (`getMessageEditHistory`). Moderatörün gerçek bir çözüm eylemi VAR: içeriği kaldırma — `editMessage`'ın zaten kurduğu `MessageEdit`-denetim-izi desenini yeniden kullanan, ama moderatör-yetkili farklı bir yoldan çağrılan bir "moderatör kaldırması" (hard-delete DEĞİL, içerik bir placeholder'a değişir, orijinal `MessageEdit`'te saklanır). Rapor gönderimi kendi rate limitine sahip (`room-creation-throttler.guard.ts`'in bağımsız `CanActivate` deseni). Her moderatör erişimi VE aksiyonu append-only bir denetim günlüğüne yazılır (ADR-0004'ün `ReputationEvent` deseni).
 - [x] **M5 Slice B — Geçici susturma (tam kapsam) + gerçek zamanlı bildirim + denetim günlüğü aksiyonları.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. `User.mutedUntil` (canlı durum, ODA-BAĞIMSIZ/global) + Slice A'nın denetim günlüğüne MUTE/UNMUTE aksiyon satırları — `User.totalXp`/`level` (canlı önbellek) + `ReputationEvent` (günlük) ikilisiyle aynı mimari desen. `sendMessage` VE `editMessage` ikisi de susturulmuş kullanıcıyı reddeder (M3 Slice B'nin arşivlenmiş-oda `GoneException` deseninin TAM uygulanışı — ilk taslak sadece `sendMessage`'ı kapsıyordu, THREAT-MODEL satır 3'ün "post benign, edit into abuse" vektörünü kapatmak için ikisi de gerekli). Oda oluşturma/davet kazanımına AYRICA dokunulmuyor (gerekçe Plan notları'nda). Bildirim `SocketRegistryService.getSockets(userId)` ile gerçek zamanlı WS push (zaten var olan, bağımlılıksız bir servis — yeni bir mekanizma gerekmiyor).
-- [ ] **M5 Slice C — Aynı-aktör çoklu-rapor deseni tespiti.** Aynı kullanıcı kısa bir pencerede birden fazla farklı kullanıcı tarafından raporlanınca moderatöre otomatik flag — SADECE `status: açık` raporlar sayılır (Slice A'nın durum alanına bağımlı). Pencere/eşik sayıları bu slice'ın kendi plan-modu turunda kesinleşecek (Slice A'nın XP formülü sayılarıyla aynı "tahmini, sonradan ayarlanabilir" ilkesi).
+- [x] **M5 Slice C — Aynı-aktör çoklu-rapor deseni tespiti.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice C uygulaması" bölümüne bakın. Aynı kullanıcı 7 günlük bir pencerede en az 3 farklı kullanıcı tarafından raporlanınca `isFlagged`/`distinctReporterCount` ile moderatöre görünür bir işaret — SADECE `status: açık` raporlar sayılır. **Tasarım kuralı:** flag SADECE bilgi, hiçbir otomatik moderatör aksiyonu (susturma, içerik kaldırma) tetiklemez — 3 kişi anlaşıp masum birini flag'letebileceği (brigading, THREAT-MODEL satır 7) için karar HER ZAMAN insan moderatöre bırakılır.
 - [ ] **M5 Slice D — Oda moderasyonu (silme/yeniden adlandırma).** Kötü-isimli/kötüye kullanılan bir oda için moderatör doğrudan aksiyon alabilir — rapor kuyruğundan bağımsız, mevcut `role === 'moderator'` deseniyle korunan basit bir endpoint. `docs/BACKLOG.md`'nin M3'ten beri ertelenmiş maddesi, tetikleyicisi zaten fırlamış (Plan notları). Aksiyon Slice A'nın denetim günlüğüne yazılır.
 - [ ] **M5 Slice E — Davetçi hesap verebilirliği (B15).** Ban/temp-mute alan bir kullanıcının davetçisinin durumu görünür şekilde etkilenir — tam mekanik (kota düşümü vs. görünür bir güven bayrağı) bu slice'ın kendi turunda kararlaştırılacak, önceden belirlenmiyor (milestone'un kendi notu zaten böyle diyor). Slice B'ye bağımlı (mute/ban olayları önce var olmalı).
 - [ ] Tests for report scoping, resolution/status transitions, content-removal (never hard-delete), mute visibility (send+edit), audit log completeness, multi-report flagging (open-only), room moderation, and inviter-accountability triggering — her slice kendi testleriyle gelir.
@@ -371,4 +371,67 @@ onayına kalıyor.
 
 ### Sıradaki
 Slice B tamam. Slice C (aynı-aktör çoklu-rapor tespiti) kendi
-plan-modu turuyla başlayacak.
+plan-modu turuyla başladı ve tamamlandı — detay aşağıdaki "Plan
+notları — Slice C uygulaması" bölümünde.
+
+## Plan notları — Slice C uygulaması (2026-08-07)
+
+Plan-modu turunda kod okunarak tasarlandı, bir Plan agent'ıyla çapraz
+kontrol edildi (sayım mantığında gerçek bir hata buldu, düzeltildi).
+**Kullanıcının ilk gözden geçirmesi dört nokta ekledi** (hepsi
+işlendi, aşağıda).
+
+**Şema:** Tespitin kendisi migration istemedi (`Report`'un gerekli
+alanları ve indeksleri Slice A'da zaten vardı — `@@index([reportedUserId])`
+tam bu sorgu için önceden eklenmişti). Tek migration:
+`ModerationAuditLog.distinctReporterCountAtResolution` (nullable Int) —
+flag kalıcı saklanmadığı, her `GET`'te yeniden hesaplandığı için, bir
+rapor çözüldüğünde "o an bir örüntü var mıydı" sorusunu sonradan
+cevaplayabilmenin TEK yolu bu alan (kullanıcının 3. noktası).
+
+**Agent'ın bulduğu, düzeltilmiş sayım hatası:** `reportedUserId` VE
+`reporterId` ikisi de null olabilir (`AuthService.deleteAccount()`'un
+`onDelete:SetNull`'ü) — sadece birini atlayıp diğerini atlamamak ya
+sayıyı yanlışlıkla azaltır ya da `null`'ı "hayalet" bir raporcu gibi
+sayıp sahte-rapor-yığma saldırısını ucuzlatır. İkisi de filtreleniyor.
+
+**Kullanıcının dört noktası (hepsi işlendi):**
+1. **Pencere 24 saatten 7 güne çıkarıldı.** Tek-moderatörlü bir
+   toplulukta kuyruk günlük kontrol edilmeyebilir — 24 saatlik pencere
+   3 günlük bir koordineli-taciz desenini hiç yakalamazdı. Sayım zaten
+   sadece açık raporları kapsadığı için pencereyi genişletmenin
+   maliyeti düşük.
+2. **Flag'in sadece bilgi olduğu açık bir tasarım kuralı olarak
+   yazıldı** (`reports.service.ts`'te kod yorumu + bu dosyanın
+   acceptance criteria/Slice C metni) — otomatik bir tepki (ör. "flag
+   varsa otomatik sustur") brigading riskini bir silaha çevirirdi.
+3. **Çözüm anındaki (`removeContent`/`dismiss`) distinct-raporcu
+   sayısı artık denetim günlüğüne yazılıyor** — flag hiçbir yerde
+   kalıcı saklanmadığı için bu, "karar verilirken bir örüntü var mıydı"
+   sorusunun TEK cevabı. `dismiss` bu yüzden array-form
+   `$transaction`'dan callback-form'a çevrildi (sayımın rapor hâlâ
+   `open` iken aynı transaction içinde okunabilmesi için).
+4. **İki davranış bilinçli kararlara bağlandı:**
+   - Kullanıcı artık kendi mesajını raporlayamıyor (`createReport`,
+     `ForbiddenException`) — Slice A'nın gözden kaçırdığı gerçek bir
+     gap, kuyruğu kirletiyordu.
+   - Susturulmuş kullanıcı hâlâ rapor atabiliyor, BİLEREK
+     değiştirilmedi — `ReportThrottlerGuard`'ın 5/saat sınırı ve Slice
+     C'nin kendi eşiği (≥3 farklı raporcu) tek başına misillemeyi zaten
+     imkansız kılıyor, ve susturma birinin KENDİ gönderim gücünü
+     kısıtlıyor, başkasının kötüye kullanımını bildirme hakkını değil.
+
+**THREAT-MODEL satır 10'dan bilerek daralma:** satır 10 "blocked/reported"
+diyor (`Block` VE `Report`) ama bu milestone'un acceptance criteria'sı
+sadece "raporlanınca" diyor — `Block` satırları Slice C'nin sayımına
+DAHİL EDİLMEDİ, atlanmış değil, milestone'un kendi kapsamı bu kadar dar.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, birim (18 yeni/
+güncellenen test) + e2e (`moderation.e2e-spec.ts`'e eklendi, iki üst
+üste koşu sıfır kalıntı doğruladı) yeşil. `apps/web` lint/typecheck/
+build temiz, Playwright 54/54 (2 yeni test dahil). Dal
+`m5/slice-c-multi-report-flag`, push kullanıcının onayına kalıyor.
+
+### Sıradaki
+Slice C tamam. Slice D (oda moderasyonu) kendi plan-modu turuyla
+başlayacak.

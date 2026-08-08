@@ -255,5 +255,13 @@ model ModerationAuditLog {
   reportId String?
   report   Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
+  // M5 Slice C: rapor çözüldüğünde (CONTENT_REMOVED/REPORT_DISMISSED) o
+  // ANKİ distinct-raporcu sayısının anlık görüntüsü - flag kalıcı
+  // saklanmadığı için ("her GET'te yeniden hesaplanır") "bu karar
+  // verilirken bir örüntü var mıydı" sorusunu SADECE bu alan
+  // cevaplayabilir. Diğer actionType'larda (MUTE_APPLIED,
+  // REPORT_QUEUE_VIEWED, ...) null.
+  distinctReporterCountAtResolution Int?
+
   @@index([moderatorId])
 }

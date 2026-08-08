@@ -126,6 +126,12 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
               key={report.id}
               className="border border-neutral-800 p-2"
             >
+              {report.isFlagged && (
+                <p className="mb-1 text-red-400">
+                  [çoklu rapor — {report.distinctReporterCount} farklı
+                  kullanıcı]
+                </p>
+              )}
               <p className="mb-1 text-neutral-500">
                 {report.reportedUsername ?? "silinmiş kullanıcı"}
                 {report.reason && (

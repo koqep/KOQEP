@@ -238,3 +238,55 @@ test("silinmis_yazarli_raporda_sustur_butonlari_gorunmez", async ({
     page.getByRole("button", { name: "susturmayı kaldır" }),
   ).toHaveCount(0);
 });
+
+test("coklu_rapor_flagli_raporda_uyari_metni_gorunur", async ({ page }) => {
+  await login(page, "moderator", "baskasi");
+  await page.route("**/moderation/reports", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: "report-1",
+          createdAt: new Date().toISOString(),
+          reason: null,
+          reportedContent: "saldırgan içerik",
+          reportedUsername: "baskasi",
+          reportedUserId: "user-baskasi",
+          distinctReporterCount: 3,
+          isFlagged: true,
+        },
+      ],
+    }),
+  );
+
+  await page.getByRole("button", { name: "moderasyon" }).click();
+
+  await expect(
+    page.getByText("[çoklu rapor — 3 farklı kullanıcı]"),
+  ).toBeVisible();
+});
+
+test("flagli_olmayan_raporda_uyari_metni_gorunmez", async ({ page }) => {
+  await login(page, "moderator", "baskasi");
+  await page.route("**/moderation/reports", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: "report-1",
+          createdAt: new Date().toISOString(),
+          reason: null,
+          reportedContent: "saldırgan içerik",
+          reportedUsername: "baskasi",
+          reportedUserId: "user-baskasi",
+          distinctReporterCount: 1,
+          isFlagged: false,
+        },
+      ],
+    }),
+  );
+
+  await page.getByRole("button", { name: "moderasyon" }).click();
+
+  await expect(page.getByText("çoklu rapor", { exact: false })).toHaveCount(
+    0,
+  );
+});
