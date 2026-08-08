@@ -178,7 +178,10 @@ export class RoomsService {
   }
 }
 
-function isUniqueConstraintError(error: unknown, field: string): boolean {
+export function isUniqueConstraintError(
+  error: unknown,
+  field: string,
+): boolean {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === 'P2002' &&
