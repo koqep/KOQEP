@@ -18,7 +18,7 @@
 - [x] A moderator can apply a temp-mute; the muted user is visibly notified in real time (WS) — no shadow ban. Mute, hem yeni mesaj göndermeyi HEM mevcut mesaj düzenlemeyi kapsar (`docs/THREAT-MODEL.md` satır 3'ün tarif ettiği "önce masum mesaj at, sonra düzenleyip saldırıya çevir" vektörü). Slice B (2026-08-07).
 - [x] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when. (Slice A: erişim + içerik kaldırma/reddetme kapsandı; Slice B: MUTE_APPLIED/MUTE_LIFTED eklendi (2026-08-07); Slice D kendi aksiyon tiplerini ekleyecek.)
 - [x] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli. Flag SADECE bilgi/görünürlük sinyalidir, hiçbir otomatik moderatör aksiyonu tetiklemez (brigading riski, THREAT-MODEL satır 7). Slice C (2026-08-07).
-- [ ] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları). Slice D.
+- [x] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları). **Silme "doğrudan/hemen" değil, iki adımlı** (önce arşivle, sonra sil) — ADR-0006'nın "Oda durumu tek yönlü ilerler: active → archived → deleted" invariant'ını atlamamak için, kullanıcıyla birlikte karar verildi (bkz. Plan notları). Slice D (2026-08-08).
 - [ ] When a user is banned/temp-muted for real abuse, their inviter's invite
       quota/trust is visibly affected (`docs/BACKLOG.md` `B15` — "davetçi
       hesap verebilirliği," the platform's most distinctive moderation
@@ -29,7 +29,7 @@ Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M4'ün kullandığı
 - [x] **M5 Slice A — Rapor akışı + moderatöre kapsamlı görünürlük + çözüm eylemi + durum + denetim günlüğü temeli.** Tamamlandı (2026-08-06) — detay için aşağıdaki "Plan notları — Slice A uygulaması" bölümüne bakın. `Report` tablosu (oda mesajları, DM DEĞİL — bkz. Out of scope), `status` alanıyla (açık/çözüldü/reddedildi). Moderatöre SADECE raporlanan içeriği gösteren bir review queue — `messages.service.ts`'in zaten kurduğu `role === 'moderator'` deseniyle aynı (`getMessageEditHistory`). Moderatörün gerçek bir çözüm eylemi VAR: içeriği kaldırma — `editMessage`'ın zaten kurduğu `MessageEdit`-denetim-izi desenini yeniden kullanan, ama moderatör-yetkili farklı bir yoldan çağrılan bir "moderatör kaldırması" (hard-delete DEĞİL, içerik bir placeholder'a değişir, orijinal `MessageEdit`'te saklanır). Rapor gönderimi kendi rate limitine sahip (`room-creation-throttler.guard.ts`'in bağımsız `CanActivate` deseni). Her moderatör erişimi VE aksiyonu append-only bir denetim günlüğüne yazılır (ADR-0004'ün `ReputationEvent` deseni).
 - [x] **M5 Slice B — Geçici susturma (tam kapsam) + gerçek zamanlı bildirim + denetim günlüğü aksiyonları.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. `User.mutedUntil` (canlı durum, ODA-BAĞIMSIZ/global) + Slice A'nın denetim günlüğüne MUTE/UNMUTE aksiyon satırları — `User.totalXp`/`level` (canlı önbellek) + `ReputationEvent` (günlük) ikilisiyle aynı mimari desen. `sendMessage` VE `editMessage` ikisi de susturulmuş kullanıcıyı reddeder (M3 Slice B'nin arşivlenmiş-oda `GoneException` deseninin TAM uygulanışı — ilk taslak sadece `sendMessage`'ı kapsıyordu, THREAT-MODEL satır 3'ün "post benign, edit into abuse" vektörünü kapatmak için ikisi de gerekli). Oda oluşturma/davet kazanımına AYRICA dokunulmuyor (gerekçe Plan notları'nda). Bildirim `SocketRegistryService.getSockets(userId)` ile gerçek zamanlı WS push (zaten var olan, bağımlılıksız bir servis — yeni bir mekanizma gerekmiyor).
 - [x] **M5 Slice C — Aynı-aktör çoklu-rapor deseni tespiti.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice C uygulaması" bölümüne bakın. Aynı kullanıcı 7 günlük bir pencerede en az 3 farklı kullanıcı tarafından raporlanınca `isFlagged`/`distinctReporterCount` ile moderatöre görünür bir işaret — SADECE `status: açık` raporlar sayılır. **Tasarım kuralı:** flag SADECE bilgi, hiçbir otomatik moderatör aksiyonu (susturma, içerik kaldırma) tetiklemez — 3 kişi anlaşıp masum birini flag'letebileceği (brigading, THREAT-MODEL satır 7) için karar HER ZAMAN insan moderatöre bırakılır.
-- [ ] **M5 Slice D — Oda moderasyonu (silme/yeniden adlandırma).** Kötü-isimli/kötüye kullanılan bir oda için moderatör doğrudan aksiyon alabilir — rapor kuyruğundan bağımsız, mevcut `role === 'moderator'` deseniyle korunan basit bir endpoint. `docs/BACKLOG.md`'nin M3'ten beri ertelenmiş maddesi, tetikleyicisi zaten fırlamış (Plan notları). Aksiyon Slice A'nın denetim günlüğüne yazılır.
+- [x] **M5 Slice D — Oda moderasyonu (yeniden adlandır/arşivle/sil).** Tamamlandı (2026-08-08) — detay için aşağıdaki "Plan notları — Slice D uygulaması" bölümüne bakın. `docs/BACKLOG.md`'nin M3'ten beri ertelenmiş maddesi. Rename hiçbir duruma bağlı değil (active/archived ikisinde de çalışır). Archive (yeni) active→archived'i moderatör tetikler. Delete SADECE zaten arşivlenmiş bir odada çalışır — ADR-0006'nın tek-yönlü FSM'ini atlamamak için, aktif kötüye kullanılan bir oda için moderatör iki tık atar (arşivle, sonra sil). Odadaki DİĞER kullanıcılar da (sadece moderatör değil) `room:renamed`/`room:archived`/`room:deleted` WS event'leriyle gerçek zamanlı haberdar olur. Aksiyonlar Slice A'nın denetim günlüğüne yazılır (oda adı/açıklaması/silinen mesaj sayısı snapshot'lanır).
 - [ ] **M5 Slice E — Davetçi hesap verebilirliği (B15).** Ban/temp-mute alan bir kullanıcının davetçisinin durumu görünür şekilde etkilenir — tam mekanik (kota düşümü vs. görünür bir güven bayrağı) bu slice'ın kendi turunda kararlaştırılacak, önceden belirlenmiyor (milestone'un kendi notu zaten böyle diyor). Slice B'ye bağımlı (mute/ban olayları önce var olmalı).
 - [ ] Tests for report scoping, resolution/status transitions, content-removal (never hard-delete), mute visibility (send+edit), audit log completeness, multi-report flagging (open-only), room moderation, and inviter-accountability triggering — her slice kendi testleriyle gelir.
 
@@ -434,4 +434,84 @@ build temiz, Playwright 54/54 (2 yeni test dahil). Dal
 
 ### Sıradaki
 Slice C tamam. Slice D (oda moderasyonu) kendi plan-modu turuyla
-başlayacak.
+başladı ve tamamlandı — detay aşağıdaki "Plan notları — Slice D
+uygulaması" bölümünde.
+
+## Plan notları — Slice D uygulaması (2026-08-08)
+
+Plan-modu turunda kod okunarak tasarlandı, bir Plan agent'ıyla çapraz
+kontrol edildi (2 bug buldu). **Kullanıcının İKİ ayrı gözden
+geçirmesi** oldu — biri tasarım onayından önce (mimari bir çelişki
+için), biri onaydan sonra (uyumluluk sorunları için).
+
+**Agent'ın bulduğu ciddi çelişki, kullanıcıya soruldu:** Acceptance
+criteria'nın "doğrudan/hemen silme" istemi, CLAUDE.md'nin "Değişmez
+kurallar"ındaki "Oda durumu tek yönlü ilerler: active → archived →
+deleted (ADR-0006)" invariant'ıyla çakışıyordu — bugün bu sırayı SADECE
+otomatik süpürme (14 gün sessizlik → archived, 60 gün sıfır
+görüntülenme → deleted) işletiyor, hiçbir kod yolu aktif bir odayı
+atlayarak hemen silemiyordu. **Üç seçenek sunuldu, kullanıcı seçti:**
+ADR-0006'ya DOKUNULMADI — moderatöre YENİ bir `archiveRoom` aksiyonu
+eklendi (active→archived, anında), `deleteRoom` SADECE zaten arşivlenmiş
+bir odada çalışıyor. Aktif kötüye kullanılan bir oda için moderatör iki
+tık atıyor (arşivle, sonra sil) — hiçbir durum atlanmıyor, invariant
+korunuyor, "doğrudan" olma isteği pratikte karşılanıyor (iki tık,
+bekleme yok).
+
+**Agent'ın bulduğu iki gerçek bug (uygulanmadan önce düzeltildi):**
+- `renameRoom`'un case-insensitive benzersizlik ön-kontrolü kendi
+  mevcut satırını hariç tutmuyordu — bir odayı SADECE büyük/küçük harf
+  düzeltmek için yeniden adlandırmak (en olası düzeltme senaryosu)
+  kendi satırıyla çakışıp yanlışlıkla `ConflictException` atardı.
+  `id: { not: roomId }` eklendi.
+- `rooms.service.ts`'in module-private `isUniqueConstraintError`'ını
+  kopyalamak yerine export edip import etmek gerekiyordu — ADR-0002'nin
+  frontend/backend AYRI deploy edilebilirlik gerekçesi burada geçerli
+  değil (`RoomModerationService` AYNI `app.module.ts` içinde).
+
+**Kullanıcının ikinci gözden geçirmesi dört uyumluluk sorunu buldu,
+hepsi işlendi:**
+1. **Silinen odanın açık raporları hayalete dönüşüyordu.** Slice A bunu
+   "nadir uç durum" diye kabul etmişti ama Slice D'de bu SIRADAN bir
+   senaryo (kötüye kullanılan bir oda siliniyorsa, o odanın
+   mesajlarında açık rapor olması BEKLENEN durum). `deleteRoom` artık
+   mesajlar silinmeden ÖNCE (ilişki hâlâ geçerliyken) o odadaki açık
+   raporları `resolved` yapıyor. Ücretsiz yan fayda: bu, Slice C'nin
+   çoklu-rapor sayımındaki gizli bir hatayı da kapattı (hayalet açık
+   rapor sonsuza kadar flag sayımına katkı yapmaya devam ederdi).
+2. **Odadaki diğer kullanıcılar hiçbir şey görmüyordu.** İlk taslak
+   sadece moderatörün kendi görünümünü düzeltiyordu. Slice A/B'nin
+   REST→WS kompozisyon deseni buraya da taşındı — `MessagesGateway`'e
+   üç yeni oda-geneli bildirim metodu, `RoomView.tsx`'e HERKES için
+   (sadece moderatör değil) çalışan üç yeni dinleyici. Bu, moderatörün
+   kendi görünümü için ayrı bir REST-response-tetikli senkronizasyonu
+   da GEREKSİZ kıldı — moderatörün soketi de aynı broadcast'i alıyor.
+3. **Denetim satırı eksikti.** `deletedMessageCount` ve
+   `targetRoomDescription` eklendi (şemaya, aşağıya bakın).
+4. **Arşivlenmiş bir oda yeniden adlandırılabilir mi?** Bilinçli karar:
+   EVET, hiçbir durum kısıtı yok — rename `status`'a hiç dokunmuyor,
+   ADR-0006 FSM'iyle çakışması yok.
+
+**Şema:** `ModerationAuditLog`'a `targetRoomId` (SetNull FK) +
+`targetRoomName` + `targetRoomDescription` (üçü için de snapshot) +
+`deletedMessageCount` (sadece `ROOM_DELETED`'de dolu). `targetRoomId`
+delete sonrası SetNull ile null'a düşüyor (Postgres FK aksiyonları
+statement-anında çalışır, commit'te değil) — `targetRoomName` bu yüzden
+tek kalıcı kayıt, TERSİ sıra (odayı önce silip audit'i sonra yazmak) FK
+ihlaliyle zaten patlardı.
+
+**Test kapsamı dışında bilerek bırakılan:** Moderatörün KENDİ
+switcher'ının (`RoomHeader.tsx`) WS-tetikli güncellenmesi Playwright'ın
+mock'lu-REST harness'ında test edilemiyor (gerçek WS bağlantısı yok) —
+bu mekanizma `apps/api/test/room-moderation.e2e-spec.ts`'te gerçek bir
+soketle kanıtlandı, Playwright testinde bu kısıt açıkça yorumlandı.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, birim (13 yeni test)
++ e2e (gerçek WS, iki üst üste koşu sıfır kalıntı doğruladı) yeşil.
+`apps/web` lint/typecheck/build temiz, Playwright 57/57 (3 yeni test
+dahil). Dal `m5/slice-d-room-moderation`, push kullanıcının onayına
+kalıyor.
+
+### Sıradaki
+Slice D tamam. Slice E (davetçi hesap verebilirliği, B15) kendi
+plan-modu turuyla başlayacak — M5'in son dilimi.

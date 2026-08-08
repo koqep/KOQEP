@@ -10,6 +10,7 @@ import {
   type ReportSummary,
 } from "../../lib/api";
 import MessageContent from "./MessageContent";
+import RoomModerationSection from "./RoomModerationSection";
 
 const MUTE_DURATION_HOURS = 24;
 
@@ -186,6 +187,8 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
           })}
         </ul>
       )}
+
+      <RoomModerationSection accessToken={accessToken} />
     </section>
   );
 }

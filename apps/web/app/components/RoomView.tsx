@@ -81,6 +81,7 @@ export default function RoomView({
   const socketRef = useRef<Socket | null>(null);
   const activeRoomIdRef = useRef<string | null>(null);
   const activeRoomRef = useRef<Room | null>(null);
+  const roomsRef = useRef<Room[]>([]);
   const fetchGenerationRef = useRef(0);
   const hasConnectedBeforeRef = useRef(false);
   const messagesSectionRef = useRef<HTMLElement | null>(null);
@@ -104,6 +105,13 @@ export default function RoomView({
     activeRoomIdRef.current = activeRoom?.id ?? null;
     activeRoomRef.current = activeRoom;
   }, [activeRoom]);
+
+  // M5 Slice D: room:deleted dinleyicisi bir yedek odaya geçerken GÜNCEL
+  // oda listesine ihtiyaç duyuyor - state'in kendisi yerine ref üzerinden
+  // (activeRoomRef/activeRoomIdRef ile AYNI desen).
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
 
   // M5 Slice B: mutedUntil sadece mount'ta ve WS push'larında güncelleniyor
   // - süre doğal olarak dolduğunda hiçbir re-render tetiklenmez (sessiz bir
@@ -240,6 +248,69 @@ export default function RoomView({
         socket.on("moderation:unmuted", () => {
           if (cancelled) return;
           setMyProfile((prev) => (prev ? { ...prev, mutedUntil: null } : prev));
+        });
+        // M5 Slice D: oda-geneli moderatör aksiyonları - HERKES için (sadece
+        // moderatör değil), moderatörün kendi soketi de aynı odaya join'li
+        // olduğu için AYNI broadcast'i alıyor - ayrı bir REST-response-
+        // tetikli senkronizasyona gerek yok.
+        socket.on(
+          "room:renamed",
+          (payload: { roomId: string; name: string }) => {
+            if (cancelled) return;
+            setRooms((prev) =>
+              prev.map((r) =>
+                r.id === payload.roomId ? { ...r, name: payload.name } : r,
+              ),
+            );
+            setActiveRoom((prev) =>
+              prev && prev.id === payload.roomId
+                ? { ...prev, name: payload.name }
+                : prev,
+            );
+          },
+        );
+        socket.on("room:archived", (payload: { roomId: string }) => {
+          if (cancelled) return;
+          setRooms((prev) =>
+            prev.map((r) =>
+              r.id === payload.roomId
+                ? { ...r, status: "archived" as const }
+                : r,
+            ),
+          );
+          setActiveRoom((prev) =>
+            prev && prev.id === payload.roomId
+              ? { ...prev, status: "archived" as const }
+              : prev,
+          );
+          // ChatPanel.tsx zaten activeRoom.status !== "active" iken
+          // composer'ı salt-okunur yapıyor - herkes için ücretsiz, yeni bir
+          // UI dalı gerekmiyor.
+        });
+        socket.on("room:deleted", (payload: { roomId: string }) => {
+          if (cancelled) return;
+          const next = roomsRef.current.filter((r) => r.id !== payload.roomId);
+          setRooms(next);
+          if (activeRoomIdRef.current === payload.roomId) {
+            const fallback = next[0] ?? null;
+            setActiveRoom(fallback);
+            setDraft("");
+            if (fallback) {
+              const generation = ++fetchGenerationRef.current;
+              void fetchRoomHistory(fallback.name, authHeaders).then(
+                (fresh) => {
+                  if (cancelled || fetchGenerationRef.current !== generation) {
+                    return;
+                  }
+                  setMessages(fresh?.messages ?? []);
+                  setNextCursor(fresh?.nextCursor ?? null);
+                },
+              );
+            } else {
+              setMessages([]);
+              setNextCursor(null);
+            }
+          }
         });
         socket.on(
           "exception",

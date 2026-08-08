@@ -3,20 +3,20 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-07
-**Aktif milestone:** M5 (`docs/milestones/M5-moderation-abuse.md`) — kapsam gözden geçirmesi İKİ TURDA TAMAMLANDI VE ONAYLANDI (Slice A→B→C→D→E). Slice A ve Slice B `main`'e MERGE EDİLDİ (PR #40/#41). Slice C (aynı-aktör çoklu-rapor tespiti) TAMAMEN BİTTİ, `m5/slice-c-multi-report-flag` dalında, henüz push/merge edilmedi. M4 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36/#37). CORS düzeltmesi `main`'e MERGE EDİLDİ (PR #38). M3 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33).
+**Son güncelleme:** 2026-08-08
+**Aktif milestone:** M5 (`docs/milestones/M5-moderation-abuse.md`) — kapsam gözden geçirmesi İKİ TURDA TAMAMLANDI VE ONAYLANDI (Slice A→B→C→D→E). Slice A/B/C `main`'e MERGE EDİLDİ (PR #40/#41/#42). Slice D (oda moderasyonu) TAMAMEN BİTTİ, `m5/slice-d-room-moderation` dalında, henüz push/merge edilmedi. M4 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36/#37). CORS düzeltmesi `main`'e MERGE EDİLDİ (PR #38). M3 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33).
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 Slice A + M5 Slice B (tüm milestone'lar/dilimler) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
+- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 Slice A + B + C (tüm milestone'lar/dilimler) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-08-05 — koqep.com domain taşıması + CORS düzeltmesi.** `WEB_ORIGIN` hem CORS allow-list hem e-posta linklerinin taban URL'i olarak kullanılıyordu — ikinci kullanım tek kanonik domain (koqep.com, www'suz) gerektirdiği için WEB_ORIGIN'e dokunulmadı, yeni `allowed-origins.ts` www karşılığını otomatik türetip CORS'a ekliyor.
 - **2026-08-05 — M5 kapsam gözden geçirmesi (iki tur, A→B→C→D→E) onaylandı.** Detay: milestone dosyasının iki Plan notları bölümü.
-- **2026-08-07 — M5 Slice C tamamlandı.** Aynı-aktör çoklu-rapor tespiti (7 günlük pencere, ≥3 farklı raporcu) `isFlagged`/`distinctReporterCount` ile kuyrukta görünür — flag SADECE bilgi, hiçbir otomatik aksiyon tetiklemiyor (brigading riski, THREAT-MODEL satır 7). Detay: milestone dosyasının "Plan notları — Slice C uygulaması" bölümü.
+- **2026-08-08 — M5 Slice D tamamlandı.** Oda yeniden adlandır/arşivle/sil — silme SADECE zaten arşivlenmiş bir odada (ADR-0006'nın tek-yönlü FSM'ini korumak için kullanıcıyla karara bağlandı: aktif kötüye kullanılan oda için moderatör önce arşivler, sonra siler). Odadaki DİĞER kullanıcılar da `room:renamed`/`archived`/`deleted` WS event'leriyle gerçek zamanlı haberdar oluyor. Detay: milestone dosyasının "Plan notları — Slice D uygulaması" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M5 Slice C tamamlandı ve doğrulandı (`m5/slice-c-multi-report-flag` dalı, 5 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** M5 Slice D (oda moderasyonu) — kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M5 Slice D tamamlandı ve doğrulandı (`m5/slice-d-room-moderation` dalı, 6 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** M5 Slice E (davetçi hesap verebilirliği, B15) — M5'in SON dilimi, kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -57,3 +57,4 @@
 - e2e temizlik tekrarlayan tuzaklar: (1) Bir yardımcı fonksiyon gerçek bir servis metodu çağırıp PAYLAŞILAN bir kaynağa (ör. `#general` odası) satır yazıyorsa, o satır da temizlik dizisine eklenmeli — sadece testin doğrudan `prisma.X.create` çağrıları değil (M4 Slice B, paylaşılan oda kalıcı kirlendi). (2) Bir audit-log satırının hedef FK'si (ör. `reportId`) NULL olabiliyorsa ("kuyruk görüntülendi" gibi hedefsiz bir olay), `WHERE targetId IN (...)` temizlik filtresi bunu HİÇ yakalamaz — ayrı bir anahtarla (ör. `actorId`/`moderatorId`) temizle (M5 Slice A/B'de tekrar doğrulandı). (3) Yeni bir tabloya `ON DELETE RESTRICT` FK eklerken (Prisma varsayılanı) `afterAll` temizlik sırası tersten olmalı — ebeveyn (ör. `Message`) çocuk (ör. `MessageEdit`) olmadan silinemez.
 - `docs/BACKLOG.md`'deki "somut tetikleyici" notları başka bir milestone'u NUMARAYLA anıyorsa (ör. "M4 şipse") körü körüne güvenme — milestone numaralandırması zamanla kayabilir (moderasyon önce "M4" sonra "M5" oldu), tetikleyici metni güncellenmemiş olabilir. Tetikleyicinin GERÇEKTE hangi milestone'a işaret ettiğini (numaraya değil, konuya bakarak) doğrula. M5'in ikinci tur gözden geçirmesinde "oda moderasyonu" maddesi tam bu yüzden iki milestone kaymıştı.
 - Test harness'ın üretim davranışını EKSİK yansıttığı iki durum (M5 Slice B'de bulundu): (1) `apps/web`'in Playwright config'i `next start` kullanıyor (dev DEĞİL) — `.next` build'i kod değişikliğinden SONRA yeniden `npm run build` edilmezse testler ESKİ derlenmiş kodu sessizce test eder. Frontend değiştiren her oturumda Playwright'tan önce build şart. (2) `apps/api`'nin e2e `TestingModule`'ü `main.ts`'in `app.useGlobalPipes(new ValidationPipe(...))`'unu HİÇ çalıştırmaz — hiçbir e2e dosyasında DTO validasyonu (400) gerçekten test edilmiyor; kendi dosyanda test etmek istiyorsan `beforeAll`'a aynı pipe'ı elle ekle.
+- Playwright'ta iki tekrarlayan tuzak (M5 Slice D'de bulundu): (1) `page.route("**/rooms", ...)` sondaki `**` OLMADIĞI için `?includeArchived=true` gibi bir query string'i eşleştirmez (istek gerçek ağa düşer, sessizce asılı kalır) — bir endpoint hem sorgusuz hem sorgulu çağrılıyorsa deseni `"**/rooms*"` yap. (2) `getByRole("button", {name:"sil"})` `exact:true` OLMADAN SUBSTRING eşleşir — sayfada başka bir yerde "hesabı sil" gibi metni İÇEREN bir buton varsa yanlışlıkla onu da bulur, sayım/görünürlük assertion'larını bozar.
