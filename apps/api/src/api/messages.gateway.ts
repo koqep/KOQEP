@@ -291,4 +291,34 @@ export class MessagesGateway
       socket.emit('moderation:unmuted', {});
     }
   }
+
+  // M5 Slice D: broadcastToRoom'un blocker-filtresiz hali - oda-geneli bir
+  // olay (rename/archive/delete), engellenen-yazar filtrelemesi burada
+  // anlamsız (mesaj içeriğiyle ilgili değil, HERKES bilmeli). Socket.IO oda
+  // üyeliği (client.join(room.id), handleConnection'da bağlantı anında)
+  // DB satırından bağımsız bir in-memory gruplama - oda satırı silinse
+  // bile zaten join'li soketler this.server.in(roomId) ile hâlâ bulunabilir,
+  // broadcast çalışmaya devam eder. Moderatörün kendi soketi de aynı odaya
+  // join'li olduğu için bu broadcast'i AYNI şekilde alıyor - ayrı bir
+  // REST-response-tetikli senkronizasyona gerek yok.
+  async notifyRoomRenamed(roomId: string, name: string): Promise<void> {
+    const sockets = await this.server.in(roomId).fetchSockets();
+    for (const socket of sockets) {
+      socket.emit('room:renamed', { roomId, name });
+    }
+  }
+
+  async notifyRoomArchived(roomId: string): Promise<void> {
+    const sockets = await this.server.in(roomId).fetchSockets();
+    for (const socket of sockets) {
+      socket.emit('room:archived', { roomId });
+    }
+  }
+
+  async notifyRoomDeleted(roomId: string): Promise<void> {
+    const sockets = await this.server.in(roomId).fetchSockets();
+    for (const socket of sockets) {
+      socket.emit('room:deleted', { roomId });
+    }
+  }
 }

@@ -9,11 +9,14 @@ import {
 } from '@nestjs/common';
 import { ReportsService, ReportSummary } from '../services/reports.service';
 import { MutesService } from '../services/mutes.service';
+import { RoomModerationService } from '../services/room-moderation.service';
+import { RoomSummary } from '../services/rooms.service';
 import { MessagesGateway } from './messages.gateway';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { ModeratorGuard } from './moderator.guard';
 import { MuteUserDto } from './dto/mute-user.dto';
+import { RenameRoomDto } from './dto/rename-room.dto';
 
 @Controller('moderation')
 @UseGuards(JwtAuthGuard, ModeratorGuard)
@@ -21,6 +24,7 @@ export class ModerationController {
   constructor(
     private readonly reportsService: ReportsService,
     private readonly mutesService: MutesService,
+    private readonly roomModerationService: RoomModerationService,
     private readonly messagesGateway: MessagesGateway,
   ) {}
 
@@ -80,6 +84,42 @@ export class ModerationController {
   ): Promise<{ ok: true }> {
     await this.mutesService.liftMute(req.user.sub, id);
     this.messagesGateway.notifyUserUnmuted(id);
+    return { ok: true };
+  }
+
+  // M5 Slice D: removeContent/mute'un AYNI REST->WS kompozisyon deseni.
+  @Post('rooms/:id/rename')
+  async renameRoom(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: RenameRoomDto,
+  ): Promise<RoomSummary> {
+    const room = await this.roomModerationService.renameRoom(
+      req.user.sub,
+      id,
+      dto.name,
+    );
+    await this.messagesGateway.notifyRoomRenamed(id, dto.name);
+    return room;
+  }
+
+  @Post('rooms/:id/archive')
+  async archiveRoom(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<RoomSummary> {
+    const room = await this.roomModerationService.archiveRoom(req.user.sub, id);
+    await this.messagesGateway.notifyRoomArchived(id);
+    return room;
+  }
+
+  @Post('rooms/:id/delete')
+  async deleteRoom(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<{ ok: true }> {
+    await this.roomModerationService.deleteRoom(req.user.sub, id);
+    await this.messagesGateway.notifyRoomDeleted(id);
     return { ok: true };
   }
 }
