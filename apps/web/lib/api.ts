@@ -282,3 +282,24 @@ export async function unmuteUser(
 ): Promise<void> {
   await authedPostJson(`/moderation/users/${userId}/unmute`, accessToken);
 }
+
+export function renameRoom(
+  accessToken: string,
+  roomId: string,
+  name: string,
+): Promise<Room> {
+  return authedPostJson<Room>(`/moderation/rooms/${roomId}/rename`, accessToken, {
+    name,
+  });
+}
+
+export function archiveRoom(accessToken: string, roomId: string): Promise<Room> {
+  return authedPostJson<Room>(`/moderation/rooms/${roomId}/archive`, accessToken);
+}
+
+export async function deleteRoom(
+  accessToken: string,
+  roomId: string,
+): Promise<void> {
+  await authedPostJson(`/moderation/rooms/${roomId}/delete`, accessToken);
+}
