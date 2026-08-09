@@ -40,6 +40,12 @@ export default function InviteView({ accessToken, onClose }: Props) {
         </button>
       </div>
 
+      <p className="mb-4 text-neutral-600">
+        davet ettiğin biri moderasyona uğrarsa (susturulursa) kullanılmamış
+        bir davetin iptal edilir; hiç kullanılmamış daveti kalmamışsa bir
+        sonraki kazanacağın davetin düşer.
+      </p>
+
       {invites === null ? (
         <p>yükleniyor...</p>
       ) : invites.length === 0 ? (
@@ -58,7 +64,11 @@ export default function InviteView({ accessToken, onClose }: Props) {
                 {invite.code}
               </span>
               <span className="text-neutral-600">
-                {invite.usedAt ? "kullanıldı" : "kullanılabilir"}
+                {invite.usedAt
+                  ? "kullanıldı"
+                  : invite.revokedAt
+                    ? "iptal edildi"
+                    : "kullanılabilir"}
               </span>
             </li>
           ))}

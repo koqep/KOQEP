@@ -184,6 +184,7 @@ export interface InviteDto {
   code: string;
   createdAt: string;
   usedAt: string | null;
+  revokedAt: string | null;
 }
 
 export function listInvites(accessToken: string): Promise<InviteDto[]> {
