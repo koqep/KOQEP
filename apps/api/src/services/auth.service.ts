@@ -87,12 +87,17 @@ export class AuthService {
           },
         });
 
+        // revokedAt: null - findRedeemableInvite'ın kontrolünden SONRA ama
+        // bu transaction'dan ÖNCE bir moderatörün daveti revoke etmesi
+        // (M5 Slice E, davetçi hesap verebilirliği) mümkün, savunmacı.
+        // count===0 artık "zaten kullanılmış" YA DA "revoke edilmiş"
+        // anlamına gelebildiği için mesaj genelleştirildi.
         const claimed = await tx.invite.updateMany({
-          where: { id: invite.id, usedAt: null },
+          where: { id: invite.id, usedAt: null, revokedAt: null },
           data: { usedById: userId, usedAt: new Date() },
         });
         if (claimed.count === 0) {
-          throw new ConflictException('Bu davet kodu zaten kullanılmış.');
+          throw new ConflictException('Bu davet kodu artık geçerli değil.');
         }
       });
     } catch (error) {
