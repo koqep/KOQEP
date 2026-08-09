@@ -37,6 +37,13 @@ model User {
   totalXp         Int       @default(0)
   level           Int       @default(0)
   mutedUntil      DateTime?
+  // M5 Slice E: davetçi hesap verebilirliği (B15) - kullanılmamış daveti
+  // olmayan bir davetçi için susturma sonucu biriken borç. Bir sonraki
+  // grantInvites çağrısı bunu önce karşılar, kalan (varsa) gerçek davet
+  // olur. "En çok davet eden" bir kullanıcının elinde revoke edilecek
+  // kullanılmamış davet hiç bulunmayabilir - bu alan olmadan mekanik tam
+  // da en riskli kullanıcılarda etkisiz kalırdı.
+  pendingInviteDebt Int     @default(0)
 
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
@@ -65,12 +72,18 @@ model Invite {
   code      String    @unique
   createdAt DateTime  @default(now())
   usedAt    DateTime?
+  // M5 Slice E: davetçi hesap verebilirliği (B15) - usedAt'in yanında
+  // ikinci bir terminal durum. Revoke edilmiş bir davet asla redeem
+  // edilemez (bkz. InvitesService.findRedeemableInvite).
+  revokedAt DateTime?
 
   issuedById String?
   issuedBy   User?   @relation("InviteIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
 
   usedById String? @unique
   usedBy   User?   @relation("InviteRedeemer", fields: [usedById], references: [id])
+
+  moderationLogs ModerationAuditLog[]
 }
 
 model RefreshToken {
@@ -237,7 +250,8 @@ model ModerationAuditLog {
   id         String   @id @default(uuid())
   // Plain string, ReputationEvent (ADR-0004) ile aynı ilke - yeni aksiyon
   // tipi (Slice B: MUTE_APPLIED/LIFTED, Slice D: ROOM_RENAMED/ARCHIVED/
-  // DELETED) migration istemesin.
+  // DELETED, Slice E: INVITER_INVITE_REVOKED/DEBT_INCURRED) migration
+  // istemesin.
   actionType String
   createdAt  DateTime @default(now())
 
@@ -279,6 +293,14 @@ model ModerationAuditLog {
   // SADECE ROOM_DELETED'de dolu - kaç mesajın odayla birlikte gittiğini
   // denetim izinde kalıcı kılıyor.
   deletedMessageCount Int?
+
+  // M5 Slice E: INVITER_INVITE_REVOKED'ın hedefi - hangi davetin iptal
+  // edildiği. INVITER_INVITE_DEBT_INCURRED'da null (revoke edilecek somut
+  // bir davet yok, sadece bir sayaç arttı). Bu iki aksiyon tipinde
+  // moderatorId BİLEREK null - otomatik bir sonuç, alanın kod tabanı
+  // genelindeki "bu satırı doğrudan tetikleyen moderatör" anlamını koruyor.
+  targetInviteId String?
+  targetInvite   Invite? @relation(fields: [targetInviteId], references: [id], onDelete: SetNull)
 
   @@index([moderatorId])
 }
