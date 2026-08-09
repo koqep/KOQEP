@@ -3,20 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-08
-**Aktif milestone:** M5 (`docs/milestones/M5-moderation-abuse.md`) — kapsam gözden geçirmesi İKİ TURDA TAMAMLANDI VE ONAYLANDI (Slice A→B→C→D→E). Slice A/B/C `main`'e MERGE EDİLDİ (PR #40/#41/#42). Slice D (oda moderasyonu) TAMAMEN BİTTİ, `m5/slice-d-room-moderation` dalında, henüz push/merge edilmedi. M4 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36/#37). CORS düzeltmesi `main`'e MERGE EDİLDİ (PR #38). M3 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33).
+**Son güncelleme:** 2026-08-09
+**Aktif milestone:** M5 (`docs/milestones/M5-moderation-abuse.md`) — TÜM BEŞ DİLİM (A→B→C→D→E) KODDA TAMAMLANDI, milestone'un acceptance criteria'sı eksiksiz işaretli. Slice A/B/C/D `main`'e MERGE EDİLDİ (PR #40/#41/#42/#43). Slice E (davetçi hesap verebilirliği, B15) `m5/slice-e-inviter-accountability` dalında, henüz push/merge edilmedi. M4 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #35/#36/#37). CORS düzeltmesi `main`'e MERGE EDİLDİ (PR #38). M3 TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ (PR #29/#31/#32/#33).
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 Slice A + B + C (tüm milestone'lar/dilimler) TAMAMEN BİTTİ, `main`'e MERGE EDİLDİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
+- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 (tüm milestone'lar, Slice A-D main'de) TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
 - **2026-08-05 — koqep.com domain taşıması + CORS düzeltmesi.** `WEB_ORIGIN` hem CORS allow-list hem e-posta linklerinin taban URL'i olarak kullanılıyordu — ikinci kullanım tek kanonik domain (koqep.com, www'suz) gerektirdiği için WEB_ORIGIN'e dokunulmadı, yeni `allowed-origins.ts` www karşılığını otomatik türetip CORS'a ekliyor.
-- **2026-08-05 — M5 kapsam gözden geçirmesi (iki tur, A→B→C→D→E) onaylandı.** Detay: milestone dosyasının iki Plan notları bölümü.
-- **2026-08-08 — M5 Slice D tamamlandı.** Oda yeniden adlandır/arşivle/sil — silme SADECE zaten arşivlenmiş bir odada (ADR-0006'nın tek-yönlü FSM'ini korumak için kullanıcıyla karara bağlandı: aktif kötüye kullanılan oda için moderatör önce arşivler, sonra siler). Odadaki DİĞER kullanıcılar da `room:renamed`/`archived`/`deleted` WS event'leriyle gerçek zamanlı haberdar oluyor. Detay: milestone dosyasının "Plan notları — Slice D uygulaması" bölümü.
+- **2026-08-09 — M5 Slice E tamamlandı (M5'in son dilimi).** Susturulmamıştan susturulmuşa GERÇEK geçişte (`wasAlreadyMuted` gate) hedefin davetçisinin en eski kullanılmamış daveti revoke edilir; yoksa `User.pendingInviteDebt` birikip bir sonraki gerçek davet kazanımında karşılanır (en çok davet eden/en riskli davetçide mekaniğin etkisiz kalmasını önlüyor). `InviteView.tsx`'e gizliliği bozmadan caydırıcılık kazandıran statik açıklama satırı eklendi. Detay: milestone dosyasının "Plan notları — Slice E uygulaması" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M5 Slice D tamamlandı ve doğrulandı (`m5/slice-d-room-moderation` dalı, 6 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** M5 Slice E (davetçi hesap verebilirliği, B15) — M5'in SON dilimi, kendi plan-modu turu gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
+- **Görev:** M5 Slice E tamamlandı ve doğrulandı (`m5/slice-e-inviter-accountability` dalı, 4 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** Slice E merge edilince M5 tamamen kapanır. Bir sonraki milestone için `docs/BACKLOG.md`'den taze bir kapsam gözden geçirmesi gerekiyor. Founder'ın kendi `User.role`'ünü elle `moderator` yapması hâlâ öneriliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

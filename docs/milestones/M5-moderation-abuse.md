@@ -19,10 +19,11 @@
 - [x] Every moderator access to edit history or reported content, and every moderation action (mute, content removal, room moderation), is written to an append-only audit log (`docs/THREAT-MODEL.md` row 12): who, what, on whom, when. (Slice A: erişim + içerik kaldırma/reddetme kapsandı; Slice B: MUTE_APPLIED/MUTE_LIFTED eklendi (2026-08-07); Slice D kendi aksiyon tiplerini ekleyecek.)
 - [x] Same-actor multi-report pattern (row 10's weak backstop) triggers a flag for moderator attention — SADECE çözülmemiş (açık) raporlar sayılır, çözülmüş bir rapor yanlış alarm üretmemeli. Flag SADECE bilgi/görünürlük sinyalidir, hiçbir otomatik moderatör aksiyonu tetiklemez (brigading riski, THREAT-MODEL satır 7). Slice C (2026-08-07).
 - [x] A moderator can rename or delete a badly-named/abusive room directly (`docs/BACKLOG.md`'nin ertelenmiş "oda moderasyonu" maddesi — tetikleyicisi zaten fırlamış, bkz. Plan notları). **Silme "doğrudan/hemen" değil, iki adımlı** (önce arşivle, sonra sil) — ADR-0006'nın "Oda durumu tek yönlü ilerler: active → archived → deleted" invariant'ını atlamamak için, kullanıcıyla birlikte karar verildi (bkz. Plan notları). Slice D (2026-08-08).
-- [ ] When a user is banned/temp-muted for real abuse, their inviter's invite
+- [x] When a user is banned/temp-muted for real abuse, their inviter's invite
       quota/trust is visibly affected (`docs/BACKLOG.md` `B15` — "davetçi
       hesap verebilirliği," the platform's most distinctive moderation
       lever; depends on M4's invite-per-level mechanism already existing).
+      Slice E (2026-08-09).
 
 ## Tasks
 Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M4'ün kullandığı aynı ritim). 2026-08-05 kapsam gözden geçirmesinde (iki tur) A/B/C/D/E dilimlerine bölündü (aşağıdaki Plan notları):
@@ -30,8 +31,8 @@ Her biri kendi plan-modu turu + commit + tam doğrulama (M1-M4'ün kullandığı
 - [x] **M5 Slice B — Geçici susturma (tam kapsam) + gerçek zamanlı bildirim + denetim günlüğü aksiyonları.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice B uygulaması" bölümüne bakın. `User.mutedUntil` (canlı durum, ODA-BAĞIMSIZ/global) + Slice A'nın denetim günlüğüne MUTE/UNMUTE aksiyon satırları — `User.totalXp`/`level` (canlı önbellek) + `ReputationEvent` (günlük) ikilisiyle aynı mimari desen. `sendMessage` VE `editMessage` ikisi de susturulmuş kullanıcıyı reddeder (M3 Slice B'nin arşivlenmiş-oda `GoneException` deseninin TAM uygulanışı — ilk taslak sadece `sendMessage`'ı kapsıyordu, THREAT-MODEL satır 3'ün "post benign, edit into abuse" vektörünü kapatmak için ikisi de gerekli). Oda oluşturma/davet kazanımına AYRICA dokunulmuyor (gerekçe Plan notları'nda). Bildirim `SocketRegistryService.getSockets(userId)` ile gerçek zamanlı WS push (zaten var olan, bağımlılıksız bir servis — yeni bir mekanizma gerekmiyor).
 - [x] **M5 Slice C — Aynı-aktör çoklu-rapor deseni tespiti.** Tamamlandı (2026-08-07) — detay için aşağıdaki "Plan notları — Slice C uygulaması" bölümüne bakın. Aynı kullanıcı 7 günlük bir pencerede en az 3 farklı kullanıcı tarafından raporlanınca `isFlagged`/`distinctReporterCount` ile moderatöre görünür bir işaret — SADECE `status: açık` raporlar sayılır. **Tasarım kuralı:** flag SADECE bilgi, hiçbir otomatik moderatör aksiyonu (susturma, içerik kaldırma) tetiklemez — 3 kişi anlaşıp masum birini flag'letebileceği (brigading, THREAT-MODEL satır 7) için karar HER ZAMAN insan moderatöre bırakılır.
 - [x] **M5 Slice D — Oda moderasyonu (yeniden adlandır/arşivle/sil).** Tamamlandı (2026-08-08) — detay için aşağıdaki "Plan notları — Slice D uygulaması" bölümüne bakın. `docs/BACKLOG.md`'nin M3'ten beri ertelenmiş maddesi. Rename hiçbir duruma bağlı değil (active/archived ikisinde de çalışır). Archive (yeni) active→archived'i moderatör tetikler. Delete SADECE zaten arşivlenmiş bir odada çalışır — ADR-0006'nın tek-yönlü FSM'ini atlamamak için, aktif kötüye kullanılan bir oda için moderatör iki tık atar (arşivle, sonra sil). Odadaki DİĞER kullanıcılar da (sadece moderatör değil) `room:renamed`/`room:archived`/`room:deleted` WS event'leriyle gerçek zamanlı haberdar olur. Aksiyonlar Slice A'nın denetim günlüğüne yazılır (oda adı/açıklaması/silinen mesaj sayısı snapshot'lanır).
-- [ ] **M5 Slice E — Davetçi hesap verebilirliği (B15).** Ban/temp-mute alan bir kullanıcının davetçisinin durumu görünür şekilde etkilenir — tam mekanik (kota düşümü vs. görünür bir güven bayrağı) bu slice'ın kendi turunda kararlaştırılacak, önceden belirlenmiyor (milestone'un kendi notu zaten böyle diyor). Slice B'ye bağımlı (mute/ban olayları önce var olmalı).
-- [ ] Tests for report scoping, resolution/status transitions, content-removal (never hard-delete), mute visibility (send+edit), audit log completeness, multi-report flagging (open-only), room moderation, and inviter-accountability triggering — her slice kendi testleriyle gelir.
+- [x] **M5 Slice E — Davetçi hesap verebilirliği (B15).** Tamamlandı (2026-08-09) — detay için aşağıdaki "Plan notları — Slice E uygulaması" bölümüne bakın. Kullanılmamışa-susturulmuş GEÇİŞTE (`wasAlreadyMuted` gate), hedefin davetçisinin EN ESKİ kullanılmamış daveti revoke edilir; kullanılmamış daveti yoksa `User.pendingInviteDebt` birikir ve bir sonraki gerçek davet kazanımında (`grantInvites`) önce karşılanır — en çok davet eden (dolayısıyla en riskli) davetçide mekaniğin etkisiz kalmasını önlüyor. `InviteView.tsx`'e olaya özel OLMAYAN statik bir caydırıcılık açıklaması eklendi (gizliliği bozmadan).
+- [x] Tests for report scoping, resolution/status transitions, content-removal (never hard-delete), mute visibility (send+edit), audit log completeness, multi-report flagging (open-only), room moderation, and inviter-accountability triggering — her slice kendi testleriyle geldi.
 
 ## Risks
 - This is the last real safeguard between "small trusted group" and "invite-only but abuse-prone" — mitigation: treat it as non-negotiable even under time pressure; it's cheap relative to the damage one bad actor does to a small community.
@@ -514,4 +515,106 @@ kalıyor.
 
 ### Sıradaki
 Slice D tamam. Slice E (davetçi hesap verebilirliği, B15) kendi
-plan-modu turuyla başlayacak — M5'in son dilimi.
+plan-modu turuyla başladı ve tamamlandı — detay aşağıdaki "Plan
+notları — Slice E uygulaması" bölümünde.
+
+## Plan notları — Slice E uygulaması (2026-08-09)
+
+Plan-modu turunda kod okunarak tasarlandı (BACKLOG.md'nin B15 metni
+— "davet ettiğin kişi banlanırsa senin davet kotan düşer" — literal
+okunarak: bu kod tabanında "ban" yok, sadece Slice B'nin geçici
+susturması var, bu yüzden mekanik HER `MutesService.applyMute`
+çağrısına bağlandı), bir Plan agent'ıyla çapraz kontrol edildi (TOCTOU
+ve çift-borçlandırma hatası buldu, ikisi de düzeltildi). **Kullanıcının
+gözden geçirmesi üç nokta daha ekledi**, hepsi işlendi.
+
+**Agent'ın bulduğu TOCTOU hatası (düzeltildi):** İlk taslak davetçinin
+en eski kullanılmamış davetini `findFirst`+`update` ikilisiyle revoke
+ediyordu — `auth.service.ts`'in signup "claim" adımıyla AYNI TOCTOU
+riski (eşzamanlı bir signup YA DA ikinci bir `applyMute` aynı daveti
+claim/revoke edebilir). `findFirst` sonrası `updateMany({where: {id,
+usedAt: null, revokedAt: null}})` + `count` kontrolüyle kapatıldı —
+`auth.service.ts`'in kendi deseni birebir yeniden kullanıldı.
+
+**Agent'ın bulduğu çift-borçlandırma hatası (düzeltildi):**
+`User.mutedUntil` Slice B'de "canlı durum" modeli olarak kuruldu
+(stack'lemiyor) — ilk taslak her `applyMute` çağrısını ayrı bir
+cezalandırılabilir olay sayıyordu, ama moderatör aynı kişiyi (ör. süre
+düzeltmek için) art arda mute ederse bu AYNI süregelen olay, davetçi
+iki kez cezalandırılmamalı. `wasAlreadyMuted` (transaction başlamadan
+ÖNCE, hedefin `mutedUntil`'inden hesaplanan) gate'i eklendi — SADECE
+susturulmamıştan susturulmuşa gerçek geçişte davetçi etkileniyor.
+
+**Kullanıcının üç noktası (hepsi işlendi):**
+1. **Mekanik gizlilik yüzünden görünmezdi, amacına ulaşmıyordu.**
+   B15'in amacı caydırıcılıktı ("dikkatli davet et, sorumlusun") ama
+   gizlilik kararı gereği davetçi sadece sebepsiz bir "iptal edildi"
+   görüyordu — NEDEN'i bilmiyorsa davranış değişmez. `InviteView.tsx`'e
+   olaya özel OLMAYAN statik bir açıklama satırı eklendi ("davet
+   ettiğin biri moderasyona uğrarsa... kullanılmamış bir davetin iptal
+   edilir; ... bir sonraki kazanacağın davetin düşer") — kimseyi ifşa
+   etmeden (redeemer kimliği/mute nedeni DTO'ya hâlâ hiç sızmıyor)
+   kuralın kendisini öğretiyor.
+2. **"Yumuşak taban" mekaniği tam da en riskli kullanıcılarda
+   etkisizdi.** Kullanılmamış daveti olmayan bir davetçi (= davetlerini
+   hızlıca kullanan, dolayısıyla en çok kötü aktör getirme ihtimali
+   olan kişi) hiçbir şekilde etkilenmiyordu. `User.pendingInviteDebt`
+   eklendi — kullanılmamış davet yoksa borç birikir, bir sonraki
+   `grantInvites` çağrısı (gerçek seviye atlama akışı) kalan miktarı
+   vermeden ÖNCE bunu karşılar.
+3. **Denetim satırı hangi davetin iptal edildiğini kaydetmiyordu,
+   `moderatorId` otomatik bir sonucu insan eylemi gibi gösteriyordu.**
+   `ModerationAuditLog.targetInviteId` (SetNull FK) eklendi. İki yeni
+   aksiyon tipinde (`INVITER_INVITE_REVOKED`/`INVITER_INVITE_DEBT_
+   INCURRED`) `moderatorId` BİLEREK null bırakıldı — bu alan kod tabanı
+   genelinde "bu satırı doğrudan tetikleyen moderatör" anlamına geliyor
+   (MUTE_APPLIED, CONTENT_REMOVED, ROOM_DELETED, ... hepsi gerçek bir
+   tıklama), bu ikisi ise `applyMute`'un otomatik bir yan etkisi.
+
+**Şema (tek migration):** `Invite.revokedAt` (nullable, `usedAt`'in
+yanında ikinci bir terminal durum), `User.pendingInviteDebt` (`Int
+@default(0)`), `ModerationAuditLog.targetInviteId` (nullable,
+`onDelete: SetNull`). Backfill gerekmedi.
+
+**`InvitesService.applyInviterConsequence`** (yeni, tx-composable):
+kullanılmamış+revoke edilmemiş en eski daveti bulup TOCTOU-güvenli
+revoke ediyor; başarısızsa (yok VEYA yarışı kaybetti) `pendingInviteDebt`'i
+artırıyor. **`grantInvites`** genişletildi: önce borcu (varsa)
+karşılıyor, kalan miktar (varsa) gerçek `Invite` satırı olarak
+yazılıyor. **`findRedeemableInvite`**'a `revokedAt` kontrolü eklendi
+(`ConflictException`, `usedAt` kontrolüyle aynı şekil) —
+`AuthService.signup`'ın claim adımı da `revokedAt: null`'ı
+`updateMany`'nin `where`'ine ekledi.
+
+**`MutesService.applyMute`** array-form'dan callback-form
+`$transaction`'a çevrildi (Slice C'nin `dismiss` dönüşümüyle AYNI
+gerekçe — sonraki bir yazı önceki bir okumaya bağlı).
+`wasAlreadyMuted && target.inviterId` ikisi de doğruysa
+`InvitesService.applyInviterConsequence(tx, target.inviterId)`
+çağrılıyor, sonucuna göre `INVITER_INVITE_REVOKED`/`_DEBT_INCURRED`
+denetim satırı yazılıyor. `findUserOrThrow`'un dönüş tipi
+`Promise<void>`'den `Promise<User>`'a değişti (`liftMute` sonucu yok
+sayarak kullanmaya devam ediyor). `liftMute` daveti/borcu GERİ
+VERMİYOR — Slice A'nın içerik-kaldırma-geri-alınamaz emsaliyle aynı
+ilke (nadir hata senaryosu için gerekirse manuel SQL).
+
+**Değişmeyen bilinçli kararlar:** Birden fazla kullanılmamış daveti
+varsa EN ESKİSİ revoke edilir. Süreye/nedene göre bir eşik yok.
+Slice A'nın ertelediği "invite-issuance audit tablosu" (silinen
+davetçileri `User` FK'sinden bağımsız geriye dönük izlemek için) HÂLÂ
+gerekmedi — `Invite.issuedById` zaten `SetNull`, kayıt `Invite`/`User`
+satırının kendisinde yaşıyor, `targetInviteId` denetim satırında ayrıca
+snapshot'lanıyor.
+
+Doğrulama: `apps/api` lint/typecheck/build temiz, birim (67 yeni/
+güncellenen test, `mutes.service.spec.ts` + `invites.service.spec.ts`
++ `auth.service.spec.ts`) + e2e (`mute.e2e-spec.ts`'e 5 yeni test,
+gerçek Postgres'e karşı iki üst üste koşu sıfır kalıntı doğruladı)
+yeşil — tam suite 178 birim + 92 e2e testi, ikisi de yeşil. `apps/web`
+lint/typecheck/build temiz, Playwright 58/58 (3 yeni test dahil). Dal
+`m5/slice-e-inviter-accountability`, push kullanıcının onayına kalıyor.
+
+### M5 tamamlandı
+Beş dilim (A→B→C→D→E) tamamlandı, milestone'un tüm acceptance
+criteria'sı ve Tasks listesi işaretli. Bir sonraki milestone için
+`docs/STATE.md`'ye bakın.
