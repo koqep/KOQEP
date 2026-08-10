@@ -1,4 +1,11 @@
-import { IsEmail, IsString, Length, Matches } from 'class-validator';
+import {
+  Equals,
+  IsBoolean,
+  IsEmail,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 200;
@@ -22,4 +29,10 @@ export class SignupDto {
   @IsString()
   @Length(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH)
   password: string;
+
+  // M6 Slice A: kanıtlanabilir onay - checkbox zaten client-side required +
+  // disabled ile engelliyor, bu server-side backstop.
+  @IsBoolean()
+  @Equals(true)
+  acceptedTerms: boolean;
 }

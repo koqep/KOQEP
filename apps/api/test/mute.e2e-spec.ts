@@ -434,6 +434,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
           email: `signup-${randomUUID()}@koqep.local`,
           username: `su-${randomUUID().slice(0, 18)}`,
           password: 'a-strong-password',
+          acceptedTerms: true,
         })
         .expect(409);
     });

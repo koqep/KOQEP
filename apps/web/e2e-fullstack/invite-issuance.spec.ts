@@ -55,6 +55,9 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
     .fill(`invited-${Date.now()}@koqep.local`);
   await newUserPage.getByLabel("kullanıcı adı").fill(`invited${Date.now()}`);
   await newUserPage.getByLabel("şifre").fill("a-strong-new-password");
+  // M6 Slice A: signup formu artık zorunlu bir onay checkbox'ı içeriyor,
+  // işaretlenmeden "kayıt ol" disabled kalıyor.
+  await newUserPage.getByRole("checkbox").check();
   await newUserPage.getByRole("button", { name: "kayıt ol" }).click();
 
   // Signup artık giriş yapmıyor (M2.5 Slice B) - bu testin kanıtladığı şey

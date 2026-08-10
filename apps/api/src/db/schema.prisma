@@ -37,6 +37,11 @@ model User {
   totalXp         Int       @default(0)
   level           Int       @default(0)
   mutedUntil      DateTime?
+  // M6 Slice A: gizlilik politikası/kullanım şartları onayının kanıtlanabilir
+  // kaydı - zorunlu ama kaydedilmeyen bir checkbox sonradan hiçbir şey
+  // kanıtlamaz. Mevcut kullanıcılar bu onayı hiç vermedi, null kalması
+  // DOĞRU (bu onayın hiç sorulmadığı bir kullanıcıyı doğru yansıtıyor).
+  termsAcceptedAt DateTime?
   // M5 Slice E: davetçi hesap verebilirliği (B15) - kullanılmamış daveti
   // olmayan bir davetçi için susturma sonucu biriken borç. Bir sonraki
   // grantInvites çağrısı bunu önce karşılar, kalan (varsa) gerçek davet

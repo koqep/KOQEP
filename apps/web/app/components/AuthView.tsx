@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import {
   login,
   signup,
@@ -26,6 +27,7 @@ export default function AuthView({ onAuthenticated }: Props) {
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
   const [signupComplete, setSignupComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export default function AuthView({ onAuthenticated }: Props) {
     setError(null);
     setTotpRequired(false);
     setTotpCode("");
+    setAcceptedTerms(false);
     setResetRequested(false);
     setSignupComplete(false);
   }
@@ -56,7 +59,7 @@ export default function AuthView({ onAuthenticated }: Props) {
       }
 
       if (mode === "signup") {
-        await signup({ inviteCode, email, username, password });
+        await signup({ inviteCode, email, username, password, acceptedTerms });
         // Signup artık giriş yapmıyor - hesap e-postayı doğrulayana kadar
         // kullanılamaz (M2.5 Slice B). "şifremi unuttum" ile aynı nötr
         // mesaj deseni.
@@ -168,11 +171,41 @@ export default function AuthView({ onAuthenticated }: Props) {
             </label>
           )}
 
+          {mode === "signup" && (
+            <label className="flex items-start gap-2 text-neutral-500">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
+                required
+                className="mt-1"
+              />
+              <span>
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="text-neutral-400 hover:text-neutral-200"
+                >
+                  Kullanım Şartları
+                </Link>
+                &apos;nı ve{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="text-neutral-400 hover:text-neutral-200"
+                >
+                  Gizlilik Politikası
+                </Link>
+                &apos;nı okudum, kabul ediyorum.
+              </span>
+            </label>
+          )}
+
           {error && <p className="text-red-400">{error}</p>}
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (mode === "signup" && !acceptedTerms)}
             className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {mode === "signup"

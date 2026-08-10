@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
@@ -268,5 +268,100 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
       .post('/auth/refresh')
       .send({ refreshToken })
       .expect(401);
+  });
+});
+
+// M6 Slice A: kanıtlanabilir onay - yukarıdaki ana describe'un ValidationPipe
+// UYGULAMAMASI kasıtlı (kullanıcı adı üreticisi 41 karakter, MAX_USERNAME_
+// LENGTH=24'ü zaten aşıyor) - ValidationPipe'ı oraya eklemek neredeyse tüm
+// mevcut testleri kırardı. Bunun yerine kendi küçük TestingModule'ü ve KISA
+// kullanıcı adlarıyla ayrı bir describe.
+describe('Auth signup: kanıtlanabilir onay (ValidationPipe) (e2e)', () => {
+  let app: INestApplication<App>;
+  let prisma: PrismaService;
+  const emailServiceMock = buildEmailServiceMock();
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(EmailService)
+      .useValue(emailServiceMock)
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    );
+    await app.init();
+
+    prisma = moduleFixture.get(PrismaService);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  async function seedInvite(): Promise<string> {
+    const issuer = await prisma.user.create({
+      data: {
+        email: `issuer-${randomUUID()}@koqep.local`,
+        username: `is-${randomUUID().slice(0, 18)}`,
+        passwordHash: 'test-not-a-real-hash',
+      },
+    });
+    const code = `code-${randomUUID()}`;
+    await prisma.invite.create({ data: { code, issuedById: issuer.id } });
+    return code;
+  }
+
+  it('reddeder_acceptedTerms_eksikken', async () => {
+    const code = await seedInvite();
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: code,
+        email: `su-${randomUUID()}@koqep.local`,
+        username: `su-${randomUUID().slice(0, 18)}`,
+        password: 'a-strong-password',
+      })
+      .expect(400);
+  });
+
+  it('reddeder_acceptedTerms_false_iken', async () => {
+    const code = await seedInvite();
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: code,
+        email: `su-${randomUUID()}@koqep.local`,
+        username: `su-${randomUUID().slice(0, 18)}`,
+        password: 'a-strong-password',
+        acceptedTerms: false,
+      })
+      .expect(400);
+  });
+
+  it('kabul_edince_kayit_olur_ve_termsAcceptedAt_kaydedilir', async () => {
+    const code = await seedInvite();
+    const email = `su-${randomUUID()}@koqep.local`;
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: code,
+        email,
+        username: `su-${randomUUID().slice(0, 18)}`,
+        password: 'a-strong-password',
+        acceptedTerms: true,
+      })
+      .expect(201);
+
+    const createdUser = await prisma.user.findUniqueOrThrow({
+      where: { email },
+    });
+    expect(createdUser.termsAcceptedAt).not.toBeNull();
   });
 });

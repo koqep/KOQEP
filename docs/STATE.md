@@ -3,18 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-09
-**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — 2026-08-09 kapsam gözden geçirmesi TAMAMLANDI VE ONAYLANDI: 7 kod dilimi (A→G) + ayrı bir manuel/founder iş listesi. Henüz hiçbir dilim başlamadı. M0-M5 TÜMÜ TAMAMLANDI; M5 Slice E henüz `main`'e merge edilmedi (`m5/slice-e-inviter-accountability` dalı, push kullanıcının onayına kalmıştı).
+**Son güncelleme:** 2026-08-10
+**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A (kod) TAMAMLANDI, `m6/slice-a-terms-consent` dalında, henüz push/merge edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ (M5 Slice E dahil, PR #44).
 
 ## Şu an ne çalışıyor
-- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 (tüm milestone'lar) TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
+- **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur).** 1. tur: `User.totpSecret` düz metin şifreleme + `GET /me/export` (BACKLOG A8) M6'ya eklendi, kontrast maddesi yanlış "CRT effect" çerçevelemesinden gerçek/hesaplanmış bir bulguya (`text-neutral-600`/`bg-neutral-950` ~2.53:1, WCAG AA'yı geçmiyor) düzeltildi. 2. tur (kullanıcının 4 maddesi): `BACKLOG.md`/`THREAT-MODEL.md`'deki TÜM ateşlenmiş tetikleyiciler tek tek tarandı (rate limit gözden geçirmesi M6 Slice B'ye eklendi, üç stale doküman satırı düzeltildi), Render'ın gerçek yedek/PITR politikası doğrulandı (WebFetch/WebSearch, manuel listeye ayrı bir doğrulama maddesi eklendi), milestone dosyasına somut bir "Go-live kontrol listesi" eklendi. Detay: milestone dosyasının iki "Plan notları" bölümü.
+- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur), main'e merge edildi.** `User.totpSecret` şifreleme + `GET /me/export` + rate limit gözden geçirmesi eklendi, üç stale doküman satırı düzeltildi, Render'ın gerçek yedek/PITR politikası doğrulandı, somut bir "Go-live kontrol listesi" eklendi. Detay: milestone dosyasının iki "Plan notları" bölümü.
+- **2026-08-10 — M6 Slice A tamamlandı (kod).** `User.termsAcceptedAt` (kanıtlanabilir onay) + `SignupDto.acceptedTerms` + `/privacy`/`/terms` iskelet sayfaları (TASLAK banner'lı) + signup formunda zorunlu checkbox. Gerçek hukuki metin VE Render'ın auto-deploy ayarının doğrulanması founder'ın kendi işi — kod merge edilebilir ama zorunlu kapı hukuki metin gelmeden canlıya alınmayacak. Detay: milestone dosyasının "Plan notları — Slice A uygulaması" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M6 kapsam gözden geçirmesi onaylandı — henüz hiçbir kod dilimi başlamadı.
-- **Sonraki adım:** Slice A (privacy/ToS sayfa iskeleti + kanıtlanabilir onay, `User`'a migration) kendi plan-modu turuyla başlayacak. 5651/KVKK hukuki kontrol paralel/EN ERKEN founder tarafından başlatılmalı (üçüncü tarafa bağlı takvim süresi). M5 Slice E'nin merge'i de hâlâ bekliyor.
+- **Görev:** M6 Slice A tamamlandı ve doğrulandı (`m6/slice-a-terms-consent` dalı, 2 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** Slice B (hata takibi + rate limit gözden geçirmesi) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması founder tarafından EN ERKEN başlatılmalı.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
