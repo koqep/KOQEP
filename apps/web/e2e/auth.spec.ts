@@ -25,6 +25,7 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
   await page.getByLabel("e-posta").fill("yeni@koqep.local");
   await page.getByLabel("kullanıcı adı").fill("yenikullanici");
   await page.getByLabel("şifre").fill("a-strong-password");
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "kayıt ol" }).click();
 
   // Signup artık giriş yapmıyor (M2.5 Slice B) - e-postayı doğrulaman
@@ -35,6 +36,37 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
     ),
   ).toBeVisible();
   await expect(page.getByPlaceholder("mesaj yaz...")).toHaveCount(0);
+});
+
+test("onay_kutusu_isaretlenmeden_kayit_butonu_devre_disi_kalir", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "hesabın yok mu? kayıt ol" }).click();
+
+  await page.getByLabel("davet kodu").fill("DEV-INVITE-1");
+  await page.getByLabel("e-posta").fill("yeni@koqep.local");
+  await page.getByLabel("kullanıcı adı").fill("yenikullanici");
+  await page.getByLabel("şifre").fill("a-strong-password");
+
+  await expect(page.getByRole("button", { name: "kayıt ol" })).toBeDisabled();
+  await page.getByRole("checkbox").check();
+  await expect(page.getByRole("button", { name: "kayıt ol" })).toBeEnabled();
+});
+
+test("kayit_ekraninda_kullanim_sartlari_ve_gizlilik_linkleri_dogru_hedefe_gider", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "hesabın yok mu? kayıt ol" }).click();
+
+  await expect(page.getByRole("link", { name: "Kullanım Şartları" })).toHaveAttribute(
+    "href",
+    "/terms",
+  );
+  await expect(
+    page.getByRole("link", { name: "Gizlilik Politikası" }),
+  ).toHaveAttribute("href", "/privacy");
 });
 
 test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {

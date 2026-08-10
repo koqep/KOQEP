@@ -68,6 +68,7 @@ export async function signup(input: {
   email: string;
   username: string;
   password: string;
+  acceptedTerms: boolean;
 }): Promise<void> {
   await postJson("/auth/signup", input);
 }
