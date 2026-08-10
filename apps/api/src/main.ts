@@ -1,3 +1,6 @@
+// MUST stay first — Sentry instrumentation requires this (M6 Slice B).
+import './instrument';
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';

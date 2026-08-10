@@ -12,8 +12,10 @@ import {
   ForbiddenException,
   GoneException,
   NotFoundException,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
+import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { Throttle } from '@nestjs/throttler';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../db/prisma.service';
@@ -44,6 +46,12 @@ interface AckResponse {
 @WebSocketGateway({
   cors: { origin: getAllowedOrigins(process.env.WEB_ORIGIN) },
 })
+// M6 Slice B: APP_FILTER (app.module.ts) gateway'lere UYGULANMIYOR - Sentry
+// hata yakalamasının WS tarafında da çalışması için ayrı bir dekoratör
+// gerekiyor (SentryGlobalFilter'ın kendi kaynağı okunarak doğrulandı: ws
+// context'inde WsException'ları AYNI şekilde client'a emit ediyor, sadece
+// beklenmeyen hataları da Sentry'ye gönderiyor - davranış değişmiyor).
+@UseFilters(new SentryGlobalFilter())
 export class MessagesGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {

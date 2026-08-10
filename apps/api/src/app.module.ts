@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -33,14 +34,20 @@ import { PrismaModule } from './db/prisma.module';
 
 const ACCESS_TOKEN_TTL = '15m';
 // Genel varsayılan hız sınırı (IP başına) - hiçbir @Throttle() override'ı
-// olmayan her REST route'a otomatik uygulanır. Belirli route'lar (davet
-// üretme, signup) kendi @Throttle() dekoratörleriyle daha sıkı bir limit
-// alıyor (bkz. invites.controller.ts, auth.controller.ts). M2 Slice C.
+// olmayan her REST route'a otomatik uygulanır. Belirli route'lar (signup)
+// kendi @Throttle() dekoratörüyle daha sıkı bir limit alıyor
+// (auth.controller.ts). Ayrıca WS mesaj gönderimi (ws-throttler.guard.ts),
+// oda oluşturma (room-creation-throttler.guard.ts) ve rapor gönderimi
+// (report-throttler.guard.ts) bu global limitten BAĞIMSIZ kendi
+// guard'larına sahip - "davet üretme" eskiden burada listeliydi ama M4
+// Slice B'de manuel davet endpoint'i tamamen kaldırıldı, bu limit artık
+// yok (M6 Slice B'de bulunup düzeltildi, bkz. docs/STATE.md). M2 Slice C.
 const DEFAULT_RATE_LIMIT_TTL_MS = 60 * 1000;
 const DEFAULT_RATE_LIMIT = 100;
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -89,6 +96,11 @@ const DEFAULT_RATE_LIMIT = 100;
     SocketRegistryService,
     MessagesGateway,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // M6 Slice B: HttpException'lar (bu kod tabanındaki neredeyse tüm domain
+    // hataları - "Mesaj bulunamadı" vb.) beklenen kontrol akışı sayılıp
+    // Sentry'ye GİTMİYOR, sadece gerçekten beklenmeyen istisnalar gidiyor -
+    // bilinçli davranış, SentryGlobalFilter'ın kendi kaynağında doğrulandı.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
   ],
 })
 export class AppModule {}
