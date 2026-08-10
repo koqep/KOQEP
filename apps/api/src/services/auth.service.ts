@@ -84,6 +84,9 @@ export class AuthService {
             username: dto.username,
             passwordHash,
             inviterId: invite.issuedById,
+            // DTO validasyonu acceptedTerms'in true olduğunu buraya
+            // ulaşmadan önce zaten garanti ediyor - koşulsuz damga.
+            termsAcceptedAt: new Date(),
           },
         });
 

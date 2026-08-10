@@ -53,6 +53,7 @@ describe('AuthService', () => {
       email: 'new@koqep.local',
       username: 'newuser',
       password: 'a-strong-password',
+      acceptedTerms: true,
     };
 
     function buildTransactionalPrismaMock(
