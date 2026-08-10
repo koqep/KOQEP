@@ -4,23 +4,23 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-10
-**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A (kod) TAMAMLANDI, `m6/slice-a-terms-consent` dalında, henüz push/merge edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ (M5 Slice E dahil, PR #44).
+**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A + B TAMAMLANDI, main'e MERGE EDİLDİ (PR #46 + Slice B). M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur), main'e merge edildi.** `User.totpSecret` şifreleme + `GET /me/export` + rate limit gözden geçirmesi eklendi, üç stale doküman satırı düzeltildi, Render'ın gerçek yedek/PITR politikası doğrulandı, somut bir "Go-live kontrol listesi" eklendi. Detay: milestone dosyasının iki "Plan notları" bölümü.
-- **2026-08-10 — M6 Slice A tamamlandı (kod).** `User.termsAcceptedAt` (kanıtlanabilir onay) + `SignupDto.acceptedTerms` + `/privacy`/`/terms` iskelet sayfaları (TASLAK banner'lı) + signup formunda zorunlu checkbox. Gerçek hukuki metin VE Render'ın auto-deploy ayarının doğrulanması founder'ın kendi işi — kod merge edilebilir ama zorunlu kapı hukuki metin gelmeden canlıya alınmayacak. Detay: milestone dosyasının "Plan notları — Slice A uygulaması" bölümü.
-- Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
+- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur), main'e merge edildi.** `User.totpSecret` şifreleme + `GET /me/export` + rate limit gözden geçirmesi eklendi, somut bir "Go-live kontrol listesi" eklendi. Detay: milestone dosyasının iki "Plan notları" bölümü.
+- **2026-08-10 — M6 Slice A + B tamamlandı, main'e merge edildi.** Slice A: `User.termsAcceptedAt` + `SignupDto.acceptedTerms` + `/privacy`/`/terms` iskelet sayfaları. Slice B: Sentry (`@sentry/nestjs`+`@sentry/nextjs`) hata takibi — PII yapılandırması gerçek sunucu ayağa kaldırılıp canlı doğrulandı (RequestData `include:false` + `beforeSend`, SDK kaynağı okunarak); "5/saat davet" rate limitinin ölü kod olduğu bulundu, gerçek 5 aktif limit incelenip değiştirilmeden bırakıldı. Detay: milestone dosyasının "Plan notları — Slice A/B uygulaması" bölümleri.
+- Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M6 Slice A tamamlandı ve doğrulandı (`m6/slice-a-terms-consent` dalı, 2 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** Slice B (hata takibi + rate limit gözden geçirmesi) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması founder tarafından EN ERKEN başlatılmalı.
+- **Görev:** M6 Slice B tamamlandı ve doğrulandı (`m6/slice-b-error-tracking` dalı, 3 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** Slice C (erişilebilirlik geçişi) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması + Sentry hesabı/DSN kurulumu founder tarafından EN ERKEN başlatılmalı.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
-- Rate limit sayıları (100/60s global, 5/saat davet, 20/60s signup, 10/10s WS) — tetikleyici (M6 ships) ateşlendi, M6 Slice B'ye görev olarak eklendi (2026-08-09). M5'in tahmini sabitleri (Slice B: susturma 24 saat; Slice C: eşik 3/7gün) hâlâ ayrı, aynı gözden geçirmeye dahil edilebilir.
+- Rate limit sayıları gözden geçirildi (M6 Slice B, 2026-08-10) — "5/saat davet" ÖLÜ KOD çıktı (M4 Slice B'de guard'ı silinmiş), gerçek 5 aktif limit (100/60s global, 20/60s signup, 10/10s WS, 1/24s oda oluşturma, 5/saat rapor) 20-30 kişilik ölçekte yeterli bulundu, DEĞİŞTİRİLMEDİ. M5'in tahmini sabitleri (Slice B: susturma 24 saat; Slice C: eşik 3/7gün) hâlâ ayrı, kapsam dışı bırakıldı.
 - `User.role` alanı var, erişim kontrolü kodda çalışıyor ama production'da henüz kimse `moderator` değil — founder'ın kendi satırını elle SQL ile ayarlaması hâlâ öneriliyor.
 
 ## Yakın zamanda alınan kararlar
