@@ -72,9 +72,13 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
   (sadece tek satırlık, ör. \`\`\`npm install\`\`\`). Composer'ı
   `<textarea>`'ya yükseltmek bilerek bu slice'ın kapsamı DIŞINDA
   tutuldu (kullanıcıya soruldu, onaylandı) — milestone görevi zaten
-  sadece "render etmek" diyordu. Somut tetikleyici: gerçek bir
-  çok-satırlı kod yapıştırma isteği gelirse, ya da M3 şipse — hangisi
-  önce gelirse.
+  sadece "render etmek" diyordu. **Tetikleyici ateşlendi (2026-08-09
+  M6 kapsam gözden geçirmesinde bulundu): M3 çoktan şipti, gerçek bir
+  çok-satırlı kod yapıştırma isteği hâlâ gelmedi.** Bilinçli karar: bu
+  bir ürün özelliği, `M6`'nın kendi Out-of-scope'u ("sağlamlaştırma,
+  özellik değil") dışında kalıyor — `M6`'ya alınmadı. → **V1.1**, bir
+  sonraki özellik-odaklı milestone'a kaydı (tetikleyici artık sadece
+  "gerçek bir çok-satırlı kod yapıştırma isteği gelirse").
 - **Terminal komutları (`/help`, `/join`, `/whoami`, `/clear`):** YOK. Oda
   değiştirme zaten buton ile çalışıyor (Slice E) — komutlar bir UX cilası,
   fonksiyonel eksiklik değil. → **V1.1.**
@@ -131,7 +135,14 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
   düzeltiyor (TOTP tam-kilitlenme kurtarmasıyla aynı desen). Somut
   tetikleyici (TOTP-kilitlenme kararındaki gibi belirsiz bırakılmadı): bu
   elle-düzeltme **(a)** ikinci kez gerekirse, ya da **(b)** M3 şipse —
-  hangisi önce gelirse.
+  hangisi önce gelirse. **Tetikleyici ateşlendi (2026-08-09 M6 kapsam
+  gözden geçirmesinde bulundu): M3 çoktan şipti, elle-düzeltme henüz
+  ikinci kez gerekmedi.** Bilinçli karar: bu bir onboarding-kolaylığı,
+  `M6`'nın "gerçek kullanıcı verisini sorumlu tutmak" testini geçmiyor
+  (TOTP tam-kilitlenme kurtarmasıyla AYNI kategoride — 20-30 kişilik
+  bilinen/davetli bir grupta founder'ın nadir elle müdahalesi kabul
+  edilebilir) — `M6`'ya alınmadı, manuel prosedür kalıcı olarak kabul
+  edildi. Tetikleyici artık sadece "(a) ikinci kez gerekirse".
   **Eksik test kapsamı:** `apps/web`'den gerçek DB'ye bağlanan bir
   fullstack `email-verification.spec.ts` yok — sadece mocklu
   `apps/web/e2e/verify-email.spec.ts` var (`VerifyEmailView`'ın üç
@@ -150,7 +161,13 @@ Her satır: **durum** (var/kısmi/yok, kodda doğrulandı) → **1.0 kararı** �
   **Ertelenen — somut tetikleyicilerle:** (a) Invite-issuance audit tablosu
   (`User` FK'sinden bağımsız, silinen davetçileri geriye dönük izlemek
   için) — sadece M5'in davetçi hesap-verebilirliği tasarımı bunu gerçekten
-  gerektirirse inşa edilir. (b) Silme onay e-postası — sadece kullanıcı
+  gerektirirse inşa edilir. **ÇÖZÜLDÜ (2026-08-09, M5 Slice E kendi
+  uygulaması + M6 kapsam gözden geçirmesi doğruladı):** M5 Slice E
+  gerçekten uygulandı ve bu tabloya İHTİYAÇ DUYMADI —
+  `ModerationAuditLog.targetInviteId` (SetNull FK) + `Invite.issuedById`
+  (zaten SetNull) yeterli oldu, kayıt `Invite`/`User` satırının kendisinde
+  yaşıyor. Tetikleyici ateşlenip cevaplandı, kapatıldı, yeniden açılmayacak.
+  (b) Silme onay e-postası — sadece kullanıcı
   yanlışlıkla silme şikayeti/talebi bir kez gerçekleşirse (`EmailService`'e
   eklemek trivial, şu an istenmiyor).
 - **Oturum/cihaz yönetimi:** YOK (liste UI'ı/endpoint'i), ama KISMİ koruma
@@ -292,8 +309,12 @@ maddelik incelemesi) ertelemeleri:**
   1'in zaten kaydettiği "abuse-SLA" boşluğu (`docs/review/CRITIQUE.md`
   satır 135) ile aynı kategori. 20-30 kişilik bir toplulukta anlık
   onay yeterli bir taban çizgisi; kalıcı bir "raporlarım" görünümü şu an
-  için cila. **Somut tetikleyici:** raporlayanlar "raporuma ne oldu"
-  diye ikinci kez sorarsa VEYA M6 cila turu şipse, hangisi önce gelirse.
+  için cila. **Somut tetikleyici (2026-08-09 M6 kapsam gözden
+  geçirmesinde netleştirildi — "M6 cila turu" ifadesi yanlıştı, M6
+  kendi Out-of-scope'unda "sağlamlaştırma, cila/özellik değil" diyor,
+  bu maddeyle çelişiyordu):** SADECE raporlayanlar "raporuma ne oldu"
+  diye ikinci kez sorarsa. `M6`'ya alınmadı, bir sonraki özellik-odaklı
+  milestone'a kaldı.
 
 **2026-08-07 — M5 Slice B uygulaması ertelemeleri:**
 - **"Kaldır-sonra-sustur" sırası çalışmıyor:** `ModerationQueueView.tsx`'in
