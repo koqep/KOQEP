@@ -100,7 +100,10 @@ end-to-end (same reasoning M1 applied to its own frontend slices):
   "adjustable," which tends to get forgotten): whichever comes first — **(a)** M6 ships,
   or **(b)** a real incident — a legitimate user gets blocked, or an abuse pattern gets
   through despite them. Same two-sided trigger style as the `totpSecret` encryption
-  deferral in `docs/THREAT-MODEL.md`.
+  deferral in `docs/THREAT-MODEL.md`. **Trigger (a) fired (2026-08-09, M6 scope review):**
+  folded into `docs/milestones/M6-launch-readiness.md`'s Slice B as an explicit review
+  task — this line stays as the historical record of where the numbers and the trigger
+  originated.
 
 ---
 

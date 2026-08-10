@@ -9,7 +9,7 @@
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 (tüm milestone'lar) TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı.** Doküman çapraz-referans taraması M6'nın kendi listesinde hiç olmayan iki gerçek boşluk buldu: `User.totpSecret` düz metin şifreleme (THREAT-MODEL.md'nin kendi "M6 ships" tetikleyicisi) + `GET /me/export` (BACKLOG.md A8, KVKK/GDPR veri taşınabilirliği). Kontrast maddesi "CRT effect" yanlış çerçevelemesinden gerçek/hesaplanmış bir bulguya (`text-neutral-600`/`bg-neutral-950` ~2.53:1, WCAG AA'yı geçmiyor) düzeltildi. Detay: milestone dosyasının "Plan notları — 2026-08-09 kapsam gözden geçirmesi" bölümü.
+- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur).** 1. tur: `User.totpSecret` düz metin şifreleme + `GET /me/export` (BACKLOG A8) M6'ya eklendi, kontrast maddesi yanlış "CRT effect" çerçevelemesinden gerçek/hesaplanmış bir bulguya (`text-neutral-600`/`bg-neutral-950` ~2.53:1, WCAG AA'yı geçmiyor) düzeltildi. 2. tur (kullanıcının 4 maddesi): `BACKLOG.md`/`THREAT-MODEL.md`'deki TÜM ateşlenmiş tetikleyiciler tek tek tarandı (rate limit gözden geçirmesi M6 Slice B'ye eklendi, üç stale doküman satırı düzeltildi), Render'ın gerçek yedek/PITR politikası doğrulandı (WebFetch/WebSearch, manuel listeye ayrı bir doğrulama maddesi eklendi), milestone dosyasına somut bir "Go-live kontrol listesi" eklendi. Detay: milestone dosyasının iki "Plan notları" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend.
 
 ## Şu an üzerinde çalışılan
@@ -19,7 +19,7 @@
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
-- Rate limit sayıları (100/60s global, 5/saat davet, 20/60s signup, 10/10s WS) + M5'in tahmini sabitleri (Slice B: susturma varsayılan 24 saat; Slice C: çoklu-rapor eşiği 3 farklı raporcu/7 gün) ayarlanabilir varsayılan — somut tetikleyici: M6 ships VEYA gerçek bir olay (yanlış engelleme ya da kaçan bir suistimal).
+- Rate limit sayıları (100/60s global, 5/saat davet, 20/60s signup, 10/10s WS) — tetikleyici (M6 ships) ateşlendi, M6 Slice B'ye görev olarak eklendi (2026-08-09). M5'in tahmini sabitleri (Slice B: susturma 24 saat; Slice C: eşik 3/7gün) hâlâ ayrı, aynı gözden geçirmeye dahil edilebilir.
 - `User.role` alanı var, erişim kontrolü kodda çalışıyor ama production'da henüz kimse `moderator` değil — founder'ın kendi satırını elle SQL ile ayarlaması hâlâ öneriliyor.
 
 ## Yakın zamanda alınan kararlar
