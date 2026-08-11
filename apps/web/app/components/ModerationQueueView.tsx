@@ -11,6 +11,7 @@ import {
 } from "../../lib/api";
 import MessageContent from "./MessageContent";
 import RoomModerationSection from "./RoomModerationSection";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 const MUTE_DURATION_HOURS = 24;
 
@@ -23,6 +24,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
   const [reports, setReports] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +102,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> moderasyon
         </h2>
         <button

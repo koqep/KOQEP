@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { listInvites, type InviteDto } from "../../lib/api";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export default function InviteView({ accessToken, onClose }: Props) {
   const [invites, setInvites] = useState<InviteDto[] | null>(null);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +30,7 @@ export default function InviteView({ accessToken, onClose }: Props) {
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> invites
         </h2>
         <button

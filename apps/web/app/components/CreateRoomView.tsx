@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { createRoom, ApiError, type Room } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
@@ -27,6 +28,7 @@ export default function CreateRoomView({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,7 +60,7 @@ export default function CreateRoomView({
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> yeni oda
         </h2>
         <button
