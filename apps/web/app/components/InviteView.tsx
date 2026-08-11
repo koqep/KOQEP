@@ -29,18 +29,18 @@ export default function InviteView({ accessToken, onClose }: Props) {
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-neutral-400">
-          <span className="text-neutral-600">#</span> invites
+          <span className="text-muted">#</span> invites
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           close
         </button>
       </div>
 
-      <p className="mb-4 text-neutral-600">
+      <p className="mb-4 text-muted">
         davet ettiğin biri moderasyona uğrarsa (susturulursa) kullanılmamış
         bir davetin iptal edilir; hiç kullanılmamış daveti kalmamışsa bir
         sonraki kazanacağın davetin düşer.
@@ -63,7 +63,7 @@ export default function InviteView({ accessToken, onClose }: Props) {
               <span className="select-all font-mono text-neutral-200">
                 {invite.code}
               </span>
-              <span className="text-neutral-600">
+              <span className="text-muted">
                 {invite.usedAt
                   ? "kullanıldı"
                   : invite.revokedAt

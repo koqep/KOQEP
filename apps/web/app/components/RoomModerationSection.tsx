@@ -8,13 +8,11 @@ import {
   deleteRoom,
   type Room,
 } from "../../lib/api";
+import { inputClassName } from "./formStyles";
 
 interface Props {
   accessToken: string;
 }
-
-const inputClassName =
-  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
 
 export default function RoomModerationSection({ accessToken }: Props) {
   const [rooms, setRooms] = useState<Room[] | null>(null);
@@ -99,7 +97,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
   return (
     <section className="mt-8 border-t border-neutral-800 pt-4">
       <h3 className="mb-4 text-neutral-400">
-        <span className="text-neutral-600">#</span> odalar
+        <span className="text-muted">#</span> odalar
       </h3>
 
       {error && <p className="mb-4 text-red-400">{error}</p>}
@@ -128,23 +126,23 @@ export default function RoomModerationSection({ accessToken }: Props) {
                   <button
                     type="submit"
                     disabled={pendingId === room.id}
-                    className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                    className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
                     kaydet
                   </button>
                   <button
                     type="button"
                     onClick={() => setRenamingId(null)}
-                    className="text-neutral-600 hover:text-neutral-400"
+                    className="text-muted hover:text-neutral-400"
                   >
                     iptal
                   </button>
                 </form>
               ) : (
                 <p className="mb-2 text-neutral-200">
-                  <span className="text-neutral-600">#</span>
+                  <span className="text-muted">#</span>
                   {room.name}{" "}
-                  <span className="text-neutral-600">({room.status})</span>
+                  <span className="text-muted">({room.status})</span>
                 </p>
               )}
 
@@ -164,7 +162,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                   <button
                     type="button"
                     onClick={() => setConfirmingDeleteId(null)}
-                    className="text-neutral-600 hover:text-neutral-400"
+                    className="text-muted hover:text-neutral-400"
                   >
                     vazgeç
                   </button>
@@ -176,7 +174,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                       type="button"
                       disabled={pendingId === room.id}
                       onClick={() => startRenaming(room)}
-                      className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                      className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                     >
                       yeniden adlandır
                     </button>
@@ -185,7 +183,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                         type="button"
                         disabled={pendingId === room.id}
                         onClick={() => void handleArchive(room)}
-                        className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                        className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                       >
                         arşivle
                       </button>
@@ -195,7 +193,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                         type="button"
                         disabled={pendingId === room.id}
                         onClick={() => setConfirmingDeleteId(room.id)}
-                        className="text-neutral-600 hover:text-red-400 disabled:cursor-not-allowed"
+                        className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                       >
                         sil
                       </button>

@@ -4,9 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { confirmPasswordReset, ApiError } from "../../lib/api";
-
-const inputClassName =
-  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
+import { inputClassName } from "./formStyles";
 
 export default function ResetPasswordView() {
   const searchParams = useSearchParams();
@@ -39,7 +37,7 @@ export default function ResetPasswordView() {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
         <p className="text-neutral-400">Geçersiz bağlantı.</p>
-        <Link href="/" className="mt-4 text-neutral-600 hover:text-neutral-400">
+        <Link href="/" className="mt-4 text-muted hover:text-neutral-400">
           girişe dön
         </Link>
       </main>
@@ -50,7 +48,7 @@ export default function ResetPasswordView() {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
         <p className="text-neutral-400">Şifren güncellendi.</p>
-        <Link href="/" className="mt-4 text-neutral-600 hover:text-neutral-400">
+        <Link href="/" className="mt-4 text-muted hover:text-neutral-400">
           girişe dön
         </Link>
       </main>
@@ -60,10 +58,10 @@ export default function ResetPasswordView() {
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
       <h1 className="mb-6 text-neutral-400">
-        <span className="text-neutral-600">#</span> yeni şifre
+        <span className="text-muted">#</span> yeni şifre
       </h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-neutral-500">
+        <label className="flex flex-col gap-1 text-muted">
           yeni şifre
           <input
             type="password"
@@ -79,7 +77,7 @@ export default function ResetPasswordView() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
           şifreyi güncelle
         </button>

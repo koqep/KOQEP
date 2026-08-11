@@ -2,15 +2,13 @@
 
 import { useState, type FormEvent } from "react";
 import { deleteAccount, ApiError } from "../../lib/api";
+import { inputClassName } from "./formStyles";
 
 interface Props {
   accessToken: string;
   onDeleted: () => void;
   onClose: () => void;
 }
-
-const inputClassName =
-  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
 
 export default function DeleteAccountView({
   accessToken,
@@ -54,12 +52,12 @@ export default function DeleteAccountView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-neutral-400">
-          <span className="text-neutral-600">#</span> delete account
+          <span className="text-muted">#</span> delete account
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           close
         </button>
@@ -71,7 +69,7 @@ export default function DeleteAccountView({
             This is permanent. Your messages stay visible to others but will
             no longer show your username.
           </p>
-          <label className="flex flex-col gap-1 text-neutral-500">
+          <label className="flex flex-col gap-1 text-muted">
             current password
             <input
               type="password"
@@ -83,7 +81,7 @@ export default function DeleteAccountView({
             />
           </label>
           {totpRequired && (
-            <label className="flex flex-col gap-1 text-neutral-500">
+            <label className="flex flex-col gap-1 text-muted">
               totp code
               <input
                 type="text"
@@ -98,7 +96,7 @@ export default function DeleteAccountView({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 self-start border border-red-900 px-3 py-1 text-red-400 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 self-start border border-red-900 px-3 py-1 text-red-400 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             permanently delete my account
           </button>
