@@ -8,6 +8,15 @@ import * as Sentry from '@sentry/nestjs';
 // kapatılıyor, sadece beforeSend'e güvenilmiyor.
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
+  // Geçici tanı aracı: Sentry SDK'sı VARSAYILAN OLARAK hiçbir şey console'a
+  // yazmıyor (node_modules'daki gerçek kaynağı okunarak doğrulandı -
+  // debug.log/warn çağrıları bir internal "enabled" flag'ine bağlı, bu flag
+  // SADECE debug:true ile açılıyor) - DSN gerçekten okunuyor mu, event
+  // gerçekten gönderiliyor mu görmek için env var ile açılıp kapatılabilir,
+  // kod değişikliği/redeploy gerektirmez. Render dashboard'unda
+  // SENTRY_DEBUG=true ekleyip redeploy et, Logs sekmesinde "Sentry Logger"
+  // ile başlayan satırları ara.
+  debug: process.env.SENTRY_DEBUG === 'true',
   integrations: (defaultIntegrations) =>
     defaultIntegrations.map((integration) =>
       integration.name === 'RequestData'
