@@ -107,6 +107,7 @@ export default function MessageItem({
             aria-label="mesajı düzenle"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- "düzenle"ye tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
             autoFocus
             className={`flex-1 ${inputClassName}`}
           />

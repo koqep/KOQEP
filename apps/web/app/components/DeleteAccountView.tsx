@@ -76,6 +76,7 @@ export default function DeleteAccountView({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- "delete my account"a tıklandıktan sonra beliren onay alanı, sürpriz odak sıçraması değil.
               autoFocus
               className={inputClassName}
             />

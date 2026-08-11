@@ -120,6 +120,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     aria-label="oda ismini düzenle"
                     value={renameDraft}
                     onChange={(event) => setRenameDraft(event.target.value)}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- "yeniden adlandır"a tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
                     autoFocus
                     className={`flex-1 ${inputClassName}`}
                   />

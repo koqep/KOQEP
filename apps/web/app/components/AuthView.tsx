@@ -163,6 +163,7 @@ export default function AuthView({ onAuthenticated }: Props) {
                 value={totpCode}
                 onChange={(event) => setTotpCode(event.target.value)}
                 required
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- login denemesi sonucu beliren alan, sayfa yüklenirken sürpriz odak sıçraması değil.
                 autoFocus
                 className={inputClassName}
               />

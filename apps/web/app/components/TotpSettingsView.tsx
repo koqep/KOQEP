@@ -173,6 +173,7 @@ export default function TotpSettingsView({
               value={totpCode}
               onChange={(event) => setTotpCode(event.target.value)}
               required
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- TOTP kurulumu başlatıldıktan sonra beliren alan, sürpriz odak sıçraması değil.
               autoFocus
               className={inputClassName}
             />
