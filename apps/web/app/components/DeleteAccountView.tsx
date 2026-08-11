@@ -49,7 +49,7 @@ export default function DeleteAccountView({
   }
 
   return (
-    <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
+    <section lang="en" className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-neutral-400">
           <span className="text-muted">#</span> delete account

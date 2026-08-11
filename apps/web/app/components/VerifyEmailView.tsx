@@ -36,7 +36,10 @@ export default function VerifyEmailView() {
 
   if (!token) {
     return (
-      <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
+      <main
+        lang="en"
+        className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4"
+      >
         <p className="text-neutral-400">Invalid link.</p>
         <Link href="/" className="mt-4 text-muted hover:text-neutral-400">
           back to login
@@ -47,7 +50,10 @@ export default function VerifyEmailView() {
 
   if (status === "success") {
     return (
-      <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
+      <main
+        lang="en"
+        className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4"
+      >
         <p className="text-neutral-400">
           Your email is verified. You can log in now.
         </p>
@@ -60,7 +66,10 @@ export default function VerifyEmailView() {
 
   if (status === "error") {
     return (
-      <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
+      <main
+        lang="en"
+        className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4"
+      >
         <p className="text-red-400">
           This link is invalid or has expired.
         </p>
