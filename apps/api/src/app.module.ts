@@ -15,8 +15,10 @@ import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
 import { ModerationController } from './api/moderation.controller';
 import { InvitesController } from './api/invites.controller';
+import { MeController } from './api/me.controller';
 import { AuthService } from './services/auth.service';
 import { InvitesService } from './services/invites.service';
+import { MeService } from './services/me.service';
 import { TotpService } from './services/totp.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { EmailVerificationService } from './services/email-verification.service';
@@ -77,10 +79,12 @@ const DEFAULT_RATE_LIMIT = 100;
     MessagesController,
     ModerationController,
     InvitesController,
+    MeController,
   ],
   providers: [
     AuthService,
     InvitesService,
+    MeService,
     TotpService,
     PasswordResetService,
     EmailVerificationService,
