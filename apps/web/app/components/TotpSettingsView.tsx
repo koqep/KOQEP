@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import qrcodeTerminal from "qrcode-terminal";
+import QRCode from "qrcode";
 import {
   setupTotp,
   enableTotp,
@@ -19,10 +19,10 @@ interface Props {
   onClose: () => void;
 }
 
+// M6 Slice D: qrcode-terminal SADECE ASCII üretiyordu (telefon kamerasıyla
+// taranamıyordu) - qrcode gerçek bir görüntü (data URL) üretir.
 function generateQr(otpauthUrl: string): Promise<string> {
-  return new Promise((resolve) => {
-    qrcodeTerminal.generate(otpauthUrl, { small: true }, resolve);
-  });
+  return QRCode.toDataURL(otpauthUrl, { margin: 1 });
 }
 
 export default function TotpSettingsView({
@@ -160,9 +160,8 @@ export default function TotpSettingsView({
       ) : setup ? (
         <form onSubmit={handleEnable} className="flex flex-col gap-3">
           {qr && (
-            <pre className="overflow-x-auto text-[8px] leading-[8px] text-neutral-200">
-              {qr}
-            </pre>
+            // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image optimizasyonuna uygun bir uzak/statik kaynak değil.
+            <img src={qr} alt="TOTP QR kodu" className="h-40 w-40" />
           )}
           <p className="text-muted">
             authenticator app&apos;e elle girmek için gizli anahtar:
