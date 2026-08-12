@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Secret, TOTP } from 'otpauth';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../db/prisma.service';
-import { sha256Hex } from './crypto.util';
+import { sha256Hex, encryptTotpSecret, decryptTotpSecret } from './crypto.util';
 
 const TOTP_ISSUER = 'KOQEP';
 const TOTP_VALIDATION_WINDOW = 1;
@@ -27,7 +27,7 @@ export class TotpService {
   async savePendingSecret(userId: string, secret: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
-      data: { totpSecret: secret, totpEnabledAt: null },
+      data: { totpSecret: encryptTotpSecret(secret), totpEnabledAt: null },
     });
   }
 
@@ -39,7 +39,7 @@ export class TotpService {
     if (!user.totpSecret) {
       throw new UnauthorizedException('Önce TOTP kurulumu başlatılmalı.');
     }
-    if (!isValidTotpCode(user.totpSecret, code)) {
+    if (!isValidTotpCode(decryptTotpSecret(user.totpSecret), code)) {
       throw new UnauthorizedException('Geçersiz TOTP kodu.');
     }
 
@@ -91,7 +91,7 @@ export class TotpService {
     if (!user.totpSecret) {
       return false;
     }
-    if (isValidTotpCode(user.totpSecret, code)) {
+    if (isValidTotpCode(decryptTotpSecret(user.totpSecret), code)) {
       return true;
     }
 

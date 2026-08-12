@@ -27,6 +27,9 @@ jobs:
       JWT_SECRET: ci-only-test-secret
       RESEND_API_KEY: ci-only-test-key
       WEB_ORIGIN: http://localhost:3000
+      # M6 Slice E (ADR-0008): sahte/test-only bir anahtar - gerçek secret
+      # değil, sadece 32 byte'a decode olan rastgele bir base64 string.
+      TOTP_ENCRYPTION_KEY: eozn7Vvw6od7EQ0F/rj4tuMxweYyLAAllg9lm7GDVBs=
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,6 +41,7 @@ jobs:
       - run: npm run typecheck --workspace=apps/api
       - run: npm run db:migrate:deploy --workspace=apps/api
       - run: npm run db:seed --workspace=apps/api
+      - run: npm run db:backfill-totp-secrets --workspace=apps/api
       - run: npm run test --workspace=apps/api
       - run: npm run test:e2e --workspace=apps/api
       - run: npm run build --workspace=apps/api
@@ -80,6 +84,9 @@ jobs:
       WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3001
       SEED_DEV_FIXTURES: 'true'
+      # M6 Slice E (ADR-0008): sahte/test-only bir anahtar - gerçek secret
+      # değil, sadece 32 byte'a decode olan rastgele bir base64 string.
+      TOTP_ENCRYPTION_KEY: eozn7Vvw6od7EQ0F/rj4tuMxweYyLAAllg9lm7GDVBs=
       # Gerçek /auth/signup çağıran fullstack testler (invite-issuance.spec.ts)
       # gerçek bir sunucu sürecine (start:prod) karşı koşuyor - DI seviyesinde
       # EmailService override edilemez, bu yüzden EmailService kendi içinde
@@ -96,6 +103,7 @@ jobs:
       - run: npm ci
       - run: npm run db:migrate:deploy --workspace=apps/api
       - run: npm run db:seed --workspace=apps/api
+      - run: npm run db:backfill-totp-secrets --workspace=apps/api
       - run: npm run build --workspace=apps/api
       - run: npm run build --workspace=apps/web
       - run: npx playwright install --with-deps chromium
