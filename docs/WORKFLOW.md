@@ -125,7 +125,7 @@ Modül başına `src/<modul>/CLAUDE.md` (sadece o dizine girilince yüklenir),
 
 **Production öncesi**
 Release skill'i (migration planı, rollback, feature flag), security review skill'i,
-performans bütçesi, gözlemlenebilirlik (log/metrik/trace), runbook.
+performans bütçesi, gözlemlenebilirlik (log/metrik/trace), runbook (`docs/RUNBOOK.md`, M6 Slice F).
 
 ---
 

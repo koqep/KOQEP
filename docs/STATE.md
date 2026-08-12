@@ -4,20 +4,19 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-12
-**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A+B+C+D+E TAMAMLANDI. A+B+C+D main'e MERGE EDİLDİ (PR #46, #52, #53). E henüz push edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A+B+C+D+E+F TAMAMLANDI. A+B+C+D+E main'e MERGE EDİLDİ (PR #46, #52, #53, #54). F henüz push edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0-M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. `docs/BACKLOG.md`'de.
 - **2026-08-09 — M6 kapsam gözden geçirmesi (iki tur), main'e merge edildi.**
-- **2026-08-10-11 — Slice A (ToS/onay) + B (Sentry) + C (erişilebilirlik), main'e merge edildi (PR #46, #52).** Slice C'nin `ExitPlanMode`'u bir kez reddedildi (4 bulgu), revize onaylandı; merge sonrası CI'da iki fullstack test geçici kırmızı çıktı, kök sebep kanıtlanamadı (milestone dosyası Slice C notları).
-- **2026-08-12 — Slice D (mobil responsive + TOTP QR), main'e merge edildi (PR #53).** QR kod kullanıcı tarafından gerçek telefonla test edildi, çalıştığı doğrulandı.
-- **2026-08-12 — Slice E (`totpSecret` AES-256-GCM şifreleme, ADR-0008) tamamlandı, `m6/slice-e-totp-encryption` dalında 3 commit, henüz push edilmedi.** Geriye-uyumlu (tolerant) decrypt + idempotent backfill script'i — kod/backfill sıralaması önemsiz. Detay: milestone dosyasının "Plan notları — Slice E" bölümü.
+- **2026-08-10-12 — Slice A (ToS/onay) + B (Sentry) + C (erişilebilirlik) + D (mobil/QR) + E (`totpSecret` AES-256-GCM, ADR-0008), main'e merge edildi (PR #46/#52/#53/#54).** Slice C'nin `ExitPlanMode`'u bir kez reddedildi, revize onaylandı. Slice E kullanıcı tarafından gerçek TOTP girişiyle doğrulandı. Detay: milestone dosyasının kendi Plan notları bölümleri.
+- **2026-08-12 — Slice F (yedekleme/restore + genel olay runbook'u) tamamlandı, `m6/slice-f-runbook` dalında 1 commit, henüz push edilmedi.** Yeni `docs/RUNBOOK.md` — THREAT-MODEL.md'nin dağınık 6 manuel-SQL prosedürü + sırlar-ve-yedekleri envanteri tek yerde. Detay: milestone dosyasının "Plan notları — Slice F" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M6 Slice E tamamlandı ve doğrulandı (`m6/slice-e-totp-encryption` dalı, 3 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** **Merge'den ÖNCE** founder `TOTP_ENCRYPTION_KEY`'i üretip Render dashboard'una girmeli VE Render dışında yedeklemeli (ADR-0008). Sonra Slice F (yedekleme runbook, docs-only) veya G (`GET /me/export`) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması founder tarafından EN ERKEN başlatılmalı (hâlâ bekliyor).
+- **Görev:** M6 Slice F tamamlandı ve doğrulandı (`m6/slice-f-runbook` dalı, 1 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** Kullanıcı push/PR isterse yap. Sonra Slice G (`GET /me/export`) kendi plan-modu turuyla başlayabilir — son kod dilimi, sonrası "Go-live kontrol listesi." 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması + backup/PITR doğrulaması + restore tatbikatı founder tarafından hâlâ bekliyor (`docs/RUNBOOK.md`'nin §4'ü referans).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
