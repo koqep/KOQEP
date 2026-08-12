@@ -148,7 +148,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
               )}
 
               {confirmingDeleteId === room.id ? (
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
                   <span className="text-red-400">
                     emin misin? bu kalıcı, mesajlar da gider
                   </span>

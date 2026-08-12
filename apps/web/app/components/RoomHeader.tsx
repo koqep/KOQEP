@@ -49,8 +49,8 @@ export default function RoomHeader({
   onOpenModeration,
 }: Props) {
   return (
-    <header className="flex items-center justify-between border-b border-neutral-800 pb-2">
-      <nav className="flex items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-y-2 border-b border-neutral-800 pb-2">
+      <nav className="flex flex-wrap items-center gap-3">
         {rooms.length === 0 ? (
           <span className="text-neutral-400">
             <span className="text-muted">#</span>...
@@ -92,7 +92,7 @@ export default function RoomHeader({
           {showArchived ? "arşivi gizle" : "arşivi göster"}
         </button>
       </nav>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"
           onClick={onOpenTotp}
