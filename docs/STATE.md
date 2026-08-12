@@ -3,19 +3,20 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-10
-**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A + B TAMAMLANDI, main'e MERGE EDİLDİ (PR #46 + Slice B). M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
+**Son güncelleme:** 2026-08-11
+**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A + B + C TAMAMLANDI. A+B main'e MERGE EDİLDİ (PR #46 + Slice B). M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0 + M1 + M2 + M2.5 + M3 + M4 + M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. Sonuç `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur), main'e merge edildi.** `User.totpSecret` şifreleme + `GET /me/export` + rate limit gözden geçirmesi eklendi, somut bir "Go-live kontrol listesi" eklendi. Detay: milestone dosyasının iki "Plan notları" bölümü.
-- **2026-08-10 — M6 Slice A + B tamamlandı, main'e merge edildi.** Slice A: `User.termsAcceptedAt` + `SignupDto.acceptedTerms` + `/privacy`/`/terms` iskelet sayfaları. Slice B: Sentry (`@sentry/nestjs`+`@sentry/nextjs`) hata takibi — PII yapılandırması gerçek sunucu ayağa kaldırılıp canlı doğrulandı (RequestData `include:false` + `beforeSend`, SDK kaynağı okunarak); "5/saat davet" rate limitinin ölü kod olduğu bulundu, gerçek 5 aktif limit incelenip değiştirilmeden bırakıldı. Detay: milestone dosyasının "Plan notları — Slice A/B uygulaması" bölümleri.
+- **2026-08-09 — M6 kapsam gözden geçirmesi tamamlandı (iki tur), main'e merge edildi.** Detay: milestone dosyasının iki "Plan notları" bölümü.
+- **2026-08-10 — M6 Slice A + B tamamlandı, main'e merge edildi.** Slice A: `User.termsAcceptedAt` + `/privacy`/`/terms`. Slice B: Sentry hata takibi (PII-güvenli, canlı doğrulandı). Detay: milestone dosyasının "Plan notları — Slice A/B" bölümleri.
+- **2026-08-11 — M6 Slice C (erişilebilirlik) tamamlandı, `m6/slice-c-accessibility` dalında 4 commit, henüz push/merge edilmedi.** Kontrast (`text-muted` token) + odak göstergesi (`formStyles.ts`, focus-visible+ring-offset, durumlar-arası ≥3:1) + composer `aria-label` + `lang="en"` alt-ağaç işaretleme (`DeleteAccountView`/`VerifyEmailView`/`global-error.tsx`) + `docs/BACKLOG.md` A15 (kalan çeviri işine somut tetikleyici) + `jsx-a11y` recommended + 6 panelde odak yönetimi. `ExitPlanMode` bir kez reddedildi (4 somut bulgu), revize edilip onaylandı — detay milestone dosyasının "Plan notları — Slice C" bölümünde.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M6 Slice B tamamlandı ve doğrulandı (`m6/slice-b-error-tracking` dalı, 3 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** Slice C (erişilebilirlik geçişi) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması + Sentry hesabı/DSN kurulumu founder tarafından EN ERKEN başlatılmalı.
+- **Görev:** M6 Slice C tamamlandı ve doğrulandı (`m6/slice-c-accessibility` dalı, 4 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** Kullanıcı push/PR isterse yap. Sonra Slice D (mobil responsive + TOTP QR mobil düzeltmesi) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması founder tarafından EN ERKEN başlatılmalı (hâlâ bekliyor).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
