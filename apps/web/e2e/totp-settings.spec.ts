@@ -92,7 +92,9 @@ test("kurulum_baslatinca_secret_ve_qr_ve_kod_alani_gorunur", async ({
 
   await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
   await expect(page.getByLabel("totp kodu")).toBeVisible();
-  await expect(page.locator("pre")).not.toBeEmpty();
+  const qrImage = page.getByAltText("TOTP QR kodu");
+  await expect(qrImage).toBeVisible();
+  await expect(qrImage).toHaveAttribute("src", /^data:image\//);
 });
 
 test("dogru_kodla_etkinlestirince_kurtarma_kodlari_gosterilir_sonra_kapat_formuna_gecer", async ({
