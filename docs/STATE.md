@@ -4,20 +4,20 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-12
-**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A + B + C + D TAMAMLANDI. A+B+C main'e MERGE EDİLDİ (PR #46, #52). D henüz push edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A+B+C+D+E TAMAMLANDI. A+B+C+D main'e MERGE EDİLDİ (PR #46, #52, #53). E henüz push edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
-- **M0-M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde — buraya taşınmadı.
-- **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. `docs/BACKLOG.md`'nin "2026-07-30 — LANSMAN KARARI" bölümünde.
-- **2026-08-09 — M6 kapsam gözden geçirmesi (iki tur), main'e merge edildi.** Detay: milestone dosyasının iki "Plan notları" bölümü.
-- **2026-08-10 — Slice A (`/privacy`/`/terms` + `termsAcceptedAt`) + Slice B (Sentry hata takibi), main'e merge edildi.**
-- **2026-08-11 — Slice C (erişilebilirlik: kontrast/odak/`lang`/`jsx-a11y`/panel-odağı), main'e merge edildi (PR #52).** `ExitPlanMode` bir kez reddedildi (4 bulgu), revize onaylandı. Merge sonrası CI'da `delete-account`/`invite-issuance` fullstack testleri iki kez kırmızı çıktı, yerelde TAM CI adımlarıyla tekrarlanamadı (temiz geçti) — kök sebep kanıtlanamadan "CI yeşildi" bilgisi geldi, kayıtlı: milestone dosyasının Slice C notları.
-- **2026-08-12 — Slice D (mobil responsive + TOTP QR + viewport testi) tamamlandı, `m6/slice-d-mobile-responsive` dalında 3 commit, henüz push edilmedi.** `RoomHeader.tsx`/`RoomModerationSection.tsx`'e `flex-wrap` (kırmızı→yeşil kanıtlı test), `qrcode-terminal`→`qrcode` takası (kullanıcı onayıyla), `playwright.config.ts`'e `mobile-375` projesi. Detay: milestone dosyasının "Plan notları — Slice D" bölümü.
+- **M0-M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
+- **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. `docs/BACKLOG.md`'de.
+- **2026-08-09 — M6 kapsam gözden geçirmesi (iki tur), main'e merge edildi.**
+- **2026-08-10-11 — Slice A (ToS/onay) + B (Sentry) + C (erişilebilirlik), main'e merge edildi (PR #46, #52).** Slice C'nin `ExitPlanMode`'u bir kez reddedildi (4 bulgu), revize onaylandı; merge sonrası CI'da iki fullstack test geçici kırmızı çıktı, kök sebep kanıtlanamadı (milestone dosyası Slice C notları).
+- **2026-08-12 — Slice D (mobil responsive + TOTP QR), main'e merge edildi (PR #53).** QR kod kullanıcı tarafından gerçek telefonla test edildi, çalıştığı doğrulandı.
+- **2026-08-12 — Slice E (`totpSecret` AES-256-GCM şifreleme, ADR-0008) tamamlandı, `m6/slice-e-totp-encryption` dalında 3 commit, henüz push edilmedi.** Geriye-uyumlu (tolerant) decrypt + idempotent backfill script'i — kod/backfill sıralaması önemsiz. Detay: milestone dosyasının "Plan notları — Slice E" bölümü.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M6 Slice D tamamlandı ve doğrulandı (`m6/slice-d-mobile-responsive` dalı, 3 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** Kullanıcı push/PR isterse yap. Sonra Slice E (`User.totpSecret` şifreleme, kendi başına tam bir tur — backfill migration + blast radius büyük) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması founder tarafından EN ERKEN başlatılmalı (hâlâ bekliyor).
+- **Görev:** M6 Slice E tamamlandı ve doğrulandı (`m6/slice-e-totp-encryption` dalı, 3 commit) — henüz push/merge edilmedi.
+- **Sonraki adım:** **Merge'den ÖNCE** founder `TOTP_ENCRYPTION_KEY`'i üretip Render dashboard'una girmeli VE Render dışında yedeklemeli (ADR-0008). Sonra Slice F (yedekleme runbook, docs-only) veya G (`GET /me/export`) kendi plan-modu turuyla başlayabilir. 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması founder tarafından EN ERKEN başlatılmalı (hâlâ bekliyor).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -30,15 +30,15 @@
 - WS transport: Socket.IO — bkz. `docs/decisions/ADR-0007`.
 - Access token bellek-içi (React state), localStorage/sessionStorage YOK — bkz. ADR-0002.
 - 2026-07-29 — `SEED_DEV_FIXTURES` opt-in env'i `NODE_ENV`'e bilerek güvenilmedi; sıfır-kullanıcılı DB bootstrap boşluğu `docs/THREAT-MODEL.md` Open items'a somut tetikleyiciyle eklendi.
-- 2026-07-30 — M2 Slice A-G kararları (oda-parametreli mesajlaşma, rate limiting, yük testi, oda değiştirici, davet UI vb.) tekrar buraya taşınmadı — `docs/milestones/M2-core-rooms-messaging.md`'nin Plan notları bölümlerinde tam haliyle duruyor.
+- 2026-07-30 — M2 Slice A-G kararları tekrar buraya taşınmadı — `docs/milestones/M2-core-rooms-messaging.md`'nin Plan notları bölümlerinde tam haliyle duruyor.
+- 2026-08-12 — ADR-0008: `totpSecret` şifreleme anahtar-kaybı KALICI (kurtarılamaz), rotasyon yolu YOK (bilinçli, gerekirse ikinci anahtar + re-encryption script'i gerekir) — ikisi de sessiz varsayım değil, ADR'de açıkça yazılı.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
 - `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
 - "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula (bu oturumda iki kez yapıldı, ikisi de doğru çıktı).
 - CI'da job-seviyesi env değişkenleri JOB'LAR ARASI miras YOK — her job'ın kendi `env:` bloğu var, yeni bir env var eklerken HER job'ı tek tek kontrol et. Sahte/placeholder CI değerleri (ör. `RESEND_API_KEY: ci-only-test-key`) sadece TÜM kod yolları hatayı sessizce yutuyorsa güvenlidir; DI ile override edilemeyen canlı süreçlerde sahte'lemek gerekirse kesin string eşitliği kullan (`=== 'fake'`, TRUTHY DEĞİL), SADECE ihtiyaç duyan job'a ekle.
-- Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i — buildCommand/CI adımına gömmeye çalışma.
-- Render servisi Blueprint'e bağlı DEĞİL, elle kuruldu — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz; bir env var'ın DEĞERİNİ değiştirmek de yansımayabilir, sadece tamamen SİLMEK işe yaradı (gözlemlendi, mekanizma bilinmiyor).
+- Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i — buildCommand/CI adımına gömmeye çalışma. Render servisi Blueprint'e bağlı DEĞİL, elle kuruldu — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz; bir env var'ın DEĞERİNİ değiştirmek de yansımayabilir, sadece tamamen SİLMEK işe yaradı.
 - `.env`/`.env.*` dosyaları `Read` için engelli (içerik değiştirmek için `Write` ile tam dosyayı körlemesine yeniden yaz); `@prisma/client` import edilince `.env`'i ayrıca sessizce (yeniden) yükler — testte "env var yok" simüle etmek için `delete process.env.X` DEĞİL, boş string (`''`) kullan.
 - `resend` SDK hata durumunda fırlatmaz, `{data, error}` döner — elle kontrol şart.
 - `apps/web`'de token bellek-içi (ADR-0002) — reload oturumu düşürür, kasıtlı.

@@ -10,7 +10,7 @@ services:
     # panel elle yapilandirilmis ve render.yaml ile senkron olmasa bile
     # ayni sonucu garanti eder (bkz. STATE.md tuzak notu).
     buildCommand: npm install && npm run build
-    preDeployCommand: npm run db:migrate:deploy && npm run db:seed
+    preDeployCommand: npm run db:migrate:deploy && npm run db:seed && npm run db:backfill-totp-secrets
     startCommand: npm run start:prod
     healthCheckPath: /health
     envVars:
@@ -55,3 +55,14 @@ services:
       # saglaniyor; bu sadece dokumantasyon amacli.
       - key: SEED_DEV_FIXTURES
         value: 'false'
+      # M6 Slice E (ADR-0008): User.totpSecret alan-seviyesinde AES-256-GCM
+      # ile sifreleniyor. Deger `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+      # ile uretilir - base64 cozüldüğünde TAM 32 byte olmali, yoksa
+      # sifreleme/desifre çağrıları açık bir hatayla düşer. Bu dosya canli Render
+      # servisine bagli DEGIL (bkz. STATE.md tuzak notu) - deger Render
+      # dashboard'undan elle girilmek ZORUNDA, VE Render disinda da (sifre
+      # yoneticisi vb.) ayrıca yedeklenmeli - bu anahtar kaybolursa TUM
+      # sifreli totpSecret satırları kalıcı okunamaz olur (kurtarma
+      # prosedürü: docs/THREAT-MODEL.md satır 39, ADR-0008).
+      - key: TOTP_ENCRYPTION_KEY
+        sync: false
