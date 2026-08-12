@@ -4,19 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-12
-**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı, 7 kod dilimi (A→G) + manuel/founder iş listesi. Slice A+B+C+D+E+F TAMAMLANDI. A+B+C+D+E main'e MERGE EDİLDİ (PR #46, #52, #53, #54). F henüz push edilmedi. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
+**Aktif milestone:** M6 (`docs/milestones/M6-launch-readiness.md`) — kapsam gözden geçirmesi (iki tur) onaylandı. **TÜM 7 kod dilimi (A→G) TAMAMLANDI.** A+B+C+D+E+F main'e MERGE EDİLDİ (PR #46/#52/#53/#54/#55). G henüz push edilmedi. Kalan tek şey "Go-live kontrol listesi" — kod değil, founder'ın manuel doğrulamaları. M0-M5 TÜMÜ TAMAMLANDI VE `main`'e MERGE EDİLDİ.
 
 ## Şu an ne çalışıyor
 - **M0-M5 (tüm milestone'lar) TAMAMEN BİTTİ, `main`'de.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-07-30 — LANSMAN KARARI:** KOQEP "beta" değil, 20-30 kişilik kapalı davetli bir gruba **eksiksiz 1.0** olarak çıkacak. `docs/BACKLOG.md`'de.
 - **2026-08-09 — M6 kapsam gözden geçirmesi (iki tur), main'e merge edildi.**
-- **2026-08-10-12 — Slice A (ToS/onay) + B (Sentry) + C (erişilebilirlik) + D (mobil/QR) + E (`totpSecret` AES-256-GCM, ADR-0008), main'e merge edildi (PR #46/#52/#53/#54).** Slice C'nin `ExitPlanMode`'u bir kez reddedildi, revize onaylandı. Slice E kullanıcı tarafından gerçek TOTP girişiyle doğrulandı. Detay: milestone dosyasının kendi Plan notları bölümleri.
-- **2026-08-12 — Slice F (yedekleme/restore + genel olay runbook'u) tamamlandı, `m6/slice-f-runbook` dalında 1 commit, henüz push edilmedi.** Yeni `docs/RUNBOOK.md` — THREAT-MODEL.md'nin dağınık 6 manuel-SQL prosedürü + sırlar-ve-yedekleri envanteri tek yerde. Detay: milestone dosyasının "Plan notları — Slice F" bölümü.
+- **2026-08-10-12 — M6'nın TÜM kod dilimleri (A: ToS/onay, B: Sentry, C: erişilebilirlik, D: mobil/QR, E: `totpSecret` AES-256-GCM/ADR-0008, F: `docs/RUNBOOK.md`, G: `GET /me/export`) tamamlandı.** A-F main'e merge edildi (PR #46/#52/#53/#54/#55); G (`m6/slice-g-data-export`, 1 commit) henüz push edilmedi. Slice C'nin `ExitPlanMode`'u bir kez reddedildi, revize onaylandı; Slice E kullanıcı tarafından gerçek TOTP girişiyle doğrulandı. Detay: milestone dosyasının kendi Plan notları bölümleri.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M6 Slice F tamamlandı ve doğrulandı (`m6/slice-f-runbook` dalı, 1 commit) — henüz push/merge edilmedi.
-- **Sonraki adım:** Kullanıcı push/PR isterse yap. Sonra Slice G (`GET /me/export`) kendi plan-modu turuyla başlayabilir — son kod dilimi, sonrası "Go-live kontrol listesi." 5651/KVKK hukuki kontrol + Render auto-deploy doğrulaması + backup/PITR doğrulaması + restore tatbikatı founder tarafından hâlâ bekliyor (`docs/RUNBOOK.md`'nin §4'ü referans).
+- **Görev:** M6 Slice G tamamlandı ve doğrulandı (`m6/slice-g-data-export` dalı, 1 commit) — henüz push/merge edilmedi. **M6'nın kod tarafı BİTTİ.**
+- **Sonraki adım:** Kullanıcı push/PR isterse yap. Sonrası artık plan-modu turu GEREKTİRMİYOR — sadece milestone dosyasının "Go-live kontrol listesi" (5651/KVKK hukuki kontrol + gerçek hukuki metin + backup/PITR doğrulaması + restore tatbikatı + uptime izleme + Sentry DSN kurulumu + `GET /me/export`'un gerçek hesapla denenmesi), hepsi founder'ın kendi eliyle yapacağı işler (`docs/RUNBOOK.md`'ye referans veriyor).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
