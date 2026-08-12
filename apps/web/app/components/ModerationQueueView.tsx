@@ -11,6 +11,7 @@ import {
 } from "../../lib/api";
 import MessageContent from "./MessageContent";
 import RoomModerationSection from "./RoomModerationSection";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 const MUTE_DURATION_HOURS = 24;
 
@@ -23,6 +24,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
   const [reports, setReports] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   useEffect(() => {
     let cancelled = false;
@@ -100,13 +102,13 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
-          <span className="text-neutral-600">#</span> moderasyon
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+          <span className="text-muted">#</span> moderasyon
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           close
         </button>
@@ -133,10 +135,10 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                   kullanıcı]
                 </p>
               )}
-              <p className="mb-1 text-neutral-500">
+              <p className="mb-1 text-muted">
                 {report.reportedUsername ?? "silinmiş kullanıcı"}
                 {report.reason && (
-                  <span className="text-neutral-600"> — {report.reason}</span>
+                  <span className="text-muted"> — {report.reason}</span>
                 )}
               </p>
               <p className="mb-2 text-neutral-200">
@@ -149,7 +151,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                       type="button"
                       disabled={pendingId === report.id}
                       onClick={() => void handleMute(report.id, reportedUserId)}
-                      className="text-neutral-600 hover:text-red-400 disabled:cursor-not-allowed"
+                      className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                     >
                       sustur ({MUTE_DURATION_HOURS} saat)
                     </button>
@@ -159,7 +161,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                       onClick={() =>
                         void handleUnmute(report.id, reportedUserId)
                       }
-                      className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                      className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                     >
                       susturmayı kaldır
                     </button>
@@ -169,7 +171,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                   type="button"
                   disabled={pendingId === report.id}
                   onClick={() => void handleRemoveContent(report.id)}
-                  className="text-neutral-600 hover:text-red-400 disabled:cursor-not-allowed"
+                  className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                 >
                   içeriği kaldır
                 </button>
@@ -177,7 +179,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                   type="button"
                   disabled={pendingId === report.id}
                   onClick={() => void handleDismiss(report.id)}
-                  className="text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+                  className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                 >
                   reddet
                 </button>

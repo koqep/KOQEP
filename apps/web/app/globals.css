@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  /* M6 Slice C: neutral-500/600 arka plana karşı AA'yı geçmiyordu
+     (~4.18:1 / ~2.53:1) - #808080 ~5.01:1 ile geçiyor. */
+  --color-muted: #808080;
+}
+
 :root {
   --motion-duration-fast: 120ms;
   --motion-duration-base: 240ms;

@@ -7,20 +7,20 @@ import {
   listBlockedUsers,
   ApiError,
 } from "../../lib/api";
+import { inputClassName } from "./formStyles";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
   onClose: () => void;
 }
 
-const inputClassName =
-  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
-
 export default function BlockedUsersView({ accessToken, onClose }: Props) {
   const [blockedEmails, setBlockedEmails] = useState<string[] | null>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   useEffect(() => {
     let cancelled = false;
@@ -68,20 +68,20 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
-          <span className="text-neutral-600">#</span> engellenenler
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+          <span className="text-muted">#</span> engellenenler
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           kapat
         </button>
       </div>
 
       <form onSubmit={handleBlock} className="mb-6 flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-neutral-500">
+        <label className="flex flex-col gap-1 text-muted">
           e-posta
           <input
             type="email"
@@ -95,7 +95,7 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
           engelle
         </button>
@@ -116,7 +116,7 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => void handleUnblock(blockedEmail)}
-                className="text-neutral-600 hover:text-neutral-400"
+                className="text-muted hover:text-neutral-400"
               >
                 engeli kaldır
               </button>

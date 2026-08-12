@@ -19,14 +19,14 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="tr">
+    <html lang="en">
       <body className="bg-neutral-950 font-mono text-sm text-neutral-200 antialiased">
         <main className="mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
           <h1 className="mb-4 text-neutral-400">
-            <span className="text-neutral-600">#</span> bir şeyler ters gitti
+            <span className="text-muted">#</span> something went wrong
           </h1>
           <p className="text-neutral-400">
-            Beklenmedik bir hata oluştu. Sayfayı yenilemeyi dene.
+            An unexpected error occurred. Try refreshing the page.
           </p>
         </main>
       </body>

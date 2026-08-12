@@ -356,6 +356,7 @@ Spec'inde yoklar ama olmadan ürün production'a çıkamaz. **Yeni fikir aramada
 | A12 | **Erişilebilirlik denetimi** | 3 | S | V1.1 | Siyah-beyaz + monospace + CRT efekti = kontrast ve ekran okuyucu sorunları. |
 | A13 | **i18n / dil planı** | 3 | M | V1.1 | Ürün tasarımı gereği çok ülkeli ama dil planı yok. En azından oda başına dil etiketi. |
 | A14 | **ToS + Gizlilik politikası** | 4 | S | V1 | Türkiye bağlantılı sosyal platform: KVKK + 5651. Avukat parası ayır. |
+| A15 | **Kalan Türkçe→İngilizce arayüz çevirisi** | 2 | M | V1.1 | M2 Slice G'den beri (bkz. `docs/milestones/M2-core-rooms-messaging.md` satır 505-569) yeni arayüz metni bilerek İngilizce, eski Türkçe component'ler bilerek olduğu gibi kalıyor — bugüne kadar hiç kapsam/tetikleyici almamıştı (M6 Slice C'nin `ExitPlanMode` reddinde bulundu). **Somut tetikleyici:** `apps/web/app/components/*.tsx`'teki İngilizce-öncelikli dosya sayısı (bugün 2/15 — `DeleteAccountView.tsx`, `VerifyEmailView.tsx`) Türkçe-öncelikli dosya sayısına ULAŞTIĞINDA (≥8/15) bu iş zorunlu hale gelir; ya da founder yeni bir milestone'da 3+ mevcut Türkçe component'in görünür metnine dokunma talebi getirirse, o milestone'un kapsamına eklenir. `<html lang="tr">` kökünün `"en"`'e çevrilme eşiği de AYNI %50 noktası — o zamana kadar İngilizce alt-ağaçlar (`DeleteAccountView.tsx`, `VerifyEmailView.tsx`, `global-error.tsx`) kendi `lang="en"` işaretini taşıyor (WCAG 3.1.2). A13 (i18n/çok-ülke dil planı) ile KARIŞTIRILMASIN — bu satır tek-dilli arayüzün kendi iç tutarlılığıyla ilgili, A13 çok-ülkeli gelecek planlamasıyla. |
 
 ---
 

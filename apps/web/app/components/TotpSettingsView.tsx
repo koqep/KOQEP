@@ -9,6 +9,8 @@ import {
   ApiError,
   type TotpSetup,
 } from "../../lib/api";
+import { inputClassName } from "./formStyles";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
@@ -16,9 +18,6 @@ interface Props {
   onEnabledChange: (enabled: boolean) => void;
   onClose: () => void;
 }
-
-const inputClassName =
-  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
 
 function generateQr(otpauthUrl: string): Promise<string> {
   return new Promise((resolve) => {
@@ -39,6 +38,7 @@ export default function TotpSettingsView({
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   function markEnabled(value: boolean) {
     setEnabled(value);
@@ -105,13 +105,13 @@ export default function TotpSettingsView({
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
-          <span className="text-neutral-600">#</span> iki adımlı doğrulama
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+          <span className="text-muted">#</span> iki adımlı doğrulama
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           kapat
         </button>
@@ -138,7 +138,7 @@ export default function TotpSettingsView({
       ) : enabled ? (
         <form onSubmit={handleDisable} className="flex flex-col gap-3">
           <p>İki adımlı doğrulama şu an açık.</p>
-          <label className="flex flex-col gap-1 text-neutral-500">
+          <label className="flex flex-col gap-1 text-muted">
             totp kodu
             <input
               type="text"
@@ -152,7 +152,7 @@ export default function TotpSettingsView({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             TOTP&apos;yi kapat
           </button>
@@ -164,17 +164,18 @@ export default function TotpSettingsView({
               {qr}
             </pre>
           )}
-          <p className="text-neutral-500">
+          <p className="text-muted">
             authenticator app&apos;e elle girmek için gizli anahtar:
           </p>
           <p className="font-mono text-neutral-200 select-all">{setup.secret}</p>
-          <label className="flex flex-col gap-1 text-neutral-500">
+          <label className="flex flex-col gap-1 text-muted">
             totp kodu
             <input
               type="text"
               value={totpCode}
               onChange={(event) => setTotpCode(event.target.value)}
               required
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- TOTP kurulumu başlatıldıktan sonra beliren alan, sürpriz odak sıçraması değil.
               autoFocus
               className={inputClassName}
             />
@@ -183,7 +184,7 @@ export default function TotpSettingsView({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             etkinleştir
           </button>
@@ -196,7 +197,7 @@ export default function TotpSettingsView({
             type="button"
             onClick={() => void handleStartSetup()}
             disabled={isSubmitting}
-            className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             kurulumu başlat
           </button>

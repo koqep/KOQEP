@@ -9,15 +9,13 @@ import {
   ApiError,
   type TokenPair,
 } from "../../lib/api";
+import { inputClassName } from "./formStyles";
 
 type Mode = "login" | "signup" | "forgot-password";
 
 interface Props {
   onAuthenticated: (tokens: TokenPair, totpEnabled: boolean) => void;
 }
-
-const inputClassName =
-  "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
 
 export default function AuthView({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<Mode>("login");
@@ -91,7 +89,7 @@ export default function AuthView({ onAuthenticated }: Props) {
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
       <h1 className="mb-6 text-neutral-400">
-        <span className="text-neutral-600">#</span> koqep
+        <span className="text-muted">#</span> koqep
       </h1>
 
       {mode === "forgot-password" && resetRequested ? (
@@ -105,7 +103,7 @@ export default function AuthView({ onAuthenticated }: Props) {
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {mode === "signup" && (
-            <label className="flex flex-col gap-1 text-neutral-500">
+            <label className="flex flex-col gap-1 text-muted">
               davet kodu
               <input
                 type="text"
@@ -117,7 +115,7 @@ export default function AuthView({ onAuthenticated }: Props) {
             </label>
           )}
 
-          <label className="flex flex-col gap-1 text-neutral-500">
+          <label className="flex flex-col gap-1 text-muted">
             e-posta
             <input
               type="email"
@@ -129,7 +127,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           </label>
 
           {mode === "signup" && (
-            <label className="flex flex-col gap-1 text-neutral-500">
+            <label className="flex flex-col gap-1 text-muted">
               kullanıcı adı
               <input
                 type="text"
@@ -145,7 +143,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           )}
 
           {mode !== "forgot-password" && (
-            <label className="flex flex-col gap-1 text-neutral-500">
+            <label className="flex flex-col gap-1 text-muted">
               şifre
               <input
                 type="password"
@@ -158,13 +156,14 @@ export default function AuthView({ onAuthenticated }: Props) {
           )}
 
           {mode === "login" && totpRequired && (
-            <label className="flex flex-col gap-1 text-neutral-500">
+            <label className="flex flex-col gap-1 text-muted">
               totp kodu
               <input
                 type="text"
                 value={totpCode}
                 onChange={(event) => setTotpCode(event.target.value)}
                 required
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- login denemesi sonucu beliren alan, sayfa yüklenirken sürpriz odak sıçraması değil.
                 autoFocus
                 className={inputClassName}
               />
@@ -172,7 +171,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           )}
 
           {mode === "signup" && (
-            <label className="flex items-start gap-2 text-neutral-500">
+            <label className="flex items-start gap-2 text-muted">
               <input
                 type="checkbox"
                 checked={acceptedTerms}
@@ -206,7 +205,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           <button
             type="submit"
             disabled={isSubmitting || (mode === "signup" && !acceptedTerms)}
-            className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {mode === "signup"
               ? "kayıt ol"
@@ -221,7 +220,7 @@ export default function AuthView({ onAuthenticated }: Props) {
         <button
           type="button"
           onClick={() => switchMode("login")}
-          className="mt-4 text-neutral-600 hover:text-neutral-400"
+          className="mt-4 text-muted hover:text-neutral-400"
         >
           girişe dön
         </button>
@@ -231,7 +230,7 @@ export default function AuthView({ onAuthenticated }: Props) {
             <button
               type="button"
               onClick={() => switchMode("forgot-password")}
-              className="mt-4 text-neutral-600 hover:text-neutral-400"
+              className="mt-4 text-muted hover:text-neutral-400"
             >
               şifreni mi unuttun?
             </button>
@@ -239,7 +238,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           <button
             type="button"
             onClick={() => switchMode(mode === "login" ? "signup" : "login")}
-            className="mt-2 text-neutral-600 hover:text-neutral-400"
+            className="mt-2 text-muted hover:text-neutral-400"
           >
             {mode === "login"
               ? "hesabın yok mu? kayıt ol"

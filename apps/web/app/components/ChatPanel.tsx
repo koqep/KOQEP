@@ -59,14 +59,14 @@ export default function ChatPanel({
     <>
       <section
         ref={messagesSectionRef}
-        className="flex-1 overflow-y-auto py-4 text-neutral-500"
+        className="flex-1 overflow-y-auto py-4 text-muted"
       >
         {nextCursor && (
           <button
             type="button"
             onClick={onLoadOlder}
             disabled={isLoadingOlder}
-            className="mb-2 text-neutral-600 hover:text-neutral-400 disabled:cursor-not-allowed"
+            className="mb-2 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
           >
             {isLoadingOlder ? "yükleniyor..." : "daha eski mesajları yükle"}
           </button>
@@ -99,11 +99,11 @@ export default function ChatPanel({
 
       {sendError && <p className="text-red-400">{sendError}</p>}
       {activeRoom && activeRoom.status !== "active" ? (
-        <p className="border-t border-neutral-800 pt-2 text-neutral-600">
+        <p className="border-t border-neutral-800 pt-2 text-muted">
           bu oda arşivlenmiş, sadece okunabilir
         </p>
       ) : isMuted ? (
-        <p className="border-t border-neutral-800 pt-2 text-neutral-600">
+        <p className="border-t border-neutral-800 pt-2 text-muted">
           susturuldun
           {mutedUntil &&
             `, ${new Date(mutedUntil).toLocaleString("tr-TR")} tarihine kadar mesaj gönderemez/düzenleyemezsin`}
@@ -113,14 +113,15 @@ export default function ChatPanel({
           onSubmit={onSubmit}
           className="flex items-center gap-2 border-t border-neutral-800 pt-2"
         >
-          <span className="text-neutral-600">&gt;</span>
+          <span className="text-muted">&gt;</span>
           <input
             type="text"
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             disabled={!isReady}
             placeholder="mesaj yaz..."
-            className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none disabled:cursor-not-allowed"
+            aria-label="mesaj yaz"
+            className="flex-1 border border-transparent bg-transparent text-neutral-200 placeholder-muted outline-none focus-visible:border-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-100 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 disabled:cursor-not-allowed"
           />
           <span
             className="terminal-cursor inline-block h-4 w-2 bg-neutral-400"
@@ -129,7 +130,7 @@ export default function ChatPanel({
           <button
             type="submit"
             disabled={!canSend || isSending}
-            className="text-neutral-600 disabled:cursor-not-allowed"
+            className="text-muted disabled:cursor-not-allowed"
           >
             {isSending ? "gönderiliyor..." : "gönder"}
           </button>

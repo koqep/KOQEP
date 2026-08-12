@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { createRoom, ApiError, type Room } from "../../lib/api";
+import { inputClassName } from "./formStyles";
+import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
@@ -26,6 +28,7 @@ export default function CreateRoomView({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,26 +57,23 @@ export default function CreateRoomView({
     }
   }
 
-  const inputClassName =
-    "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus:border-neutral-600";
-
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-neutral-400">
-          <span className="text-neutral-600">#</span> yeni oda
+        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+          <span className="text-muted">#</span> yeni oda
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           kapat
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-neutral-500">
+        <label className="flex flex-col gap-1 text-muted">
           oda adı
           <input
             type="text"
@@ -84,7 +84,7 @@ export default function CreateRoomView({
             className={inputClassName}
           />
         </label>
-        <label className="flex flex-col gap-1 text-neutral-500">
+        <label className="flex flex-col gap-1 text-muted">
           açıklama (opsiyonel)
           <input
             type="text"
@@ -98,7 +98,7 @@ export default function CreateRoomView({
         <button
           type="submit"
           disabled={isSubmitting || name.length === 0}
-          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
           oluştur
         </button>

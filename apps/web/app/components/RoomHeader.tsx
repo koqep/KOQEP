@@ -53,7 +53,7 @@ export default function RoomHeader({
       <nav className="flex items-center gap-3">
         {rooms.length === 0 ? (
           <span className="text-neutral-400">
-            <span className="text-neutral-600">#</span>...
+            <span className="text-muted">#</span>...
           </span>
         ) : (
           rooms.map((r) => (
@@ -68,10 +68,10 @@ export default function RoomHeader({
               className={
                 r.id === activeRoom?.id
                   ? "text-neutral-200"
-                  : "text-neutral-600 hover:text-neutral-400"
+                  : "text-muted hover:text-neutral-400"
               }
             >
-              <span className="text-neutral-600">#</span>
+              <span className="text-muted">#</span>
               {r.name}
               {r.status !== "active" && " (arşiv)"}
             </button>
@@ -80,14 +80,14 @@ export default function RoomHeader({
         <button
           type="button"
           onClick={onCreateRoomClick}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           + yeni oda
         </button>
         <button
           type="button"
           onClick={onToggleShowArchived}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           {showArchived ? "arşivi gizle" : "arşivi göster"}
         </button>
@@ -96,21 +96,21 @@ export default function RoomHeader({
         <button
           type="button"
           onClick={onOpenTotp}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           iki adımlı doğrulama
         </button>
         <button
           type="button"
           onClick={onOpenBlocked}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           engellenenler
         </button>
         <button
           type="button"
           onClick={onOpenInvites}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           invites
         </button>
@@ -118,7 +118,7 @@ export default function RoomHeader({
           <button
             type="button"
             onClick={onOpenModeration}
-            className="text-neutral-600 hover:text-neutral-400"
+            className="text-muted hover:text-neutral-400"
           >
             moderasyon
           </button>
@@ -126,14 +126,14 @@ export default function RoomHeader({
         <button
           type="button"
           onClick={onOpenDeleteAccount}
-          className="text-neutral-600 hover:text-red-400"
+          className="text-muted hover:text-red-400"
         >
           hesabı sil
         </button>
         <button
           type="button"
           onClick={onLogout}
-          className="text-neutral-600 hover:text-neutral-400"
+          className="text-muted hover:text-neutral-400"
         >
           çıkış
         </button>
