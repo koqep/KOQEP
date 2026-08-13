@@ -283,16 +283,76 @@ Eski üç sorunun yerine, bu lansman için:
 Eski kuralın 2 ve 3. maddeleri ("başka platform kopyalar mı", "ürün çalışır
 mı") hâlâ geçerli, aynen kalıyor.
 
-**2026-07-31 — M3 kapsam gözden geçirmesi (ikinci tur, kullanıcının 8
-maddelik incelemesi) ertelemeleri:**
-- **Üyelik modeli (`RoomMember`) + oda şifresi:** `docs/DATA-MODEL.md`'nin
-  7 varlığında `RoomMember` hiç yok, `docs/PRD.md` üyelikten hiç
-  bahsetmiyor — çekirdek odalar zaten "herkes otomatik içeride" çalışıyor,
-  bununla tutarlı. 20-30 kişilik davetiyeli/vetted bir grupta ek bir
-  üyelik katmanı olmadan "bozuk/güvensiz" hissetmiyor. Oda şifresi bu
-  modele bağımlı, ayrı bir madde değil. **Somut tetikleyici:** aktif
-  kullanıcı sayısı >50 VEYA aktif oda sayısı >15 VEYA gerçek bir özel-oda
-  talebi gelirse. → `M3` sonrası.
+### Karar kuralı (2026-08-12 — 500 kullanıcı dönemi, ESKİSİNİ GEÇERSİZ KILAR)
+Hedef kullanıcı sayısı 20-30'dan **500**'e çıktı — M2-M6 boyunca kullanılan
+yukarıdaki kural (ve ondan önceki "Yol B ölçütü") bu değişiklikle geçersiz.
+500'de "herkes birbirini şahsen tanıyor" varsayımı çöküyor (davet zinciri
+birkaç seviye derinleşince artık gerçek bir "kapalı, vetted" grup değil),
+VE bazı sınırlar artık "kullanıcı deneyimi kötü hissettirir mi" sorusunun
+ötesinde, **gerçek/ölçülebilir teknik sınırlar** haline geliyor (ör. her
+mesajın kaç sokete broadcast edildiği). Bu yüzden tek soru yerine üç:
+
+1. **Altyapı gerçekten çöker mi (ölçülebilir bir kapasite sınırı aşılıyor
+   mu)?** — Yol B'nin "bozuk hissettirir mi" sorusundan farklı: bu soru
+   HİSSE değil RAKAMA bakıyor (bağlantı sayısı, broadcast fan-out, DB
+   bağlantı limiti, RAM). Evetse 1.0-zorunlu, tartışmasız.
+2. **Tek moderatör fiilen yetişebilir mi?** — 20-30 kişide "dikkatli tek
+   moderatör" (THREAT-MODEL satır 7/12) gerçekçiydi; 500'de değil.
+3. **500 kişilik, artık herkesin herkesi şahsen tanımadığı bir toplulukta**
+   ürün BOZUK, GÜVENSİZ ya da GÜVENSİZ HİSSETTİRİR mi? (Eski kuralın 1.
+   maddesinin 500-ölçekli hali — "kapalı topluluk" güven varsayımı
+   zayıfladığı için eşik daha düşük: eskiden "arkadaşlar arası kabul
+   edilebilir" sayılan bazı boşluklar artık değil, ör. oturum kalıcılığı.)
+
+Büyüme motoru vs. deneyim iyileştirme ayrımı (eski madde 3) hâlâ geçerli —
+500 kullanıcı BİR KEZLİK bir davet dalgası, sürekli büyüme hedefi hâlâ YOK.
+
+**Ateşlenmiş tetikleyicilerin sistematik taraması (2026-08-12):**
+- **Üyelik modeli (`RoomMember`) — TETİKLEYİCİ FİİLEN ATEŞLENDİ.** Aşağıdaki
+  madde >50 aktif kullanıcıyı tetikleyici olarak koymuştu, 500 bunu açıkça
+  aşıyor. Ayrıca artık salt "deneyim" sorusu değil — kod okunarak doğrulandı
+  (`apps/api/src/api/messages.gateway.ts:84-98`): her soket BAĞLANTIDA TÜM
+  aktif odalara katılıyor (üyelik kavramı hiç yok), `broadcastToRoom`
+  (`:251-268`) `server.in(roomId).fetchSockets()` kullanıyor — yani bir
+  odaya gönderilen HER mesaj, o odada hiç mesaj görmemiş dahil, o an bağlı
+  TÜM kullanıcılara gidiyor. 500 eşzamanlı bağlantıda bu artık bir UX
+  sorunu değil, bir KAPASİTE sorunu (N=500 fan-out, her mesaj için). →
+  **M7'ye alındı, 1.0-ZORUNLU.**
+- **Mesaj arama (A2) + okundu durumu (A3):** aşağıdaki tablo satırlarında
+  güncellendi — "20-30 kişi birkaç ayda scroll ile bulur" gerekçesi 500
+  kullanıcı + muhtemelen çok daha yüksek mesaj hacminde ARTIK GEÇERLİ
+  DEĞİL. Okundu durumu hâlâ DM'e bağımlı (DM kendisi de erteleniyor, bkz.
+  M8) — bu yüzden A3 hâlâ V1.1'de kalıyor, ama A2 (arama) yeniden
+  değerlendirildi → **M8'e (SONRA, 1.0 değil ama artık ciddi bir aday).**
+- **Self-servis moderatör atama:** THREAT-MODEL satır 37'nin "tek-moderatör
+  varsayımıyla tutarlı" gerekçesi 500 kullanıcıda ÇÖKÜYOR — tek moderatör
+  500 kişiye yetişemez, ikinci moderatör eklemenin BUGÜNKÜ tek yolu elle
+  SQL (`UPDATE "User" SET "role" = 'moderator'...`, `docs/RUNBOOK.md`
+  §3.4). Kendi tetikleyicisi zaten "ikinci bir moderatör eklenirse" idi —
+  500 kullanıcı hedefi bunu doğrudan ateşliyor. → **M7'ye alındı,
+  1.0-ZORUNLU** (self-servis atama endpoint'i, `ModeratorGuard` zaten var).
+- **Rate limit sayıları:** eski tetikleyici "M6 VEYA gerçek olay"dı, M6'da
+  gözden geçirilip 20-30 ölçeğinde yeterli bulunmuştu
+  (`docs/STATE.md`). 500 kullanıcıda global limit (100/60s, IP başına)
+  YENİDEN gözden geçirilmeli — çok sayıda meşru kullanıcı aynı NAT/ofis
+  IP'sinden gelirse yanlışlıkla bloklanabilir. → **M7'ye alındı, küçük bir
+  gözden geçirme + muhtemel bir artış, 1.0-ZORUNLU (ucuz).**
+- **Boş oda problemi TERSİNE döndü:** B5 (`/now` — platform nabzı) eskiden
+  "M3 gelmeden çözülecek bir problem yok" diye ertelenmişti (boşluk
+  sorunu). 500 kullanıcı × günde 1 oda hakkı = yüzlerce oda potansiyeli;
+  `RoomHeader.tsx`'in bugünkü keşif mekanizması SADECE alfabetik sıralı
+  düz bir buton listesi (`RoomsService.listRooms`, `orderBy:{name:'asc'}`)
+  — aktiviteye göre sıralama/filtreleme YOK. Sorun artık "oda boş
+  görünüyor" değil "oda BULUNAMIYOR." → **M7'ye alındı (ucuz: sıralamayı
+  aktiviteye çevirmek), 1.0-ZORUNLU.** B5'in kendisi (tam `/now` görünümü)
+  hâlâ V1.1'de kalabilir, ama TEMEL keşfedilebilirlik artık zorunlu.
+
+**Üyelik modeli (`RoomMember`) + oda şifresi — orijinal madde, ARTIK TAMAMLANDI, yukarıya bakın:**
+- ~~`docs/DATA-MODEL.md`'nin 7 varlığında `RoomMember` hiç yok...~~
+  **Somut tetikleyici:** aktif kullanıcı sayısı >50 VEYA aktif oda sayısı
+  >15 VEYA gerçek bir özel-oda talebi gelirse. → `M3` sonrası.
+  **ATEŞLENDİ (2026-08-12, 500-kullanıcı kararı) — yukarıdaki tarama
+  bölümüne taşındı, M7'ye eklendi.**
 - **Oda moderasyonu (silme/yeniden adlandırma):** ~~20-30 kişilik,
   "dikkatli tek moderatör" varsayımlı bir toplulukta (THREAT-MODEL satır 7)
   nadir bir kötü-isimli oda için founder'ın manuel Postgres düzeltmesi
@@ -438,3 +498,92 @@ Yeni bir fikir bu listeye eklenecekse üç soruya cevap ver:
 
 **Şu anki en büyük risk özellik eksikliği değil, özellik fazlalığıdır.**
 Listede 60+ madde var. V1'e giren 15'i geçerse lansman gelmez.
+
+---
+
+## F. 500-KULLANICI KAPSAM TURU (2026-08-12) — kritik kapsam değişikliği
+
+M6 tamamen bitince, hedef kullanıcı sayısı 20-30'dan **500**'e çıktı ve
+kullanıcı ayrıca büyük bir yeni özellik/boşluk listesi getirdi. Üç paralel
+araştırma agent'ıyla (altyapı gerçekliği + ateşlenmiş tetikleyiciler,
+spec'te-olan-ama-yapılmamış özelliklerin gerçek kod durumu, küçük UX
+boşlukları + i18n maliyeti) TAMAMI kod okunarak doğrulandı — hiçbir madde
+tahmine dayanmadı. Tam öncelik/saat analizi ve dilim planı yeni milestone
+dosyalarında (`M7-scale-and-critical-fixes.md`, `M8-social-features.md`,
+`M9-i18n.md`, `M10-ui-redesign.md`); burada sadece BACKLOG'un kendi
+kova/karar mantığına giren maddeler listeleniyor.
+
+### Kritik bulgu — oturum kalıcılığı muhtemelen "kırık" değil, YARIM BIRAKILMIŞ
+`ADR-0002`'nin KENDİ "Decision" bölümü web istemcisinin token'ları
+**httpOnly cookie'de** saklamasını söylüyor — ama gerçek kod
+(`apps/web/app/page.tsx:9-13`) SADECE bellek-içi React state kullanıyor,
+kendi yorumunda bunu ADR-0002'nin nihai hedefine "uyumlu bir ARA ADIM"
+diye tanımlıyor. Yani bu, belirsiz bir durum değil — ADR'nin kendi
+mekanizması hiç tamamlanmamış. Sonuç: sekme kapatma/reload = tam çıkış,
+kurtarma yok. 500 gerçek kullanıcıda en çok şikayet edilecek şey bu olur.
+**M7'ye 1.0-ZORUNLU olarak eklendi** (`M7-scale-and-critical-fixes.md`).
+
+### Kova revizyonları (500-kullanıcı kriterine göre)
+| # | Öğe | Eski kova | Yeni kova | Neden |
+|---|---|---|---|---|
+| A2 | Mesaj arama | V1.1 | M8 (ciddi aday) | "20-30 kişi scroll ile bulur" gerekçesi 500'de çöktü — yukarıki "Karar kuralı (500 kullanıcı dönemi)" bölümüne bakın. |
+| — | `RoomMember` üyelik modeli | M3-sonrası (tetikleyici bekliyor) | **M7, 1.0-ZORUNLU** | Tetikleyici (>50 kullanıcı) ateşlendi + artık salt UX değil, broadcast fan-out kapasite sorunu (`messages.gateway.ts:84-98,251-268`). |
+| — | Self-servis moderatör atama | Reddedildi (tek-moderatör varsayımı) | **M7, 1.0-ZORUNLU** | Kendi tetikleyicisi ("ikinci moderatör eklenirse") 500 hedefiyle ateşlendi. |
+| B5 | `/now` platform nabzı | M3-sonrası | Kısmi: temel keşfedilebilirlik → **M7, 1.0-ZORUNLU**; tam `/now` görünümü → V1.1 kalır | Boş oda problemi tersine döndü (yüzlerce oda, sıfır keşif mekanizması). |
+
+### Yeni maddeler — kullanıcının 2026-08-12 istek listesinden (bölüm 2-5)
+Her biri: **durum** (kod okunarak doğrulandı) → **karar**. Tam gerekçe/saat
+tahmini ilgili milestone dosyasında.
+
+**Kimlik/hesap (bölüm 2):**
+- Kullanıcı profili (bio+avatar+rozet): YOK (`User` modeli, doğrulandı — bio/avatar alanı hiç yok). Bio serbest metinse yeni moderasyon yüzeyi — kullanıcının kendi tespiti doğru. → **M8, SONRA.**
+- Kullanıcı adı değiştirme + isim rezervasyonu: YOK (`users.service.ts`'de update metodu yok). Rezervasyon/mesaj-içinde-ad-saklama çakışması gerçek — → **M8, SONRA**, tasarım kararı M8'in kendi dosyasında.
+- Kullanıcı adı VEYA e-posta ile giriş: bugün SADECE e-posta (`login.dto.ts:4`, `auth.service.ts:130-133`). Kullanıcının kendi tespiti doğru (rezervasyon sorunuyla çakışıyor) — **ÖNERİ: login'i KALICI olarak e-posta-only bırak, username-login hiç eklenmesin** (çakışan iki özelliği birlikte inşa etmek yerine, riskli kombinasyonu inşa etmemek). → **YAPMA**, M8'de tartışılıp kapatılacak.
+- E-posta değiştirme: YOK. → **M8, SONRA.**
+- Geçici hesap dondurma (30 gün): YOK, sadece kalıcı silme var (ADR-0005). → **M8, SONRA** — mevcut anonymize-on-delete zaten bir güvenlik ağı sağlıyor, acil değil.
+- E-posta erişim kaybı kurtarma: YOK, gerçek çözümü yok (recovery-email/güvenlik sorusu ikisi de zayıf). → **Çözülmemiş, kayıtlı açık madde** (THREAT-MODEL'e eklendi), M8'de tekrar ele alınacak, aceleye getirilmeyecek.
+- Şifre gücü + HaveIBeenPwned: sadece uzunluk kontrolü var (`signup.dto.ts:29-31`, min 8). HIBP k-anonymity ücretsiz/bağımlılıksız. → **M7, 1.0-ZORUNLU, ucuz.**
+- Hesap-bazlı brute-force koruması: YOK, sadece global limit (`auth.controller.ts` login'de `@Throttle` yok). → **M7, 1.0-ZORUNLU.**
+
+**E-posta doğrulama:**
+- Link yerine kod: bugün link+token (`email-verification.service.ts:6,13-27`, 32-byte token). Değerlendirildi — **ÖNERİ: link kalsın**, kod'a geçişin mobilde gerçek bir kazancı var ama link zaten tek-tık, kod eklemek iki paralel akış bakımı demek düşük getiri için. → **YAPMA** (M8'de istenirse tekrar açılır).
+- MX kaydı + tek-kullanımlık e-posta engelleme: YOK. Davet-kapılı bir sistemde spam-signup riski zaten düşük (agent'ın da not ettiği gibi). → **V1.1/SONRA, düşük öncelik.**
+
+**DM:** Yeni model + WS yönlendirme + engelleme entegrasyonu + raporlama (THREAT-MODEL satır 10) hepsi gerçek, BÜYÜK bir iş (tahmini 40-60 saat, bkz. M8). 500 kişilik yarı-tanıdık grupta DM'siz "tanıdık hissi" azalır ama ÜRÜN ÇALIŞMAYA DEVAM EDER — Yol/Karar kuralının 1. maddesini (bozuk/güvensiz hissettirir mi) GEÇMİYOR, sadece eksik hissettiriyor. → **M8, SONRA**, bu turda 1.0'a alınmadı.
+
+**Ana sayfa (landing/onboarding):** Bugün `/` doğrudan `AuthView` (`page.tsx:16-24`), sıfır bağlam metni. 500 kişilik bir davet dalgasında ilk izlenim artık "birkaç arkadaşın tanıttığı" değil — → **M7, 1.0-ZORUNLU** ama KÜÇÜK kapsamlı (kopya + /privacy,/terms bağlantısı, tam bir pazarlama sayfası değil).
+
+**Dil desteği (i18n):** Kullanıcının kendi maliyet analizi (4 gizli maliyet) kod okunarak DOĞRULANDI ve daha da büyük çıktı: 388 Türkçe-bağımlı Playwright seçici (`apps/web/e2e/**` 310 + `e2e-fullstack/**` 78), backend hata fırlatma noktalarının %90'ı (47/52) kod-değil-düz-Türkçe-string, sıfır i18n altyapısı, `User.locale` yok. Gerçekçi tahmin 60-100+ saat — bu turda **tek başına en büyük tek kalem**. → **Tam kapsamlı runtime dil değişimi M9'a (SONRA) ayrıldı**, ayrı ve bağımsız bir milestone olarak (özellik değil, çapraz-kesen bir altyapı değişikliği). M7'ye SADECE ucuz bir alt-küme alındı: zaten yıllardır bekleyen Türkçe→İngilizce UI geçişini (A15, M2 Slice G kararı) BİTİRMEK — runtime SEÇİM/`User.locale` OLMADAN, sadece varsayılanı tamamen İngilizceye çevirmek. Detay M7 dosyasında.
+
+**Hukuki:** ToS/gizlilik EN+TR ayrı sürüm + çelişki durumunda hangisinin bağlayıcı olduğu sorusu avukata soru listesine eklendi (`docs/RUNBOOK.md`'ye değil, ADR-0001 şablonuyla ileride bir ADR'ye — kod değişikliği küçük, hukuki metin founder'ın işi). → **M7'ye kod-tarafı (versiyon seçme sayfası) eklendi, 1.0-ZORUNLU, küçük.**
+
+**Spec'te olan ama hiç yapılmamış (bölüm 3) — durum + karar:**
+- Terminal komutları (`/help` vb.): YOK, sıfır prefix-parsing (`RoomView.tsx:399-412` doğrulandı). Kimlik iddiasının merkezinde ama ÜRÜN ÇALIŞIYOR onsuz. → **M8, SONRA.**
+- Mention + bildirim: YOK. Kullanıcı-dizini de yok (aşağıya bkz.) — mention'ın ön koşulu. → **M8, SONRA**, kullanıcı-dizini ile birlikte paketlenecek.
+- Presence + yazıyor göstergesi: YOK (DATA-MODEL.md'nin "in-process" iddiası bile hiç kodlanmamış). → **M8, SONRA.**
+- Reaksiyonlar: YOK. Kullanıcının "XP sadece mesaj sayısından geliyor, niceliği ödüllendiriyor" tespiti doğru ve önemli — itibar sisteminin kalitesini etkiliyor. → **M8, SONRA** ama M8 içinde YÜKSEK öncelikli (reputation kalitesi argümanı güçlü).
+- Okundu durumu (`ReadCursor`): DATA-MODEL.md'de yazılı ama şemada YOK — DOKÜMAN/KOD TUTARSIZLIĞI, doğrulandı. → **M8, SONRA**, DATA-MODEL.md bu turda düzeltildi (aşağıya bkz.) ki "var" sanılmasın.
+- Yanıtlama/alıntı: YOK. → **M8, SONRA.**
+- Kendi mesajını silme: YOK, sadece düzenleme var. Temel bir sohbet beklentisi. → **M7, 1.0-ZORUNLU, ucuz.**
+- "Düzenlendi" göstergesi: BİLEREK ertelenmiş (M2 Slice B, `docs/milestones/M2-core-rooms-messaging.md:192-196`), hiç geri dönülmemiş. THREAT-MODEL satır 3'ün vektörünün yarısı hâlâ açık. → **M7, 1.0-ZORUNLU, ucuz** (veri zaten var, sadece görünüm kararı).
+- Mesaj arama: yukarıda (A2 kova revizyonu).
+- Kullanıcı dizini/oda üye listesi: YOK. Mention/DM'in ön koşulu. → **M8, SONRA** (mention ile birlikte).
+- Sabitlenmiş mesaj, oda konusu/kuralları: YOK (`Room.description` var ama sadece tooltip, ön plana çıkmıyor). → **V1.1/SONRA.**
+- Durum/rozet/achievement/davet-ağacı görselleştirme: hepsi zaten BACKLOG'da (B6/B9/C2/C3), zaten V1/V1.1 — kova değişmedi.
+- Geçici odalar (TTL): zaten B9, V1.1 — kova değişmedi.
+
+**Ürün/operasyon boşlukları (bölüm 4):**
+- Ürün analitiği (kendi DB'den sorgu, üçüncü parti YOK): kullanıcının kendi gerekçesi (Faz 1'in riskiest-assumption testi bu grupla yapılacak, ölçmezsem test etmiş olmuyorum) güçlü ve ürünün kendi gizlilik duruşuyla tutarlı. → **M7, 1.0-ZORUNLU ama EN UCUZ HALİYLE**: bir dashboard DEĞİL, `docs/RUNBOOK.md` tarzı dokümante edilmiş SQL sorguları (DAU, kişi-başı mesaj, gün-1/gün-7 dönüş, oda-başına aktivite) — founder elle çalıştırır.
+- Geri bildirim/duyuru kanalı: YOK. → **M7'ye EN UCUZ HALİYLE eklendi** (`mailto:` tabanlı bir geri bildirim linki + moderatörün pinlenmiş bir duyuru mesajı atabilmesi — yeni bir bildirim altyapısı DEĞİL), 1.0-ZORUNLU.
+- Moderasyona itiraz yolu: KISMİ — susturma bildirimi VAR ama SÜRE dışında SEBEP yok (`ChatPanel.tsx:105-110`); içerik kaldırma bildirimi YOK (sessizce, `message:updated` genel kanalından, `messages.service.ts:20-21`). 500 kullanıcıda tek moderatörün YARGISI daha sık yanlış olacak, itiraz yolu olmadan bu bir adalet sorunu. → **M7, 1.0-ZORUNLU** (sebep alanı + mevcut bildirim kanallarını kullanarak sürme — yeni altyapı değil).
+
+**Sohbeti "bozuk" hissettirenler (bölüm 5):**
+- Taslak kaybı: doğrulandı, tek paylaşılan state (`RoomView.tsx:71`, oda değişince `setDraft("")`, satır 359-363). Ucuz düzeltme (`Record<roomId,string>`). → **M7, 1.0-ZORUNLU, çok ucuz.**
+- Okunmamış göstergesi, yukarı-kaydırma bildirimi, sekme başlığı: hepsi `ReadCursor`/üyelik işine bağımlı. → **M8, SONRA**, M8'in ReadCursor/üyelik işiyle birlikte.
+- Permalink: YOK. → **M8, SONRA.**
+- İlk giriş deneyimi: sıfır onboarding, doğrulandı (`ChatPanel.tsx:74-75` sadece "henüz mesaj yok"). → **M7, 1.0-ZORUNLU**, landing/onboarding maddesiyle birlikte, ucuz.
+- Zaman dilimi: aslında DOĞRU çalışıyor (`toLocaleTimeString` tarayıcı yereline çeviriyor, `MessageItem.tsx:27-32`) — sadece biçim sabit `tr-TR`. i18n'e bağlı, ayrı bir madde değil.
+- Tıklanabilir linkler: YOK (`MessageContent.tsx` düz metin render ediyor, hiç linkify yok). Önizleme KESİNLİKLE olmasın kararı zaten doğru/mevcut (önizleme altyapısı hiç yok). → **M7, 1.0-ZORUNLU, ucuz** (linkify + `target=_blank rel=noopener`, önizleme yok).
+- Unicode/zalgo: uzunluk dışında SIFIR karakter-türü kontrolü (`messages.gateway.ts:132-142` doğrulandı). Metin-only, monospace bir üründe özellikle etkili bir griefing yöntemi — ucuz bir düzeltme (birleşik işaret/grapheme sınırı). → **M7, 1.0-ZORUNLU.**
+
+**M7 — Arayüz tasarım geçişi (bölüm 6):** kullanıcı bunu "M7" diye adlandırdı ama SIRALAMA nedeniyle **M10** olarak numaralandırıldı (M7 artık yukarıdaki ölçek/kritik-düzeltme dilimi) — gerekçe M10'un kendi dosyasında. İki-aşamalı yapı (önce tasarım kararı dokümanı, sonra kod) AYNEN korundu.
