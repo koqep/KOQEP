@@ -11,6 +11,10 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",
+    // playwright.config.ts'in aynı gerekçesi (bkz. o dosyadaki yorum) -
+    // ayrı bir config dosyası olduğu için bu ayarı miras almıyor, ayrıca
+    // set edilmesi gerekiyor.
+    trace: "retain-on-failure",
   },
   webServer: [
     {

@@ -6,6 +6,13 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",
+    // M7a Slice A sonrası bir CI koşusunda tek bir test (room-moderation'ın
+    // rename testi) network-seviyesinde açıklanamayan bir şekilde başarısız
+    // oldu, sonra 240+ tekrar denemesinde bir daha HİÇ tekrarlanmadı - hiçbir
+    // trace/screenshot yakalanmadığı için "ne oldu"ya dair kanıt kalmadı.
+    // Bir dahaki flake'te bunu bir daha yaşamamak için: başarısız test
+    // artık gerçek bir izlenebilir kanıt (network log/DOM/console) bırakıyor.
+    trace: "retain-on-failure",
   },
   webServer: {
     command: "npm run start",
