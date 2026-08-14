@@ -40,8 +40,8 @@ Cold acquisition through 2-3 relevant technical communities (a manifesto post, d
 ## Success metrics
 *Başarı, kayıt sayısı değil gerçek günlük aktif sohbet ile ölçülür.*
 
-- A real daily-active conversational core (a specific small number, e.g. 15-30 people actually chatting daily) by month 3 — this is the founder's own definition of done.
-- The original brief's "~600 users at 6 months" is kept only as a soft ceiling for infra/cost planning, not a target to chase.
+- A real daily-active conversational core actually chatting daily by month 3 — this is the founder's own definition of done. **Revised 2026-08-12:** the invite wave itself now explicitly targets ~500 registered users (not the 15-30 originally written here) — the daily-active core is still expected to be a fraction of that, this line no longer states a specific small number since the input population changed. Product analytics (`docs/milestones/M7-scale-and-critical-fixes.md`) exist specifically to measure the real daily-active number once this wave goes out, rather than assume it.
+- The original brief's "~600 users at 6 months" was kept as a soft infra/cost-planning ceiling through M2-M6 (20-30-person launch cohort) — **as of 2026-08-12 this is no longer a soft ceiling, it's the actual near-term target** (~500 users, one invite wave). `docs/BACKLOG.md`'s "Karar kuralı (500 kullanıcı dönemi)" section is now the governing scope criterion; see `docs/milestones/M7-scale-and-critical-fixes.md` for what that requires.
 - Zero users lost to account lockout from TOTP (recovery path must work).
 - No week with zero new messages in any core room.
 
