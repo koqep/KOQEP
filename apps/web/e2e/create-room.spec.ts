@@ -1,16 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { mockAuthSuccess } from "./support/auth-mocks";
 
 test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
   page,
 }) => {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await page.route("**/rooms", async (route) => {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON() as {
@@ -83,14 +77,7 @@ test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
 });
 
 test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await page.route("**/rooms", async (route) => {
     if (route.request().method() === "POST") {
       await route.fulfill({ status: 429, json: {} });

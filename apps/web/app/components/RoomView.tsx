@@ -54,14 +54,12 @@ interface MessagePage {
 
 interface Props {
   accessToken: string;
-  refreshToken: string;
   initialTotpEnabled: boolean;
   onLoggedOut: () => void;
 }
 
 export default function RoomView({
   accessToken,
-  refreshToken,
   initialTotpEnabled,
   onLoggedOut,
 }: Props) {
@@ -443,7 +441,7 @@ export default function RoomView({
   async function handleLogout() {
     socketRef.current?.close();
     try {
-      await logout(refreshToken);
+      await logout();
     } catch {
       // Çıkış API çağrısı başarısız olsa da yerel oturumu kapat - kullanıcı
       // takılıp kalmasın, sunucu tarafı token zaten süresi dolunca geçersiz olur.

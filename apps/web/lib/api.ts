@@ -1,5 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+// M7a Slice A (ADR-0002'yi bitirmek): refresh token + CSRF eşleştirme
+// değeri artık httpOnly cookie'de - JS bunları hiç okumuyor/taşımıyor.
+// credentials:'include' her istekte bu cookie'lerin (apps/web'in farklı
+// origin'inden) gönderilip alınabilmesi için gerekli.
+const CSRF_COOKIE_NAME = "koqep_csrf";
+
+// Backend'in INVALID_TOKEN_CODE'uyla (auth.service.ts) AYNI değer - SADECE
+// "access token'ın kendisi geçersiz/süresi dolmuş" anlamına gelen 401'lerde
+// set ediliyor, TOTP_REQUIRED/INVALID_CREDENTIALS gibi domain 401'lerinde
+// DEĞİL. Retry mantığı bu yüzden çıplak status===401 yerine bu code'u
+// kontrol ediyor - aksi halde ör. "yanlış TOTP kodu" hatası sessizce
+// "oturum yenilenemedi" hatasına dönüşürdü.
+const INVALID_TOKEN_CODE = "INVALID_TOKEN";
+
 export class ApiError extends Error {
   code?: string;
   status: number;
@@ -17,7 +31,10 @@ export interface TokenPair {
 }
 
 async function sendJson<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    credentials: "include",
+  });
 
   if (!response.ok) {
     const errorBody = (await response.json().catch(() => ({}))) as {
@@ -41,26 +58,107 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
+function readCookie(name: string): string | null {
+  const match = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${name}=`));
+  if (!match) {
+    return null;
+  }
+  return decodeURIComponent(match.slice(name.length + 1));
+}
+
+// Aynı sekme içinde eş-zamanlı birden fazla 401'in tek bir refresh çağrısını
+// paylaşması için (single-flight) - sekmeler-arası yarış backend'in grace-
+// period toleransıyla çözülüyor (bkz. AuthService.refresh), bu sadece
+// gereksiz paralel çağrıları önleyen ucuz bir hijyen.
+let inFlightRefresh: Promise<string> | null = null;
+
+// page.tsx mount'ta bunu kaydeder, yenilenen access token'ı React state'ine
+// yazsın diye - bu OLMADAN her interaction access token süresi (15dk)
+// dolduktan sonra AYNI eski token'ı prop olarak geçmeye devam eder, her
+// çağrı sonsuza dek gereksiz bir 401→refresh→tekrar-dene turu yapardı.
+type AccessTokenListener = (accessToken: string) => void;
+let onAccessTokenRefreshed: AccessTokenListener | null = null;
+
+export function setAccessTokenRefreshedListener(
+  listener: AccessTokenListener | null,
+): void {
+  onAccessTokenRefreshed = listener;
+}
+
+export async function refreshAccessToken(): Promise<string> {
+  if (inFlightRefresh) {
+    return inFlightRefresh;
+  }
+
+  inFlightRefresh = (async () => {
+    const csrfToken = readCookie(CSRF_COOKIE_NAME);
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (csrfToken) {
+      headers["X-Csrf-Token"] = csrfToken;
+    }
+    const { accessToken } = await sendJson<{ accessToken: string }>(
+      "/auth/refresh",
+      { method: "POST", headers, body: JSON.stringify({}) },
+    );
+    onAccessTokenRefreshed?.(accessToken);
+    return accessToken;
+  })();
+
+  try {
+    return await inFlightRefresh;
+  } finally {
+    inFlightRefresh = null;
+  }
+}
+
+// authedPostJson/authedGetJson: 401 alınca (süresi dolmuş access token)
+// refreshAccessToken() denenir, başarılıysa orijinal istek YENİ token'la
+// BİR KEZ tekrar edilir - kullanıcı aktif bir oturum ortasında sessizce
+// oturumda kalır (bkz. docs/decisions/ADR-0002 Addendum).
 async function authedPostJson<T>(
   path: string,
   accessToken: string,
   body?: unknown,
 ): Promise<T> {
-  return sendJson<T>(path, {
+  const buildInit = (token: string): RequestInit => ({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+  try {
+    return await sendJson<T>(path, buildInit(accessToken));
+  } catch (error) {
+    if (error instanceof ApiError && error.code === INVALID_TOKEN_CODE) {
+      const freshToken = await refreshAccessToken();
+      return sendJson<T>(path, buildInit(freshToken));
+    }
+    throw error;
+  }
 }
 
 async function authedGetJson<T>(path: string, accessToken: string): Promise<T> {
-  return sendJson<T>(path, {
+  const buildInit = (token: string): RequestInit => ({
     method: "GET",
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
+
+  try {
+    return await sendJson<T>(path, buildInit(accessToken));
+  } catch (error) {
+    if (error instanceof ApiError && error.code === INVALID_TOKEN_CODE) {
+      const freshToken = await refreshAccessToken();
+      return sendJson<T>(path, buildInit(freshToken));
+    }
+    throw error;
+  }
 }
 
 export async function signup(input: {
@@ -85,8 +183,22 @@ export function login(input: {
   return postJson<TokenPair>("/auth/login", input);
 }
 
-export async function logout(refreshToken: string): Promise<void> {
-  await postJson("/auth/logout", { refreshToken });
+// M7a Slice A: refresh token artık httpOnly cookie'de - parametre almıyor,
+// backend cookie'den okuyor. CSRF header'ı refreshAccessToken'ınkiyle aynı
+// desen (bkz. ADR-0002 Addendum).
+export async function logout(): Promise<void> {
+  const csrfToken = readCookie(CSRF_COOKIE_NAME);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (csrfToken) {
+    headers["X-Csrf-Token"] = csrfToken;
+  }
+  await sendJson("/auth/logout", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({}),
+  });
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {

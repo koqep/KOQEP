@@ -1,13 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { mockAuthSuccess } from "./support/auth-mocks";
 
 test("oda_degistirince_mesaj_listesi_yeni_odaya_gore_guncellenir", async ({
   page,
 }) => {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: { accessToken: "fake-access-token", refreshToken: "fake-refresh-token" },
-    }),
-  );
+  await mockAuthSuccess(page);
   await page.route("**/rooms", (route) =>
     route.fulfill({
       json: [
