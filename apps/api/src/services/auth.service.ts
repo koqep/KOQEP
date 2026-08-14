@@ -21,6 +21,24 @@ import { LoginDto } from '../api/dto/login.dto';
 
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// M7a Slice A: iki sekme aynı httpOnly refresh-token cookie'sini paylaşıyor
+// (bkz. auth-cookie.util.ts) - biri rotasyon yapınca diğeri artık-revoke-
+// edilmiş eski token'la gelebilir. Bu pencere içinde BİR KEZ (RefreshToken.
+// graceReusedAt) daha kabul edilir - OAuth ekosisteminde "refresh token
+// reuse detection with grace period" olarak bilinen, bilinçli ve dar
+// (10sn + tek kullanım) bir tavizdir, bkz. ADR-0002 Addendum.
+const REFRESH_TOKEN_REUSE_GRACE_MS = 10 * 1000;
+
+// M7a Slice A: web istemcisi 401 alan authed çağrıları BİR KEZ sessizce
+// refresh-ve-tekrar-dene mantığıyla iyileştiriyor (bkz. lib/api.ts) - ama
+// bu SADECE "access token'ın kendisi geçersiz/süresi dolmuş" durumunda
+// doğru davranış, TOTP_REQUIRED/INVALID_CREDENTIALS gibi DOMAIN 401'lerinde
+// DEĞİL (aksi halde o gerçek hatanın code/message'ı sessizce kaybolur,
+// kullanıcı "TOTP kodu yanlış" yerine "oturum yenilenemedi" görür). Bu code
+// SADECE "token'ın kendisi geçersiz" anlamına gelen 401'lere eklenir -
+// jwt-auth.guard.ts + verifyAccessToken + deleteAccount'ın P2025 dalı +
+// UsersService.getProfile'ın "token doğrulanıyor ama satır yok" dalı.
+export const INVALID_TOKEN_CODE = 'INVALID_TOKEN';
 
 export interface TokenPair {
   accessToken: string;
@@ -48,7 +66,10 @@ export class AuthService {
     try {
       return await this.jwt.verifyAsync<{ sub: string; email: string }>(token);
     } catch {
-      throw new UnauthorizedException('Geçersiz veya süresi dolmuş token.');
+      throw new UnauthorizedException({
+        code: INVALID_TOKEN_CODE,
+        message: 'Geçersiz veya süresi dolmuş token.',
+      });
     }
   }
 
@@ -173,16 +194,42 @@ export class AuthService {
       where: { tokenHash },
     });
 
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+    if (!stored || stored.expiresAt < new Date()) {
       throw new UnauthorizedException(
         'Geçersiz veya süresi dolmuş refresh token.',
       );
     }
 
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
-    });
+    if (stored.revokedAt) {
+      // Grace toleransı SADECE rotasyon-kaynaklı revoke'lara uygulanır -
+      // logout/confirmPasswordReset'in bilerek ANINDA/kesin iptali
+      // (revokedByRotation: false) hiç etkilenmez, kullanıcı çıkış
+      // yaptığında "birkaç saniye daha çalışır" beklemez.
+      const withinGrace =
+        Date.now() - stored.revokedAt.getTime() <= REFRESH_TOKEN_REUSE_GRACE_MS;
+      if (!stored.revokedByRotation || !withinGrace || stored.graceReusedAt) {
+        throw new UnauthorizedException(
+          'Geçersiz veya süresi dolmuş refresh token.',
+        );
+      }
+      // Atomik claim - iki yarışan grace-denemesinin (ör. iki sekmenin
+      // neredeyse aynı anda gelen istekleri) ikisinin de aynı hakkı
+      // harcamasını önler (count===0 = başka bir istek zaten harcadı).
+      const claimed = await this.prisma.refreshToken.updateMany({
+        where: { id: stored.id, graceReusedAt: null },
+        data: { graceReusedAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        throw new UnauthorizedException(
+          'Geçersiz veya süresi dolmuş refresh token.',
+        );
+      }
+    } else {
+      await this.prisma.refreshToken.update({
+        where: { id: stored.id },
+        data: { revokedAt: new Date(), revokedByRotation: true },
+      });
+    }
 
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: stored.userId },
@@ -251,7 +298,10 @@ export class AuthService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        throw new UnauthorizedException('Geçersiz veya süresi dolmuş token.');
+        throw new UnauthorizedException({
+          code: INVALID_TOKEN_CODE,
+          message: 'Geçersiz veya süresi dolmuş token.',
+        });
       }
       throw error;
     }

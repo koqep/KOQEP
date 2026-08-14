@@ -66,6 +66,7 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     password: string;
     accessToken: string;
     refreshToken: string;
+    loginResponse: request.Response;
   }> {
     const { code } = await seedInvite();
     const email = `user-${randomUUID()}@koqep.local`;
@@ -97,6 +98,7 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
       password,
       accessToken: body.accessToken,
       refreshToken: body.refreshToken,
+      loginResponse,
     };
   }
 
@@ -239,7 +241,7 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     expect(typeof body.accessToken).toBe('string');
   });
 
-  it('yeniler_refresh_tokeni_ve_eskisini_gecersiz_kilar', async () => {
+  it('yeniler_refresh_tokeni_eskisi_grace_penceresinde_bir_kez_daha_calisir', async () => {
     const { refreshToken } = await signUpVerifyAndLogin();
 
     const refreshResponse = await request(app.getHttpServer())
@@ -250,10 +252,13 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     const newTokens = refreshResponse.body as { refreshToken: string };
     expect(newTokens.refreshToken).not.toBe(refreshToken);
 
+    // M7a Slice A: eski token ANINDA değil, grace penceresi (10sn) içinde
+    // TOLERANS ile bir kez daha kabul ediliyor (çoklu-sekme yarışı) - kesin
+    // geçersizleşmenin kanıtı ayrı 'grace_penceresinde...' testinde.
     await request(app.getHttpServer())
       .post('/auth/refresh')
       .send({ refreshToken })
-      .expect(401);
+      .expect(201);
   });
 
   it('cikis_yapinca_refresh_tokeni_gecersiz_kilar', async () => {
@@ -269,7 +274,129 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
       .send({ refreshToken })
       .expect(401);
   });
+
+  // M7a Slice A: çoklu-sekme yarışı - AynI (artık rotasyona uğramış) eski
+  // token'ın grace penceresinde BİR KEZ daha kabul edildiğinin, ikinci
+  // seferde reddedildiğinin gerçek bir kanıtı (bearer/body yoluyla - grace
+  // mantığı AuthService'te, taşıma katmanından bağımsız).
+  it('grace_penceresinde_ardisik_iki_refresh_ikisi_de_basarili_ucuncusu_401', async () => {
+    const { refreshToken } = await signUpVerifyAndLogin();
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken })
+      .expect(401);
+  });
+
+  it('login_yaniti_refresh_ve_csrf_cookielerini_dogru_bayraklarla_set_eder', async () => {
+    const { loginResponse } = await signUpVerifyAndLogin();
+
+    const setCookieHeaders = extractSetCookieHeaders(loginResponse);
+    const refreshCookie = findCookie(setCookieHeaders, 'koqep_rt');
+    const csrfCookie = findCookie(setCookieHeaders, 'koqep_csrf');
+
+    expect(refreshCookie).toContain('HttpOnly');
+    expect(refreshCookie).toContain('Secure');
+    expect(refreshCookie).toMatch(/SameSite=None/i);
+    expect(refreshCookie).toContain('Path=/auth');
+
+    expect(csrfCookie).not.toContain('HttpOnly');
+    expect(csrfCookie).toContain('Secure');
+    expect(csrfCookie).toMatch(/SameSite=None/i);
+    expect(csrfCookie).toContain('Path=/');
+    // path:'/auth' YANLIŞ olurdu - JS'in bu cookie'yi /'dan hiç
+    // okuyamaması demekti (kullanıcının review'ında bulunan gerçek bug).
+    expect(csrfCookie).not.toContain('Path=/auth');
+  });
+
+  it('cookie_ve_dogru_csrf_header_ile_bodysiz_refresh_calisir', async () => {
+    const { loginResponse } = await signUpVerifyAndLogin();
+    const { rt, csrf } = extractCookieValues(loginResponse);
+
+    const refreshResponse = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', [`koqep_rt=${rt}`, `koqep_csrf=${csrf}`])
+      .set('X-Csrf-Token', csrf)
+      .send({})
+      .expect(201);
+
+    const body = refreshResponse.body as { accessToken: string };
+    expect(typeof body.accessToken).toBe('string');
+  });
+
+  it('csrf_header_eksik_veya_yanlisken_cookie_refresh_403_doner', async () => {
+    const { loginResponse } = await signUpVerifyAndLogin();
+    const { rt, csrf } = extractCookieValues(loginResponse);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', [`koqep_rt=${rt}`, `koqep_csrf=${csrf}`])
+      .send({})
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', [`koqep_rt=${rt}`, `koqep_csrf=${csrf}`])
+      .set('X-Csrf-Token', 'yanlis-deger')
+      .send({})
+      .expect(403);
+  });
+
+  it('logout_cookieleri_max_age_sifirla_temizler', async () => {
+    const { loginResponse } = await signUpVerifyAndLogin();
+    const { rt, csrf } = extractCookieValues(loginResponse);
+
+    const logoutResponse = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Cookie', [`koqep_rt=${rt}`, `koqep_csrf=${csrf}`])
+      .set('X-Csrf-Token', csrf)
+      .send({})
+      .expect(201);
+
+    const setCookieHeaders = extractSetCookieHeaders(logoutResponse);
+    expect(findCookie(setCookieHeaders, 'koqep_rt')).toMatch(/Max-Age=0/i);
+    expect(findCookie(setCookieHeaders, 'koqep_csrf')).toMatch(/Max-Age=0/i);
+  });
 });
+
+function extractSetCookieHeaders(response: request.Response): string[] {
+  const raw = response.headers['set-cookie'] as string[] | string | undefined;
+  if (!raw) {
+    return [];
+  }
+  return Array.isArray(raw) ? raw : [raw];
+}
+
+function findCookie(headers: string[], name: string): string {
+  const match = headers.find((header) => header.startsWith(`${name}=`));
+  if (!match) {
+    throw new Error(`e2e test: '${name}' cookie'si Set-Cookie'de bulunamadı.`);
+  }
+  return match;
+}
+
+function extractCookieValues(response: request.Response): {
+  rt: string;
+  csrf: string;
+} {
+  const headers = extractSetCookieHeaders(response);
+  const rtHeader = findCookie(headers, 'koqep_rt');
+  const csrfHeader = findCookie(headers, 'koqep_csrf');
+  return {
+    rt: rtHeader.split(';')[0].split('=')[1],
+    csrf: csrfHeader.split(';')[0].split('=')[1],
+  };
+}
 
 // M6 Slice A: kanıtlanabilir onay - yukarıdaki ana describe'un ValidationPipe
 // UYGULAMAMASI kasıtlı (kullanıcı adı üreticisi 41 karakter, MAX_USERNAME_

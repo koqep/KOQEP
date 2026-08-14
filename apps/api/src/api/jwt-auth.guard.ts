@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { AuthService } from '../services/auth.service';
+import { AuthService, INVALID_TOKEN_CODE } from '../services/auth.service';
 
 export interface AuthenticatedRequest extends Request {
   user: { sub: string; email: string };
@@ -20,7 +20,10 @@ export class JwtAuthGuard implements CanActivate {
     const token = extractBearerToken(request.headers.authorization);
 
     if (!token) {
-      throw new UnauthorizedException('Authorization header eksik.');
+      throw new UnauthorizedException({
+        code: INVALID_TOKEN_CODE,
+        message: 'Authorization header eksik.',
+      });
     }
 
     request.user = await this.authService.verifyAccessToken(token);

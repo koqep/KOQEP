@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
+import { INVALID_TOKEN_CODE } from './auth.service';
 
 export interface UserProfile {
   email: string;
@@ -28,7 +29,10 @@ export class UsersService {
       },
     });
     if (!user) {
-      throw new UnauthorizedException('Geçersiz veya süresi dolmuş token.');
+      throw new UnauthorizedException({
+        code: INVALID_TOKEN_CODE,
+        message: 'Geçersiz veya süresi dolmuş token.',
+      });
     }
     return user;
   }
