@@ -70,14 +70,15 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   ).toBeVisible({ timeout: 15000 });
 
   // Panel gerçekten kullanılmış durumu yansıtıyor mu - GET /invites'ın
-  // gerçek DB durumunu doğru gösterdiğinin kanıtı.
+  // gerçek DB durumunu doğru gösterdiğinin kanıtı. M7a Slice A'dan beri
+  // reload = çıkış DEĞİL (httpOnly refresh-token cookie'si sağ kalıyor,
+  // page.tsx mount'ta sessizce /auth/refresh dener) - tekrar login yerine
+  // oturumun hâlâ açık olduğu doğrulanıyor (bkz. e2e/session-persistence.spec.ts).
   await inviterPage.reload();
-  await inviterPage.getByLabel("e-posta").fill(DEV_USER_LEVELUP_EMAIL);
-  await inviterPage.getByLabel("şifre").fill(DEV_USER_LEVELUP_PASSWORD);
-  await inviterPage.getByRole("button", { name: "giriş yap" }).click();
   await expect(inviterPage.getByPlaceholder("mesaj yaz...")).toBeEnabled({
     timeout: 15000,
   });
+  await expect(inviterPage.getByLabel("e-posta")).toHaveCount(0);
   await inviterPage.getByRole("button", { name: "invites" }).click();
   await expect(
     inviterPage.getByRole("listitem").first().getByText("kullanıldı"),

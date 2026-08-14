@@ -36,11 +36,16 @@ test("mesaj_diger_sekmede_gercek_zamanli_gorunur_ve_reload_sonrasi_kalicidir", a
 
   await expect(pageB.getByText(content)).toBeVisible({ timeout: 10000 });
 
-  // Token bellek-içi tutulduğu için (ADR-0002) reload oturumu düşürür -
-  // bu yüzden tekrar giriş yapılıyor. Mesajın hâlâ orada olması artık
-  // gerçekten DB kalıcılığını kanıtlıyor, geçici local state'i değil.
+  // M7a Slice A'dan beri reload = çıkış DEĞİL (httpOnly refresh-token
+  // cookie'si sağ kalıyor, page.tsx mount'ta sessizce /auth/refresh dener) -
+  // tekrar login YAPILMIYOR, oturumun hâlâ açık olduğu doğrulanıyor.
+  // Mesajın hâlâ orada olması gerçekten DB kalıcılığını kanıtlıyor, geçici
+  // local state'i değil.
   await pageB.reload();
-  await loginAsDevUser(pageB);
+  await expect(pageB.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+    timeout: 15000,
+  });
+  await expect(pageB.getByLabel("e-posta")).toHaveCount(0);
   await expect(pageB.getByText(content)).toBeVisible({ timeout: 10000 });
 
   await contextA.close();
