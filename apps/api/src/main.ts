@@ -8,7 +8,14 @@ import { getAllowedOrigins } from './allowed-origins';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: getAllowedOrigins(process.env.WEB_ORIGIN) });
+  // credentials:true - M7a Slice A: httpOnly refresh-token/CSRF cookie'leri
+  // apps/web'in farklı origin'inden (WEB_ORIGIN) gönderilip alınabilsin diye.
+  // origin zaten somut bir dizi döndürüyor (wildcard değil), credentials
+  // ile birlikte kullanılması güvenli.
+  app.enableCors({
+    origin: getAllowedOrigins(process.env.WEB_ORIGIN),
+    credentials: true,
+  });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );

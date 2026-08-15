@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mockAuthSuccess } from "./support/auth-mocks";
 
 async function login(
   page: Page,
@@ -6,14 +7,7 @@ async function login(
   messageAuthorUsername: string,
   mutedUntil: string | null = null,
 ) {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await page.route("**/users/me", (route) =>
     route.fulfill({
       json: { email: "test@koqep.local", username: "test", role, mutedUntil },

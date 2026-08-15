@@ -1,16 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { mockAuthSuccess } from "./support/auth-mocks";
 
 test("daha_eski_mesajlari_yukle_butonu_calisir_ve_tukenince_kaybolur", async ({
   page,
 }) => {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await page.route("**/rooms", (route) =>
     route.fulfill({
       json: [{ id: "room-1", name: "test-oda", status: "active" }],

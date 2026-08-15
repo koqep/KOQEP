@@ -60,6 +60,18 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build --workspace=apps/web
       - run: npm run test:e2e --workspace=apps/web
+      # M7a Slice A sonrası bir CI koşusunda tek bir test hiçbir iz
+      # bırakmadan açıklanamayan şekilde başarısız oldu, sonra 240+ tekrar
+      # denemesinde bir daha hiç tekrarlanmadı - playwright.config.ts'in
+      # trace:'retain-on-failure'ı artık gerçek bir kanıt üretiyor, ama
+      # CI bunu YÜKLEMEZSE iş bitince siliniyor. Sadece başarısızlıkta.
+      - name: Playwright trace'ini başarısızlıkta yükle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace-test-web
+          path: test-results/
+          retention-days: 7
 
   test-fullstack-e2e:
     runs-on: ubuntu-latest
@@ -108,3 +120,10 @@ jobs:
       - run: npm run build --workspace=apps/web
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:fullstack --workspace=apps/web
+      - name: Playwright trace'ini başarısızlıkta yükle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace-test-fullstack-e2e
+          path: test-results/
+          retention-days: 7

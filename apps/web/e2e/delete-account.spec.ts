@@ -1,25 +1,8 @@
 import { test, expect } from "@playwright/test";
-
-async function mockRoomEndpoints(page: import("@playwright/test").Page) {
-  await page.route("**/rooms", (route) =>
-    route.fulfill({
-      json: [{ id: "room-1", name: "test-oda", status: "active" }],
-    }),
-  );
-  await page.route("**/rooms/*/messages", (route) =>
-    route.fulfill({ json: { messages: [], nextCursor: null } }),
-  );
-}
+import { mockAuthSuccess, mockRoomEndpoints } from "./support/auth-mocks";
 
 async function login(page: import("@playwright/test").Page) {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
 
   await page.goto("/");

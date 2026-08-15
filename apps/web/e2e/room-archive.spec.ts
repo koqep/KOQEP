@@ -1,16 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { mockAuthSuccess } from "./support/auth-mocks";
 
 test("arsivi_goster_toggle_ile_arsivlenmis_oda_gorunur_ve_salt_okunur_composer_gosterir", async ({
   page,
 }) => {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await page.route("**/rooms*", async (route) => {
     const url = new URL(route.request().url());
     const includeArchived = url.searchParams.get("includeArchived") === "true";

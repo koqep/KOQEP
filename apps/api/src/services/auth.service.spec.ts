@@ -399,18 +399,111 @@ describe('AuthService', () => {
 
       expect(updateSpy).toHaveBeenCalledWith({
         where: { id: stored.id },
-        data: { revokedAt: expect.any(Date) as Date },
+        data: { revokedAt: expect.any(Date) as Date, revokedByRotation: true },
       });
       const payload = jwt.verify<{ sub: string; email: string }>(accessToken);
       expect(payload.sub).toBe('user-1');
     });
 
-    it('reddeder_iptal_edilmis_refresh_tokeni', async () => {
+    it('reddeder_grace_penceresi_gecmis_iptal_edilmis_refresh_tokeni', async () => {
       const stored = {
         id: 'rt-1',
         tokenHash: 'x',
         userId: 'user-1',
-        revokedAt: new Date(),
+        // Grace penceresi 10sn - 60sn önce iptal edilmiş bir token artık
+        // kesin reddedilmeli.
+        revokedAt: new Date(Date.now() - 60 * 1000),
+        revokedByRotation: true,
+        graceReusedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        refreshToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+        } as unknown as PrismaService['refreshToken'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.refresh('token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('reddeder_logoutla_iptal_edilmis_tokeni_grace_penceresi_icinde_bile', async () => {
+      // M7a Slice A'nın gerçek e2e testinde bulunan bir bug'ın regresyon
+      // testi: grace toleransı SADECE rotasyon-kaynaklı revoke'lara
+      // uygulanmalı - logout'un (revokedByRotation:false) ANINDA/kesin
+      // iptali grace penceresi içinde bile ASLA tolere edilmemeli, yoksa
+      // "çıkış yaptım" ama token birkaç saniye daha çalışıyor olurdu.
+      const stored = {
+        id: 'rt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        revokedAt: new Date(Date.now() - 1000),
+        revokedByRotation: false,
+        graceReusedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        refreshToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+        } as unknown as PrismaService['refreshToken'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.refresh('token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('grace_penceresi_icinde_iptal_edilmis_tokeni_bir_kez_kabul_eder_ve_isaretler', async () => {
+      // M7a Slice A: çoklu-sekme yarışı - sekme A rotasyon yaptıktan hemen
+      // sonra sekme B AYNI (artık revoke edilmiş) token'la gelirse, grace
+      // penceresi içinde reddedilmek yerine bir kez daha kabul edilir.
+      const stored = {
+        id: 'rt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        revokedAt: new Date(Date.now() - 2000),
+        revokedByRotation: true,
+        graceReusedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const updateManySpy = jest.fn().mockResolvedValue({ count: 1 });
+      const prismaMock: Partial<PrismaService> = {
+        refreshToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+          updateMany: updateManySpy,
+          create: jest.fn().mockResolvedValue({}),
+        } as unknown as PrismaService['refreshToken'],
+        user: {
+          findUniqueOrThrow: jest
+            .fn()
+            .mockResolvedValue({ id: 'user-1', email: 'a@koqep.local' }),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+      const { accessToken } = await service.refresh('token');
+
+      expect(updateManySpy).toHaveBeenCalledWith({
+        where: { id: stored.id, graceReusedAt: null },
+        data: { graceReusedAt: expect.any(Date) as Date },
+      });
+      const payload = jwt.verify<{ sub: string; email: string }>(accessToken);
+      expect(payload.sub).toBe('user-1');
+    });
+
+    it('reddeder_grace_hakki_zaten_harcanmis_tokeni', async () => {
+      const stored = {
+        id: 'rt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        revokedAt: new Date(Date.now() - 2000),
+        revokedByRotation: true,
+        graceReusedAt: new Date(Date.now() - 1000),
         expiresAt: new Date(Date.now() + 1000 * 60),
       };
       const prismaMock: Partial<PrismaService> = {

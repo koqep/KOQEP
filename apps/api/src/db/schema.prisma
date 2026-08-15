@@ -97,6 +97,18 @@ model RefreshToken {
   createdAt DateTime  @default(now())
   expiresAt DateTime
   revokedAt DateTime?
+  // M7a Slice A: rotasyon-yarışı toleransı (çoklu sekme aynı httpOnly
+  // cookie'yi paylaşıyor, iki sekme aynı anda refresh ederse ikincisi
+  // normalde artık-revoke-edilmiş bu token'ı görür ve sebepsiz çıkışa
+  // düşerdi). revokedAt'ten sonraki kısa bir pencerede (REFRESH_TOKEN_
+  // REUSE_GRACE_MS) BİR KEZ daha kullanılmasına izin verilir - bu alan o
+  // tek kullanımı işaretler, sınırsız tekrar oynatmayı engeller.
+  graceReusedAt DateTime?
+  // Grace toleransı SADECE rotasyon-kaynaklı revoke'lara uygulanır - logout
+  // ve confirmPasswordReset'in bilerek ANINDA/kesin iptali bu alan false
+  // (varsayılan) kaldığı için hiç etkilenmez. Kullanıcı çıkış yaptığında
+  // "10 saniye daha çalışır" beklemez.
+  revokedByRotation Boolean @default(false)
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1,15 +1,15 @@
 import { test, expect } from "@playwright/test";
+import {
+  mockAuthRefreshUnavailable,
+  mockRoomEndpoints,
+} from "./support/auth-mocks";
 
-async function mockRoomEndpoints(page: import("@playwright/test").Page) {
-  await page.route("**/rooms", (route) =>
-    route.fulfill({
-      json: [{ id: "room-1", name: "test-oda", status: "active" }],
-    }),
-  );
-  await page.route("**/rooms/*/messages", (route) =>
-    route.fulfill({ json: { messages: [], nextCursor: null } }),
-  );
-}
+// Bu dosyadaki HER test page.goto("/") çağırıyor - page.tsx'in mount-time
+// sessiz-refresh bootstrap'ı (M7a Slice A) bu yüzden her testte tetikleniyor,
+// mocklanmazsa gerçek ağa düşer/asılı kalır.
+test.beforeEach(async ({ page }) => {
+  await mockAuthRefreshUnavailable(page);
+});
 
 test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", async ({
   page,

@@ -1,25 +1,12 @@
 import { test, expect } from "@playwright/test";
-
-async function mockRoomEndpoints(page: import("@playwright/test").Page) {
-  await page.route("**/rooms", (route) =>
-    route.fulfill({
-      json: [{ id: "room-1", name: "test-oda", status: "active" }],
-    }),
-  );
-  await page.route("**/rooms/*/messages", (route) =>
-    route.fulfill({ json: { messages: [], nextCursor: null } }),
-  );
-}
+import {
+  mockAuthSuccess,
+  mockAuthRefreshUnavailable,
+  mockRoomEndpoints,
+} from "./support/auth-mocks";
 
 async function loginWithoutTotp(page: import("@playwright/test").Page) {
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      json: {
-        accessToken: "fake-access-token",
-        refreshToken: "fake-refresh-token",
-      },
-    }),
-  );
+  await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
 
   await page.goto("/");
@@ -49,6 +36,7 @@ async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
       },
     });
   });
+  await mockAuthRefreshUnavailable(page);
   await mockRoomEndpoints(page);
 
   await page.goto("/");
