@@ -64,6 +64,7 @@ model User {
   blocksMade              Block[]                  @relation("Blocker")
   blocksReceived          Block[]                  @relation("Blocked")
   createdRooms            Room[]                   @relation("RoomCreator")
+  roomMemberships         RoomMember[]
   reputationEvents        ReputationEvent[]
   reportsFiled            Report[]                 @relation("ReportReporter")
   reportsAgainst          Report[]                 @relation("ReportedUser")
@@ -182,6 +183,25 @@ model Room {
 
   messages       Message[]
   moderationLogs ModerationAuditLog[]
+  members        RoomMember[]
+}
+
+// M7a Slice B (ADR-0009): yayın/liste scoping için üyelik - erişim kontrolü
+// DEĞİL, herhangi bir authed kullanıcı hâlâ herhangi bir aktif odaya isimle
+// yazabilir/okuyabilir (messages.service.ts). Sadece kimin gerçek-zamanlı
+// yayın aldığını ve "benim odalarım" listesinde neyin göründüğünü belirler.
+model RoomMember {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([roomId])
 }
 
 model Message {

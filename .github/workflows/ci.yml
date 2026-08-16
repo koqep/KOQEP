@@ -42,6 +42,7 @@ jobs:
       - run: npm run db:migrate:deploy --workspace=apps/api
       - run: npm run db:seed --workspace=apps/api
       - run: npm run db:backfill-totp-secrets --workspace=apps/api
+      - run: npm run db:backfill-room-members --workspace=apps/api
       - run: npm run test --workspace=apps/api
       - run: npm run test:e2e --workspace=apps/api
       - run: npm run build --workspace=apps/api
@@ -116,6 +117,7 @@ jobs:
       - run: npm run db:migrate:deploy --workspace=apps/api
       - run: npm run db:seed --workspace=apps/api
       - run: npm run db:backfill-totp-secrets --workspace=apps/api
+      - run: npm run db:backfill-room-members --workspace=apps/api
       - run: npm run build --workspace=apps/api
       - run: npm run build --workspace=apps/web
       - run: npx playwright install --with-deps chromium
