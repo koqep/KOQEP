@@ -3,51 +3,44 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-14
-**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A (oturum kalıcılığı) TAMAMLANDI, dal `m7a/slice-a-session-persistence` (`docs/500-user-scope-review` dalının ÜSTÜNDE kurulu, o dal henüz main'e merge edilmedi — merge sırası buna bağımlı). M6 main'e MERGE EDİLDİ (A-G). M0-M6 TAMAMLANDI.
+**Son güncelleme:** 2026-08-15
+**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A + Slice B TAMAMLANDI ve main'e MERGE EDİLDİ (kullanıcı production'da doğruladı). Dal `m7a/slice-b-room-member` henüz yerelde, push kullanıcının onayına kalıyor. M0-M6 TAMAMLANDI.
 
 ## Şu an ne çalışıyor
 - **M0-M6 TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-08-12 — 500-kullanıcı kapsam turu:** hedef 20-30'dan 500'e çıktı, M7 **M7a** (kapı açma eşiği, ~98-131h/4-5.5hafta) / **M7b** (cila, ~47-67h/2-3hafta) 'ya bölündü + Faz 0→1(50)→2(150)→3(500) aşamalı davet planı. ADR taraması: ADR-0002 dışında hiçbir ADR yarım kalmamış. Reaksiyon/DM/mesaj-arama M8'e BİLİNÇLİ ERTELEME (sessiz kayma değil). Detay: `docs/BACKLOG.md` "F. 500-KULLANICI KAPSAM TURU", `M7a-scale-gate.md`'nin "Aşamalı davet planı" tablosu.
-- **2026-08-14 — M7a Slice A (oturum kalıcılığı) TAMAMLANDI.** `ADR-0002`'nin httpOnly-cookie kararı bitirildi — SADECE refresh token cookie'ye taşındı (`koqep_rt`, `path:/auth`), access token bearer'da kaldı (bu yüzden `jwt-auth.guard.ts`/WS gateway'e HİÇ dokunulmadı). Double-submit CSRF (`koqep_csrf`, `path:/`) + çoklu-sekme rotasyon-yarışı için backend grace-period (10sn + tek kullanım, SADECE rotasyon-revoke'larında — logout ASLA tolere edilmez) + `INVALID_TOKEN_CODE` ayrımı (aşağıya bkz.). Tam tasarım/gerekçe: ADR-0002 Addendum. 202 birim+104 e2e (apps/api) + 67 Playwright (apps/web) testi geçti.
+- **2026-08-12 — 500-kullanıcı kapsam turu:** hedef 20-30'dan 500'e çıktı, M7 **M7a** (kapı açma eşiği) / **M7b** (cila) 'ya bölündü + Faz 0→1(50)→2(150)→3(500) aşamalı davet planı. Detay: `docs/BACKLOG.md` "F. 500-KULLANICI KAPSAM TURU".
+- **2026-08-14 — M7a Slice A (oturum kalıcılığı) TAMAMLANDI, main'e merge edildi.** SADECE refresh token httpOnly cookie'ye taşındı (`koqep_rt`, `path:/auth`), access token bearer'da kaldı. Double-submit CSRF + çoklu-sekme rotasyon grace-period. Tam tasarım: ADR-0002 Addendum.
+- **2026-08-15 — M7a Slice B (`RoomMember` üyelik modeli) TAMAMLANDI.** WS broadcast fan-out artık üyelik-scoped (500 kullanıcı kapasite hedefi). Üç-kaynaklı backfill (çekirdek+kurucu+katılımcı), `scope=mine/discoverable/all` + join/leave endpoint'leri, lifecycle bildirimleri global broadcast'e geçti. Tam tasarım: ADR-0009. 209 birim+111 e2e (apps/api, iki koşu) + 70 Playwright (apps/web) testi geçti.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M7a Slice A implementasyonu bitti, doğrulandı, dokümante edildi.
-- **Sonraki adım:** Kullanıcı önce `docs/500-user-scope-review`, sonra `m7a/slice-a-session-persistence` dalını merge ederse, M7a'nın bir sonraki dilimi (muhtemelen Slice B — `RoomMember`, en büyük/en riskli) plan-modu turuyla başlar.
+- **Görev:** M7a Slice B implementasyonu bitti, doğrulandı, dokümante edildi. Push kullanıcının onayında.
+- **Sonraki adım:** Slice B main'e merge edilip production'da doğrulanınca, M7a'nın bir sonraki dilimi (Slice C — self-servis moderatör atama) plan-modu turuyla başlar.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
-- Rate limit sayıları gözden geçirildi (M6 Slice B) — gerçek 5 aktif limit 20-30 kişilik ölçekte yeterli bulundu, DEĞİŞTİRİLMEDİ (detay: milestone dosyası Slice B notları). M7b'de Faz 1'in gerçek trafiğiyle tekrar gözden geçirilecek.
 - `User.role` alanı var, erişim kontrolü kodda çalışıyor ama production'da henüz kimse `moderator` değil — founder'ın kendi satırını elle SQL ile ayarlaması hâlâ öneriliyor (M7a Slice C self-servis atama getirecek).
+- `GET /rooms?scope=all` (moderasyon) sayfalanmıyor — somut tetikleyici `docs/BACKLOG.md` A16'da.
 
 ## Yakın zamanda alınan kararlar
-- DB hosting: Render Postgres, Internal Database URL — Neon/Supabase değil.
-- WS transport: Socket.IO — bkz. `docs/decisions/ADR-0007`.
-- Access token bellek-içi (React state), refresh token httpOnly cookie'de (`koqep_rt`, sadece `/auth` path'i) — bkz. ADR-0002 + 2026-08-14 Addendum'u.
-- 2026-07-29 — `SEED_DEV_FIXTURES` opt-in env'i `NODE_ENV`'e bilerek güvenilmedi; sıfır-kullanıcılı DB bootstrap boşluğu `docs/THREAT-MODEL.md` Open items'a somut tetikleyiciyle eklendi.
-- 2026-08-12 — ADR-0008: `totpSecret` şifreleme anahtar-kaybı KALICI (kurtarılamaz), rotasyon yolu YOK (bilinçli, gerekirse ikinci anahtar + re-encryption script'i gerekir) — ikisi de sessiz varsayım değil, ADR'de açıkça yazılı.
-- 2026-08-14 — ADR-0002 Addendum: refresh-token rotasyon grace-period'ı (10sn+tek kullanım) SADECE `revokedByRotation:true` satırlarda geçerli — logout/confirmPasswordReset'in ANINDA iptali hiç etkilenmez, bilinçli ve dar bir taviz.
+- Access token bellek-içi (React state), refresh token httpOnly cookie'de — bkz. ADR-0002 + Addendum.
+- 2026-08-12 — ADR-0008: `totpSecret` şifreleme anahtar-kaybı KALICI, rotasyon yolu YOK (bilinçli, sessiz varsayım değil).
+- 2026-08-15 — ADR-0009: `RoomMember` üyelik bir yayın/liste-scoping mekanizması, erişim kontrolü DEĞİL — üye olmayan bir kullanıcı hâlâ herhangi bir aktif odaya isimle yazabilir/okuyabilir, bilerek.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
 - `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
 - "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula.
-- CI'da job-seviyesi env değişkenleri JOB'LAR ARASI miras YOK — her job'ın kendi `env:` bloğu var, yeni bir env var eklerken HER job'ı tek tek kontrol et.
-- Prisma client üretimi TEK kaynaktan: `apps/api/package.json`'daki `postinstall` script'i. Render servisi Blueprint'e bağlı DEĞİL — `render.yaml` değişiklikleri canlıya OTOMATİK yansımaz; bir env var'ın DEĞERİNİ değiştirmek de yansımayabilir, sadece tamamen SİLMEK işe yaradı.
+- CI'da job-seviyesi env değişkenleri JOB'LAR ARASI miras YOK — her job'ın kendi `env:` bloğu var.
+- Render servisi Blueprint'e bağlı DEĞİL — `render.yaml`/env var DEĞİŞİKLİĞİ canlıya otomatik yansımaz, sadece env var'ı tamamen SİLMEK güvenilir çalıştı.
 - `.env`/`.env.*` dosyaları `Read`/`cat` için engelli; `@prisma/client` import edilince `.env`'i ayrıca sessizce (yeniden) yükler.
-- `resend` SDK hata durumunda fırlatmaz, `{data, error}` döner — elle kontrol şart.
-- **Sadece HTTP status koduna (`401` vb.) göre "retry et"/"oturumu düşür" gibi otomatik davranış tetikleme** — bu kod tabanında AYNI status kod hem "token geçersiz" hem TOTP/şifre gibi domain hataları için kullanılıyor (`totp.service.ts`, `deleteAccount`). M7a Slice A'da blanket 401-retry gerçek hataları sessizce yutan bir bug'a yol açtı, kendi Playwright süiti yakaladı — düzeltme: sadece `code:'INVALID_TOKEN'` taşıyan 401'lerde retry (`auth.service.ts`'in `INVALID_TOKEN_CODE`'u).
-- Çift cookie kullanılan bir CSRF (double-submit) tasarımında **her cookie'nin `path`'i kendi erişim ihtiyacına göre ayrı seçilir** — JS'in okuyup header'a ekleyeceği cookie MUTLAKA `path:'/'` olmalı (dar bir path JS'in onu bazı sayfalardan hiç görememesi demek), httpOnly olan (JS'in hiç görmesi gerekmeyen) daha dar bir path'e (`/auth`) sahip olabilir.
-- `apps/web/e2e/`'de artık paylaşılan bir fixture modülü var: `e2e/support/auth-mocks.ts` (`mockAuthSuccess`/`mockAuthRefreshUnavailable`/`mockRoomEndpoints`) — yeni bir auth-akışı testi yazarken kendi `page.route` mock'unu kopyalamak yerine BUNU kullan/genişlet, aksi halde 3. kez aynı 14-17 dosyaya dokunma sorunu tekrarlanır.
-- Sıfır kullanıcılı bir DB'de `/auth/signup` kendi kendini başlatamaz — ilk kullanıcı her zaman elle `INSERT INTO "User"` + lokal `argon2.hash` gerektirir.
-- Bash tool `git push`'u kullanıcının izin ayarları sessizce "denied" döndürebilir — kullanıcıdan onaylamasını iste, sessizce vazgeçme. Yerel Postgres Docker container'ı için önce `docker ps` ile kontrol et.
+- **Sadece HTTP status koduna göre otomatik davranış tetikleme** — AYNI status kod hem "token geçersiz" hem domain hataları için kullanılıyor; sadece `code:'INVALID_TOKEN'` taşıyan 401'lerde retry.
+- `apps/web/e2e/support/auth-mocks.ts` paylaşılan fixture — yeni auth-akışı testi yazarken kopyalamak yerine BUNU kullan/genişlet.
+- Bash tool `git push`'u kullanıcının izin ayarları sessizce "denied" döndürebilir — kullanıcıdan onaylamasını iste.
 - `prisma migrate dev` migration dosyasını hemen uyguluyor — elle SQL eklemek için önce `--create-only` kullan.
-- `@nestjs/throttler` iki tuzağı: (1) global+route-özel guard aynı `@Throttle()` metadata'sını AYRI sayaçla okur. (2) `blockDuration=0` bloğu sessizce sıfırlar — hep `ttl` ver.
-- NestJS WS gateway'lerinde: varsayılan exception filtresi `WsException` DIŞINDAKİ her şeyi jenerik hataya çevirir; handler `Promise<void>` dönerse ack tetiklenmez; client `.emit` disconnect'te ack'i kaybeder, `.timeout()` şart.
-- Plan modundayken `ExitPlanMode` SADECE "implementasyona başla" onayı DEĞİL — plan dosyası dışındaki HER dosyayı düzenlemenin (docs dahil) tek kilidi.
-- `Message` interface'i İKİ ayrı dosyada tanımlı (`MessageItem.tsx`/`ChatPanel.tsx`) — birini değiştirirsen diğerini de kontrol et.
-- Test harness'ın üretim davranışını EKSİK yansıttığı iki durum: (1) `apps/web` Playwright `next start` kullanıyor — kod değişikliğinden SONRA `npm run build` şart. (2) `apps/api`'nin e2e `TestingModule`'ü `ValidationPipe`'ı ÇALIŞTIRMAZ — kendi dosyanda test etmek istiyorsan elle ekle.
-- Playwright: `page.route("**/rooms", ...)` sondaki `**` OLMADIĞI için query-string'li çağrıları eşleştirmez; `getByRole(...,{name:"sil"})` `exact:true` OLMADAN substring eşleşir.
-- Windows'ta `npx playwright test` bazen `.gitignore`'a `test-results/` satırını UTF-16 ile ekler — commit'e girmeden `git checkout -- .gitignore` ile geri al.
+- NestJS WS gateway'lerinde: `WsException` DIŞINDAKİ her şey jenerik hataya çevrilir; `.emit` disconnect'te ack'i kaybeder, `.timeout()` şart.
+- Plan modundayken `ExitPlanMode` SADECE "implementasyona başla" onayı DEĞİL — plan dosyası dışındaki HER dosyayı düzenlemenin tek kilidi.
+- Test harness üretim davranışını EKSİK yansıtıyor: (1) `apps/web` Playwright `next start` kullanıyor — kod değişikliğinden SONRA `npm run build` şart, aksi halde eski build sessizce servis edilir. (2) `apps/api`'nin e2e `TestingModule`'ü `ValidationPipe`'ı ÇALIŞTIRMAZ.
+- Playwright: `page.route("**/rooms", ...)` sondaki `**` OLMADIĞI için query-string'li çağrıları eşleştirmez (ayrı bir route/predicate gerekir); `getByText`/`getByRole` `exact:true` OLMADAN substring eşleşir — yeni bir buton/başlık metni eklerken mevcut metinlerle substring çakışmasını kontrol et (`room-moderation.spec.ts`'in `getByText("odalar")`'ı "odaları keşfet" butonuyla ÇAKIŞTI, M7a Slice B).
+- Birden fazla bağımsız sorguyu (`Promise.all`) tek bir `createMany`'e yazan bir backfill script'i, PARALEL e2e worker'ların AYNI DB'ye eşzamanlı yazdığı testlerde okuma-yazma arasında FK ihlaline çarpabilir (M7a Slice B'de gerçekleşti) — hatayı yakalayıp geçerli id'lere göre filtreleyip retry et, YUTMA. Aynı sebeple böyle bir script'in idempotentlik testinde "ikinci koşu global sayım sıfır" assert ETME (yarış-güvenli değil) — belirli bir satırın `createdAt`'inin değişmediğini kontrol et (`backfillTotpSecrets`'ın kendi deseni).

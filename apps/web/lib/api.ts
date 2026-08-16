@@ -320,6 +320,46 @@ export function listRooms(
   return authedGetJson<Room[]>(`/rooms${query}`, accessToken);
 }
 
+// M7a Slice B (ADR-0009): moderasyon paneli üyelikten bağımsız TÜM odaları
+// yönetebilmeli - scope=all, listRooms'un (artık üyelik-scoped) "mine"
+// çağrısından AYRI tutuluyor ki switcher'ın kodu hiç değişmesin.
+export function listAllRoomsForModeration(
+  accessToken: string,
+  includeArchived?: boolean,
+): Promise<Room[]> {
+  const query = includeArchived
+    ? "?scope=all&includeArchived=true"
+    : "?scope=all";
+  return authedGetJson<Room[]>(`/rooms${query}`, accessToken);
+}
+
+export interface RoomPage {
+  rooms: Room[];
+  nextCursor: string | null;
+}
+
+export function listDiscoverableRooms(
+  accessToken: string,
+  cursor?: string,
+): Promise<RoomPage> {
+  const params = new URLSearchParams({ scope: "discoverable" });
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  return authedGetJson<RoomPage>(`/rooms?${params.toString()}`, accessToken);
+}
+
+export function joinRoom(accessToken: string, roomId: string): Promise<Room> {
+  return authedPostJson<Room>(`/rooms/${roomId}/join`, accessToken);
+}
+
+export async function leaveRoom(
+  accessToken: string,
+  roomId: string,
+): Promise<void> {
+  await authedPostJson(`/rooms/${roomId}/leave`, accessToken);
+}
+
 export function createRoom(
   accessToken: string,
   name: string,

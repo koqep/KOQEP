@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Prisma, RoomStatus } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { SocketRegistryService } from './socket-registry.service';
@@ -6,6 +10,12 @@ import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
 const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 const DELETE_AFTER_MS = 60 * 24 * 60 * 60 * 1000;
+// M7a Slice B: keşfedilebilir-odalar listesi, üye olmadığın TÜM aktif
+// odaları döner - bu dilimi motive eden ölçekte (yüzlerce oda) sınırsız
+// olamaz. getRecentMessages'ın (messages.service.ts) DEFAULT_PAGE_SIZE'ıyla
+// AYNI cursor+limit deseni, farklı bir sayı (oda satırları mesaj
+// satırlarından çok daha küçük/az).
+const DEFAULT_ROOM_PAGE_SIZE = 30;
 
 export interface RoomSummary {
   id: string;
@@ -14,6 +24,19 @@ export interface RoomSummary {
   lastActivityAt: Date;
   status: RoomStatus;
 }
+
+export interface RoomPage {
+  rooms: RoomSummary[];
+  nextCursor: string | null;
+}
+
+const ROOM_SUMMARY_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  lastActivityAt: true,
+  status: true,
+} as const;
 
 interface PurgeCandidate {
   id: string;
@@ -44,20 +67,115 @@ export class RoomsService {
   // `deleted` durumu hiçbir kod yolunda gerçekten yazılmıyor (ADR-0006:
   // silme gerçek bir row hard-delete, status flip değil) - filtre yine de
   // tam tip güvenliği için `RoomStatus`'un üç değerini de kapsıyor.
-  async listRooms(includeArchived = false): Promise<RoomSummary[]> {
+  //
+  // M7a Slice B: bu artık "benim odalarım" - normal switcher'ın ÇAĞIRDIĞI
+  // (ADR-0009) tek metod, sadece DÖNEN VERİNİN anlamı üyelik-scoped oldu.
+  // Moderasyon paneli için TÜM odalar `listAllRooms`'ta, keşif için
+  // üye-olunmayan odalar `listDiscoverableRooms`'ta.
+  async listRooms(
+    userId: string,
+    includeArchived = false,
+  ): Promise<RoomSummary[]> {
+    return this.prisma.room.findMany({
+      where: {
+        status: includeArchived ? { in: ['active', 'archived'] } : 'active',
+        members: { some: { userId } },
+      },
+      select: ROOM_SUMMARY_SELECT,
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  // Bugünkü, üyelikten TAMAMEN bağımsız davranış - `RoomModerationSection`
+  // moderatörün üyeliğinden bağımsız TÜM odaları yönetebilmesi için
+  // bunu çağırıyor. Erişim seviyesi `GET /rooms`'un ZATEN bugün sahip
+  // olduğu seviyeyle birebir aynı (JwtAuthGuard dışında bir kısıtlama
+  // YOK) - yeni bir moderatör-kontrolü eklemek bu dilimin amacıyla
+  // ilgisiz scope creep olurdu.
+  async listAllRooms(includeArchived = false): Promise<RoomSummary[]> {
     return this.prisma.room.findMany({
       where: {
         status: includeArchived ? { in: ['active', 'archived'] } : 'active',
       },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        lastActivityAt: true,
-        status: true,
-      },
+      select: ROOM_SUMMARY_SELECT,
       orderBy: { name: 'asc' },
     });
+  }
+
+  // Üye olunmayan aktif odalar - `includeArchived`'ı BİLEREK yok sayıyor
+  // (ölü bir odayı "keşfetmenin" anlamı yok). Sayfalı: getRecentMessages'ın
+  // (messages.service.ts) AYNI cursor+limit deseni - Room.name @unique
+  // olduğu için cursor alanı olarak doğrudan kullanılabiliyor. Sıralama
+  // BİLEREK alfabetik kalıyor (aktiviteye göre sıralama M7b Slice E'ye
+  // scoped, burada mekanik olarak absorbe edilmiyor - o dilimin kendi
+  // dosyasında açık bir bağımlılık notu var).
+  async listDiscoverableRooms(
+    userId: string,
+    cursor?: string,
+    limit: number = DEFAULT_ROOM_PAGE_SIZE,
+  ): Promise<RoomPage> {
+    const rows = await this.prisma.room.findMany({
+      where: { status: 'active', members: { none: { userId } } },
+      select: ROOM_SUMMARY_SELECT,
+      orderBy: { name: 'asc' },
+      take: limit + 1,
+      ...(cursor ? { cursor: { name: cursor }, skip: 1 } : {}),
+    });
+
+    const hasMore = rows.length > limit;
+    const rooms = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? rooms[rooms.length - 1].name : null;
+
+    return { rooms, nextCursor };
+  }
+
+  // Idempotent: zaten üyeyse yeni bir satır YARATMADAN mevcut olanı döner
+  // (409 değil - ürünün düşük-sürtünmeli kimliğiyle tutarlı, "katıl"
+  // butonuna iki kez basmak bir hata değil). `createRoom`'un kurucu için
+  // yaptığı AYNI anlık-soket-join'i burada da uygulanıyor - reconnect
+  // beklemeden gerçek zamanlı teslimat.
+  async joinRoom(userId: string, roomId: string): Promise<RoomSummary> {
+    const room = await this.prisma.room.findUniqueOrThrow({
+      where: { id: roomId },
+      select: ROOM_SUMMARY_SELECT,
+    });
+
+    await this.prisma.roomMember.upsert({
+      where: { userId_roomId: { userId, roomId } },
+      create: { userId, roomId },
+      update: {},
+    });
+
+    for (const socket of this.socketRegistry.getSockets(userId)) {
+      await socket.join(roomId);
+    }
+
+    return room;
+  }
+
+  // Çekirdek odalar (CORE_ROOM_NAMES) AYRILAMAZ - herkesin ortak buluşma
+  // noktası, yanlışlıkla ayrılmak (geri dönüşü olmasa bile - tekrar
+  // keşfedilebilir-odalar üzerinden katılınabilir) kafa karıştırıcı bir
+  // kenar durum için hiçbir gerçek talep yokken inşa edilmiş bir risk.
+  // Zaten üye değilse idempotent (sessizce no-op) - `deleteMany` doğal
+  // olarak bunu sağlıyor, ayrı bir "zaten değilsin" kontrolüne gerek yok.
+  // Açık soketi ANINDA odadan çıkarıyor - aksi halde bir sonraki
+  // reconnect'e kadar yayın almaya devam ederdi, "ayrılmanın" hiçbir
+  // anlamı kalmazdı.
+  async leaveRoom(userId: string, roomId: string): Promise<void> {
+    const room = await this.prisma.room.findUniqueOrThrow({
+      where: { id: roomId },
+      select: { name: true },
+    });
+    if ((CORE_ROOM_NAMES as readonly string[]).includes(room.name)) {
+      throw new ForbiddenException('Çekirdek bir odadan ayrılamazsın.');
+    }
+
+    await this.prisma.roomMember.deleteMany({ where: { userId, roomId } });
+
+    for (const socket of this.socketRegistry.getSockets(userId)) {
+      await socket.leave(roomId);
+    }
   }
 
   // M3 Slice A: oluşturan kullanıcı zaten bağlıysa (normal durum - odayı
@@ -84,15 +202,18 @@ export class RoomsService {
 
     let room: RoomSummary;
     try {
+      // M7a Slice B: nested create - kurucunun üyeliği Room satırıyla
+      // ATOMIK olarak yaratılıyor (ADR-0009, createRoom'un ileriye dönük
+      // otomatik-üyelik davranışı, backfill'in geriye dönük "oda kurucuları"
+      // kaynağıyla simetrik).
       room = await this.prisma.room.create({
-        data: { name, description, creatorId: userId },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          lastActivityAt: true,
-          status: true,
+        data: {
+          name,
+          description,
+          creatorId: userId,
+          members: { create: { userId } },
         },
+        select: ROOM_SUMMARY_SELECT,
       });
     } catch (error) {
       if (isUniqueConstraintError(error, 'name')) {

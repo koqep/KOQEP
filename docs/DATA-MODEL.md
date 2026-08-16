@@ -3,13 +3,15 @@
 *Şemanın kendisi migration dosyalarında yaşar; burada varlıklar, ilişkiler ve neden-sonuç ilişkileri tutulur.*
 
 ## Entities
-*Yedi çekirdek varlık: User, Invite, Room, Message, MessageEdit, ReputationEvent, ReadCursor. Presence kalıcı değil, in-process yaşar.*
+*Sekiz çekirdek varlık: User, Invite, Room, RoomMember, Message, MessageEdit, ReputationEvent, ReadCursor. Presence kalıcı değil, in-process yaşar.*
 
 **User** — an account. Email, optional TOTP secret (encrypted at rest, field-level AES-256-GCM — ADR-0008), a free-text `region` field (informational only, never used for access or filtering — ADR-0006), `inviter_id` (self-referential, nullable only for the root account), and `total_xp`/`level` — a materialized/cached derivation of the `ReputationEvent` log (ADR-0004), never the source of truth itself; both default to `0` for every account, including the founder's own (M4 Slice A/C).
 
 **Invite** — a code issued by a user on level-up (PRD: 1 per level, starting at Level 1). `used_by` is nullable until consumed.
 
 **Room** — either core (fixed set, e.g. #general, #meta) or user-created. `status` moves one-way: active → archived → deleted (ADR-0006). `last_message_at` drives the 14-day archive timer; `last_viewed_at` drives the 60-day delete timer once archived.
+
+**RoomMember** — `(user, room)` join row, `@@unique([userId, roomId])`. Scopes WS broadcast fan-out and the "mine"/"discoverable" room lists at 500-user scale (ADR-0009) — **not** an access-control mechanism: any authenticated user can still read/post to any active room by name regardless of membership. Backfilled once (core rooms × all users, room creators, real message participants) for pre-existing data; silent "lurkers" (read but never posted) are a known, accepted gap — no per-user view-tracking exists today.
 
 **Message** — belongs to a room. `author_id` becomes null only when its account is anonymized on deletion (ADR-0005) — content itself is never deleted for that reason.
 
@@ -24,6 +26,7 @@
 
 - User 1—N Invite (as issuer)
 - User 0/1—1 User (`inviter_id`, self-referential tree — plain adjacency list, no ltree/closure table per Phase 1)
+- Room N—M User (via RoomMember)
 - Room 1—N Message
 - Message 1—N MessageEdit
 - User 1—N ReputationEvent

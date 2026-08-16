@@ -22,7 +22,7 @@ One deployable NestJS service owns both the token-based REST API and the WebSock
 
 **Invite signup:** invite code validated → account created → access + refresh tokens issued (ADR-0002) → client stores tokens, not a server session cookie.
 
-**Send message:** client sends over WS → handler validates + delegates to service → service writes to DB, appends an XP event (ADR-0004) → service broadcasts to room subscribers in-process.
+**Send message:** client sends over WS → handler validates + delegates to service → service writes to DB, appends an XP event (ADR-0004) → service broadcasts to room subscribers in-process. "Room subscribers" is now literal (ADR-0009, M7a Slice B): a socket only joins the WS rooms it holds `RoomMember` rows for, scoping fan-out instead of every open connection — membership is a broadcast/list-scoping mechanism, not access control, so any authenticated user can still read/post to any active room by name regardless of membership.
 
 **Room lifecycle:** user creates a room (rate limit TBD, open question from PRD) → 14 days with no new messages → auto-archived (read-only, hidden from active list) → 60 more days with zero views while archived → hard-deleted (ADR-0006).
 

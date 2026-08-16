@@ -18,6 +18,7 @@ import { SocketRegistryService } from './socket-registry.service';
 import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
+import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -110,6 +111,21 @@ export class AuthService {
             termsAcceptedAt: new Date(),
           },
         });
+
+        // M7a Slice B (ADR-0009): yeni kullanıcı çekirdek odalara otomatik
+        // üye olur - bugünkü örtük "herkes general'de başlıyor"
+        // davranışını AYNEN koruyor, yeni bir özellik değil. Backfill
+        // script'inin mevcut kullanıcılar için yaptığı AYNI şeyin ileriye
+        // dönük hali.
+        const coreRooms = await tx.room.findMany({
+          where: { name: { in: [...CORE_ROOM_NAMES] } },
+          select: { id: true },
+        });
+        if (coreRooms.length > 0) {
+          await tx.roomMember.createMany({
+            data: coreRooms.map((room) => ({ userId, roomId: room.id })),
+          });
+        }
 
         // revokedAt: null - findRedeemableInvite'ın kontrolünden SONRA ama
         // bu transaction'dan ÖNCE bir moderatörün daveti revoke etmesi

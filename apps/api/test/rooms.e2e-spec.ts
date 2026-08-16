@@ -8,9 +8,24 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
+import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
+}
+
+function neverReceives(
+  socket: Socket,
+  event: string,
+  ms = 500,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(true), ms);
+    socket.once(event, () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
 }
 
 describe('Room creation (e2e)', () => {
@@ -183,11 +198,16 @@ describe('Room creation (e2e)', () => {
     expect(message.content).toBe(content);
   }, 10000);
 
-  it('oda_olusturulduktan_sonra_baglanan_baska_bir_kullanici_da_gercek_zamanli_alir', async () => {
-    // handleConnection'ın eskiden sadece CORE_ROOM_NAMES sorguladığı,
-    // kullanıcı odalarına hiç katılmadığı açığı doğrudan doğruluyor -
-    // gözlemci odanın oluşmasından SONRA bağlanıyor (sayfa yenileme/yeniden
-    // bağlanma senaryosu), "tüm aktif odalar"a katılmalı.
+  it('odaya_hic_uye_olmamis_ilgisiz_bir_gozlemci_gercek_zamanli_yayin_ALMAZ', async () => {
+    // M7a Slice B (ADR-0009): bu testin ESKİ hali tam tersini kanıtlıyordu -
+    // "tüm aktif odalar"a otomatik katılma açığının kasıtlı kanıtıydı
+    // (handleConnection'ın eskiden sadece CORE_ROOM_NAMES sorguladığı M3
+    // açığı). Üyelik modeliyle bu davranış artık BİLEREK TERS ÇEVRİLDİ -
+    // ilgisiz bir gözlemci (hiç üye olmadığı) bir odada olup biteni
+    // görmemeli. Mesajı GÖNDEREN kişi de gözlemcinin kendisi - erişim
+    // kontrolü hâlâ yok (herhangi bir authed kullanıcı isimle yazabilir,
+    // ADR-0009), ama kendi mesajını KENDİ ekranında görmüyor çünkü join'li
+    // değil (bilerek kabul edilmiş, ADR-0009'da belgelenen kenar durum).
     const creator = await createTestUser();
     const observer = await createTestUser();
 
@@ -204,11 +224,48 @@ describe('Room creation (e2e)', () => {
     await waitForEvent(observerSocket, 'ready');
 
     const content = `sonradan-baglanan-${randomUUID()}`;
+    const neverReceivedPromise = neverReceives(observerSocket, 'message:new');
+    observerSocket.emit('message:send', { content, roomName: room.name });
+
+    expect(await neverReceivedPromise).toBe(true);
+
+    // Mesaj GERÇEKTEN oluştu (erişim kontrolü yok, ADR-0009) - sadece
+    // gönderenin KENDİ ekranına gerçek zamanlı ulaşmadı. Odayla birlikte
+    // afterAll'da temizleniyor (createdRoomIds), ayrı bir izlemeye gerek yok.
+    const row = await prisma.message.findFirst({ where: { content } });
+    expect(row).not.toBeNull();
+  }, 10000);
+
+  it('odaya_gercekten_uye_olan_bir_kullanici_gercek_zamanli_yayin_ALIR', async () => {
+    // Yukarıdaki testin simetrik kanıtı - POST /rooms/:id/join ile GERÇEKTEN
+    // üye olan bir kullanıcı, üyelik-scoped handleConnection'la birlikte
+    // yayını gerçekten alıyor.
+    const creator = await createTestUser();
+    const member = await createTestUser();
+
+    const name = `oda-${randomUUID()}`;
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .send({ name })
+      .expect(201);
+    const room = response.body as { id: string; name: string };
+    createdRoomIds.push(room.id);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${member.accessToken}`)
+      .expect(201);
+
+    const memberSocket = connect(member.accessToken);
+    await waitForEvent(memberSocket, 'ready');
+
+    const content = `uye-olarak-alinan-${randomUUID()}`;
     const receivedPromise = waitForEvent<{ content: string }>(
-      observerSocket,
+      memberSocket,
       'message:new',
     );
-    observerSocket.emit('message:send', { content, roomName: room.name });
+    memberSocket.emit('message:send', { content, roomName: room.name });
 
     const message = await receivedPromise;
     expect(message.content).toBe(content);
@@ -289,5 +346,193 @@ describe('Room creation (e2e)', () => {
     }[];
     const archivedEntry = withArchivedRooms.find((r) => r.name === name);
     expect(archivedEntry?.status).toBe('archived');
+  });
+
+  it('post_join_idempotenttir_iki_kez_cagirmak_hata_vermez', async () => {
+    const creator = await createTestUser();
+    const joiner = await createTestUser();
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .send({ name: `oda-${randomUUID()}` })
+      .expect(201);
+    const room = response.body as { id: string };
+    createdRoomIds.push(room.id);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(201);
+    // İkinci çağrı - zaten üyeyken 409 DEĞİL, sessizce başarı.
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(201);
+
+    const memberCount = await prisma.roomMember.count({
+      where: { userId: joiner.userId, roomId: room.id },
+    });
+    expect(memberCount).toBe(1);
+  });
+
+  it('post_leave_uyeligi_kaldirir_ve_idempotenttir', async () => {
+    const creator = await createTestUser();
+    const joiner = await createTestUser();
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .send({ name: `oda-${randomUUID()}` })
+      .expect(201);
+    const room = response.body as { id: string };
+    createdRoomIds.push(room.id);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/leave`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(201);
+
+    const memberCount = await prisma.roomMember.count({
+      where: { userId: joiner.userId, roomId: room.id },
+    });
+    expect(memberCount).toBe(0);
+
+    // Zaten üye değilken tekrar ayrılmak - idempotent, hata değil.
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/leave`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(201);
+  });
+
+  it('cekirdek_bir_odadan_ayrilma_denemesi_reddedilir', async () => {
+    const { accessToken, userId } = await createTestUser();
+    const generalRoom = await prisma.room.upsert({
+      where: { name: CORE_ROOM_NAMES[0] },
+      update: {},
+      create: { name: CORE_ROOM_NAMES[0] },
+    });
+    await prisma.roomMember.upsert({
+      where: {
+        userId_roomId: { userId, roomId: generalRoom.id },
+      },
+      create: { userId, roomId: generalRoom.id },
+      update: {},
+    });
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${generalRoom.id}/leave`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(403);
+
+    const memberCount = await prisma.roomMember.count({
+      where: { userId, roomId: generalRoom.id },
+    });
+    expect(memberCount).toBe(1);
+  });
+
+  it('scope_discoverable_uye_olunmayan_aktif_odalari_sayfali_doner', async () => {
+    const creator = await createTestUser();
+    const viewer = await createTestUser();
+    // Doğrudan Prisma ile - RoomCreationThrottlerGuard (kullanıcı başına
+    // günde 1 oda) gerçek POST /rooms akışıyla 3 oda oluşturmayı
+    // engellerdi, bu test onu değil sayfalamayı doğruluyor.
+    const roomNames = [0, 1, 2].map(() => `kesif-${randomUUID()}`).sort();
+    for (const roomName of roomNames) {
+      const room = await prisma.room.create({
+        data: {
+          name: roomName,
+          creatorId: creator.userId,
+          // Gerçek createRoom akışının nested-create'iyle aynı - kurucu
+          // her zaman üye olur, bu test o davranışı simüle ediyor.
+          members: { create: { userId: creator.userId } },
+        },
+      });
+      createdRoomIds.push(room.id);
+    }
+
+    // Sayfa mekaniğinin gerçekten çalıştığını doğrula: limit=2 iken TAM 2
+    // satır + dolu bir nextCursor dönmeli (yerel dev DB'nin biriken geçmişi
+    // yüzünden HER ZAMAN limit'ten fazla aktif/keşfedilebilir oda var).
+    const firstPage = await request(app.getHttpServer())
+      .get(`/rooms?scope=discoverable&limit=2`)
+      .set('Authorization', `Bearer ${viewer.accessToken}`)
+      .expect(200);
+    const firstBody = firstPage.body as {
+      rooms: { name: string }[];
+      nextCursor: string | null;
+    };
+    expect(firstBody.rooms).toHaveLength(2);
+    expect(firstBody.nextCursor).not.toBeNull();
+
+    // İlk sayfanın hangi odaları içerdiği yerel DB'nin biriken alfabetik
+    // sırasına bağlı (bu testin kendi odaları "kesif-" ile başlıyor, DB'de
+    // alfabetik olarak ÖNCE gelen başka aktif odalar da olabilir) - bu
+    // yüzden testin 3 odasının GERÇEKTEN keşfedilebilir listede olduğunu
+    // kanıtlamak için cursor'ı tükenene kadar sayfalanıyor, tek sayfaya
+    // güvenilmiyor.
+    const discoveredNames: string[] = [];
+    let cursor: string | undefined;
+    for (let i = 0; i < 200; i += 1) {
+      const page = await request(app.getHttpServer())
+        .get(
+          `/rooms?scope=discoverable&limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+        )
+        .set('Authorization', `Bearer ${viewer.accessToken}`)
+        .expect(200);
+      const body = page.body as {
+        rooms: { name: string }[];
+        nextCursor: string | null;
+      };
+      discoveredNames.push(...body.rooms.map((r) => r.name));
+      if (!body.nextCursor) break;
+      cursor = body.nextCursor;
+    }
+    for (const roomName of roomNames) {
+      expect(discoveredNames).toContain(roomName);
+    }
+    // viewer kendi oluşturmadığı için hiçbiri "benim odalarım"da değil,
+    // hepsi keşfedilebilir - creator ise KENDİ odalarının hiçbirini
+    // keşfedilebilir listede görmemeli (zaten üye).
+    const creatorDiscoverable = await request(app.getHttpServer())
+      .get(`/rooms?scope=discoverable`)
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .expect(200);
+    const creatorDiscoverableNames = (
+      creatorDiscoverable.body as { rooms: { name: string }[] }
+    ).rooms.map((r) => r.name);
+    for (const roomName of roomNames) {
+      expect(creatorDiscoverableNames).not.toContain(roomName);
+    }
+  });
+
+  it('scope_all_uyelikten_bagimsiz_tum_odalari_doner_moderasyon_icin', async () => {
+    const creator = await createTestUser();
+    const viewer = await createTestUser();
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .send({ name: `oda-${randomUUID()}` })
+      .expect(201);
+    const room = response.body as { id: string; name: string };
+    createdRoomIds.push(room.id);
+
+    // viewer bu odaya hiç üye değil - scope=mine'da GÖRÜNMEZ ama
+    // scope=all'da (moderasyon paneli) GÖRÜNÜR.
+    const mineList = await request(app.getHttpServer())
+      .get('/rooms')
+      .set('Authorization', `Bearer ${viewer.accessToken}`)
+      .expect(200);
+    const mineNames = (mineList.body as { name: string }[]).map((r) => r.name);
+    expect(mineNames).not.toContain(room.name);
+
+    const allList = await request(app.getHttpServer())
+      .get('/rooms?scope=all')
+      .set('Authorization', `Bearer ${viewer.accessToken}`)
+      .expect(200);
+    const allNames = (allList.body as { name: string }[]).map((r) => r.name);
+    expect(allNames).toContain(room.name);
   });
 });

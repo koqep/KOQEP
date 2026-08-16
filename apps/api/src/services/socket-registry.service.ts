@@ -24,6 +24,17 @@ export class SocketRegistryService {
     return [...(this.socketsByUserId.get(userId) ?? [])];
   }
 
+  // M7a Slice B: oda-yaşam-döngüsü bildirimleri (rename/archive/delete)
+  // BİLEREK üyelikten bağımsız, herkese ulaşmalı (keşfedilebilir-odalar
+  // listesini etkiliyor, sadece üyeleri değil) - handleConnection artık
+  // sadece üye olunan odalara join ettiği için server.in(roomId) bu
+  // bildirimler için artık yeterli değil, TÜM bağlı soketlere gerek var.
+  getAllSockets(): Socket[] {
+    return [...this.socketsByUserId.values()].flatMap((sockets) => [
+      ...sockets,
+    ]);
+  }
+
   unregister(userId: string, socket: Socket): void {
     const sockets = this.socketsByUserId.get(userId);
     if (!sockets) return;
