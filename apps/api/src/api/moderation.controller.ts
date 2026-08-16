@@ -99,7 +99,7 @@ export class ModerationController {
       id,
       dto.name,
     );
-    await this.messagesGateway.notifyRoomRenamed(id, dto.name);
+    this.messagesGateway.notifyRoomRenamed(id, dto.name);
     return room;
   }
 
@@ -109,7 +109,7 @@ export class ModerationController {
     @Param('id') id: string,
   ): Promise<RoomSummary> {
     const room = await this.roomModerationService.archiveRoom(req.user.sub, id);
-    await this.messagesGateway.notifyRoomArchived(id);
+    this.messagesGateway.notifyRoomArchived(id);
     return room;
   }
 
@@ -119,7 +119,7 @@ export class ModerationController {
     @Param('id') id: string,
   ): Promise<{ ok: true }> {
     await this.roomModerationService.deleteRoom(req.user.sub, id);
-    await this.messagesGateway.notifyRoomDeleted(id);
+    this.messagesGateway.notifyRoomDeleted(id);
     return { ok: true };
   }
 }

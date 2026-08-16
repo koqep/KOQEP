@@ -76,25 +76,30 @@ export class MessagesGateway
 
     try {
       const payload = await this.authService.verifyAccessToken(token);
-      // M3 Slice A: eskiden sadece CORE_ROOM_NAMES'i sorguluyordu -
-      // kullanıcı odaları hiç katılmıyordu, o odalarda gönderilen
-      // mesajlar hiçbir bağlı sokete gerçek zamanlı ulaşmıyordu (kod
-      // okuyarak bulunan bir açık, milestone'un Tasks listesinde hiç
-      // yoktu). Artık tüm aktif odalara katılıyor.
-      const rooms = await this.prisma.room.findMany({
-        where: { status: 'active' },
+      // M7a Slice B: artık TÜM aktif odalara değil, SADECE üye olunan
+      // (RoomMember) aktif odalara katılıyor - broadcastToRoom'un
+      // server.in(roomId) çağrısı Socket.IO'nun bu join-state'ini okuyor,
+      // üyelik-farkındalığı TAMAMEN burada, kimin join edildiğini
+      // kontrol ederek elde ediliyor (broadcastToRoom'un kendisi
+      // DEĞİŞMEDİ). Eskiden burada "sıfır aktif oda varsa disconnect et"
+      // kontrolü vardı (M3 Slice A) - sistemde hiç aktif oda yoksa
+      // anlamlıydı, ama üyelik-scoped sorguyla "BU KULLANICININ sıfır
+      // üyeliği var mı" anlamına dönüşürdü: register()'dan ÖNCE
+      // çalıştığı için sıfır-üyelikli (ör. henüz hiçbir odaya katılmamış,
+      // keşfedilebilir odalara bakan) bir kullanıcı hiç register
+      // edilmezdi - kendi join/mute/lifecycle bildirimlerini de kaçırırdı.
+      // Kontrol TAMAMEN kaldırıldı: sıfır üyelik artık tutarlı, meşru bir
+      // durum, register() koşulsuz çalışıyor.
+      const memberships = await this.prisma.roomMember.findMany({
+        where: { userId: payload.sub, room: { status: 'active' } },
+        select: { roomId: true },
       });
-
-      if (rooms.length === 0) {
-        client.disconnect(true);
-        return;
-      }
 
       const data: SocketData = { userId: payload.sub };
       client.data = data;
       this.socketRegistry.register(payload.sub, client);
-      for (const room of rooms) {
-        await client.join(room.id);
+      for (const { roomId } of memberships) {
+        await client.join(roomId);
       }
       // Baglanti+auth+join tamamlanmadan client mesaj gonderirse
       // client.data henuz set edilmemis olabilir (async handleConnection
@@ -300,32 +305,29 @@ export class MessagesGateway
     }
   }
 
-  // M5 Slice D: broadcastToRoom'un blocker-filtresiz hali - oda-geneli bir
-  // olay (rename/archive/delete), engellenen-yazar filtrelemesi burada
-  // anlamsız (mesaj içeriğiyle ilgili değil, HERKES bilmeli). Socket.IO oda
-  // üyeliği (client.join(room.id), handleConnection'da bağlantı anında)
-  // DB satırından bağımsız bir in-memory gruplama - oda satırı silinse
-  // bile zaten join'li soketler this.server.in(roomId) ile hâlâ bulunabilir,
-  // broadcast çalışmaya devam eder. Moderatörün kendi soketi de aynı odaya
-  // join'li olduğu için bu broadcast'i AYNI şekilde alıyor - ayrı bir
-  // REST-response-tetikli senkronizasyona gerek yok.
-  async notifyRoomRenamed(roomId: string, name: string): Promise<void> {
-    const sockets = await this.server.in(roomId).fetchSockets();
-    for (const socket of sockets) {
+  // M5 Slice D, M7a Slice B'de GÜNCELLENDİ: oda-geneli bir olay
+  // (rename/archive/delete), engellenen-yazar filtrelemesi burada anlamsız
+  // (mesaj içeriğiyle ilgili değil, HERKES bilmeli) - keşfedilebilir-odalar
+  // listesini ÜYE OLMAYANLAR için de etkiliyor. Üyelik-scoped join'den
+  // (handleConnection artık SADECE üye olunan odalara join ediyor) sonra
+  // server.in(roomId) SADECE üyelere ulaşırdı, "HERKES bilmeli" niyetini
+  // sessizce bozardı - bu yüzden server.in(roomId) YERİNE
+  // SocketRegistryService'in TÜM bağlı soket kaydı kullanılıyor, gerçek bir
+  // global broadcast.
+  notifyRoomRenamed(roomId: string, name: string): void {
+    for (const socket of this.socketRegistry.getAllSockets()) {
       socket.emit('room:renamed', { roomId, name });
     }
   }
 
-  async notifyRoomArchived(roomId: string): Promise<void> {
-    const sockets = await this.server.in(roomId).fetchSockets();
-    for (const socket of sockets) {
+  notifyRoomArchived(roomId: string): void {
+    for (const socket of this.socketRegistry.getAllSockets()) {
       socket.emit('room:archived', { roomId });
     }
   }
 
-  async notifyRoomDeleted(roomId: string): Promise<void> {
-    const sockets = await this.server.in(roomId).fetchSockets();
-    for (const socket of sockets) {
+  notifyRoomDeleted(roomId: string): void {
+    for (const socket of this.socketRegistry.getAllSockets()) {
       socket.emit('room:deleted', { roomId });
     }
   }
