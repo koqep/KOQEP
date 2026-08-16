@@ -9,6 +9,7 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
+import { joinRoomByName } from './support/room-membership';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
@@ -94,6 +95,10 @@ describe('Block-user (e2e)', () => {
         emailVerifiedAt: new Date(),
       },
     });
+    // M7a Slice B: handleConnection artık sadece üye olunan odalara join
+    // ediyor - bu dosyanın blok-filtreleme testleri general'de gerçek
+    // zamanlı teslimat bekliyor.
+    await joinRoomByName(prisma, user.id, CORE_ROOM_NAMES[0]);
     const accessToken = await jwtService.signAsync({
       sub: user.id,
       email: user.email,

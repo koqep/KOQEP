@@ -68,6 +68,14 @@ describe('AuthService', () => {
             ? jest.fn().mockImplementation(createImpl)
             : jest.fn().mockResolvedValue({}),
         },
+        // M7a Slice B: signup artık aynı transaction içinde çekirdek
+        // odalara otomatik üyelik de yaratıyor.
+        room: {
+          findMany: jest.fn().mockResolvedValue([{ id: 'room-general' }]),
+        },
+        roomMember: {
+          createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
       };
       return {
         user: {

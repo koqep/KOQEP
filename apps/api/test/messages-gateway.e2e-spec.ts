@@ -13,6 +13,7 @@ import {
   DEV_USER_USERNAME,
 } from './../src/db/dev-seed.constants';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
+import { joinRoomByName } from './support/room-membership';
 import { MAX_MESSAGE_LENGTH } from './../src/services/messages.service';
 import {
   XP_PER_LEVEL,
@@ -66,6 +67,14 @@ describe('Messages Gateway (e2e)', () => {
         update: {},
         create: { name },
       });
+      // M7a Slice B: handleConnection artık sadece üye olunan odalara
+      // join ediyor - bu dosyanın paylaşılan dev kullanıcısı BÜTÜN
+      // testlerde general+meta'da broadcast bekliyor, backfill script'inin
+      // (CI'da bu beforeAll'dan ÖNCE, ayrı bir adımda çalışıyor) bu satırı
+      // hangi sırayla/ne zaman yakaladığına GÜVENMEK yerine açıkça üye
+      // yapılıyor - dosya, DB'nin önceki durumundan bağımsız kendi
+      // kendine yeterli.
+      await joinRoomByName(prisma, user.id, name);
     }
 
     accessToken = await jwtService.signAsync({
@@ -83,6 +92,7 @@ describe('Messages Gateway (e2e)', () => {
         passwordHash: 'test-not-a-real-hash',
       },
     });
+    await joinRoomByName(prisma, other.id, CORE_ROOM_NAMES[0]);
     return jwtService.signAsync({ sub: other.id, email: other.email });
   }
 
@@ -361,6 +371,7 @@ describe('Messages Gateway (e2e)', () => {
         passwordHash: 'test-not-a-real-hash',
       },
     });
+    await joinRoomByName(prisma, user.id, CORE_ROOM_NAMES[0]);
     const token = await jwtService.signAsync({
       sub: user.id,
       email: user.email,
@@ -405,6 +416,7 @@ describe('Messages Gateway (e2e)', () => {
         level: 0,
       },
     });
+    await joinRoomByName(prisma, user.id, CORE_ROOM_NAMES[0]);
     const token = await jwtService.signAsync({
       sub: user.id,
       email: user.email,

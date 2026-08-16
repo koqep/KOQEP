@@ -10,6 +10,7 @@ import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { MessagesService } from './../src/services/messages.service';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
+import { joinRoomByName } from './support/room-membership';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
@@ -112,6 +113,10 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
       },
     });
     createdUserIds.push(user.id);
+    // M7a Slice B: handleConnection artık sadece üye olunan odalara join
+    // ediyor - bu dosyanın moderatör-gerçek-zamanlı testi general'de
+    // teslimat bekliyor.
+    await joinRoomByName(prisma, user.id, CORE_ROOM_NAMES[0]);
     const accessToken = await jwtService.signAsync({
       sub: user.id,
       email: user.email,

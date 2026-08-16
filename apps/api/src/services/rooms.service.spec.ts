@@ -17,8 +17,8 @@ describe('RoomsService', () => {
     );
   }
 
-  describe('listRooms', () => {
-    it('odalari_isme_gore_alfabetik_dondurur_varsayilan_aktif_filtreyle', async () => {
+  describe('listRooms (benim odalarım)', () => {
+    it('odalari_isme_gore_alfabetik_dondurur_varsayilan_aktif_ve_uyelik_filtreyle', async () => {
       const findManyMock = jest.fn().mockResolvedValue([
         {
           id: 'room-general',
@@ -42,10 +42,10 @@ describe('RoomsService', () => {
       };
 
       const service = buildService(prismaMock);
-      const rooms = await service.listRooms();
+      const rooms = await service.listRooms('user-1');
 
       expect(findManyMock).toHaveBeenCalledWith({
-        where: { status: 'active' },
+        where: { status: 'active', members: { some: { userId: 'user-1' } } },
         select: {
           id: true,
           name: true,
@@ -67,12 +67,194 @@ describe('RoomsService', () => {
       };
 
       const service = buildService(prismaMock);
-      await service.listRooms(true);
+      await service.listRooms('user-1', true);
 
       expect(findManyMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: { in: ['active', 'archived'] } },
+          where: {
+            status: { in: ['active', 'archived'] },
+            members: { some: { userId: 'user-1' } },
+          },
         }),
+      );
+    });
+  });
+
+  describe('listAllRooms (moderasyon - uyelikten bagimsiz)', () => {
+    it('uyelik_filtresi_olmadan_tum_odalari_dondurur', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const prismaMock: Partial<PrismaService> = {
+        room: { findMany: findManyMock } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      await service.listAllRooms(true);
+
+      expect(findManyMock).toHaveBeenCalledWith({
+        where: { status: { in: ['active', 'archived'] } },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          lastActivityAt: true,
+          status: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+    });
+  });
+
+  describe('listDiscoverableRooms', () => {
+    it('uye_olunmayan_aktif_odalari_dondurur_includeArchivedi_yok_sayar', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([
+        {
+          id: 'room-1',
+          name: 'elden-ring',
+          description: null,
+          lastActivityAt: new Date('2026-01-01'),
+          status: 'active',
+        },
+      ]);
+      const prismaMock: Partial<PrismaService> = {
+        room: { findMany: findManyMock } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const page = await service.listDiscoverableRooms('user-1');
+
+      expect(findManyMock).toHaveBeenCalledWith({
+        where: { status: 'active', members: { none: { userId: 'user-1' } } },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          lastActivityAt: true,
+          status: true,
+        },
+        orderBy: { name: 'asc' },
+        take: 31,
+      });
+      expect(page).toEqual({
+        rooms: [expect.objectContaining({ name: 'elden-ring' }) as unknown],
+        nextCursor: null,
+      });
+    });
+
+    it('limitten_fazla_satir_donerse_nextCursor_dolu_gelir_fazla_satir_kesilir', async () => {
+      const rows = Array.from({ length: 3 }, (_, i) => ({
+        id: `room-${i}`,
+        name: `oda-${i}`,
+        description: null,
+        lastActivityAt: new Date('2026-01-01'),
+        status: 'active' as const,
+      }));
+      const findManyMock = jest.fn().mockResolvedValue(rows);
+      const prismaMock: Partial<PrismaService> = {
+        room: { findMany: findManyMock } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const page = await service.listDiscoverableRooms('user-1', undefined, 2);
+
+      expect(page.rooms).toHaveLength(2);
+      expect(page.nextCursor).toBe('oda-1');
+    });
+
+    it('cursor_verilince_name_alaninda_prisma_cursor_kullanir', async () => {
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const prismaMock: Partial<PrismaService> = {
+        room: { findMany: findManyMock } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      await service.listDiscoverableRooms('user-1', 'oda-1', 10);
+
+      expect(findManyMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cursor: { name: 'oda-1' },
+          skip: 1,
+          take: 11,
+        }),
+      );
+    });
+  });
+
+  describe('joinRoom', () => {
+    it('idempotent_uyelik_yaratir_ve_acik_soketleri_odaya_katar', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'elden-ring',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+      };
+      const findUniqueOrThrowMock = jest.fn().mockResolvedValue(room);
+      const upsertMock = jest.fn().mockResolvedValue({});
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: findUniqueOrThrowMock,
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          upsert: upsertMock,
+        } as unknown as PrismaService['roomMember'],
+      };
+      const joinMock = jest.fn();
+      const socketRegistryMock: Partial<SocketRegistryService> = {
+        getSockets: () => [{ join: joinMock } as never],
+      };
+
+      const service = buildService(prismaMock, socketRegistryMock);
+      const result = await service.joinRoom('user-1', 'room-1');
+
+      expect(upsertMock).toHaveBeenCalledWith({
+        where: { userId_roomId: { userId: 'user-1', roomId: 'room-1' } },
+        create: { userId: 'user-1', roomId: 'room-1' },
+        update: {},
+      });
+      expect(joinMock).toHaveBeenCalledWith('room-1');
+      expect(result).toEqual(room);
+    });
+  });
+
+  describe('leaveRoom', () => {
+    it('cekirdek_olmayan_odada_uyeligi_kaldirir_ve_acik_soketleri_odadan_cikarir', async () => {
+      const findUniqueOrThrowMock = jest
+        .fn()
+        .mockResolvedValue({ name: 'elden-ring' });
+      const deleteManyMock = jest.fn().mockResolvedValue({ count: 1 });
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: findUniqueOrThrowMock,
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          deleteMany: deleteManyMock,
+        } as unknown as PrismaService['roomMember'],
+      };
+      const leaveMock = jest.fn();
+      const socketRegistryMock: Partial<SocketRegistryService> = {
+        getSockets: () => [{ leave: leaveMock } as never],
+      };
+
+      const service = buildService(prismaMock, socketRegistryMock);
+      await service.leaveRoom('user-1', 'room-1');
+
+      expect(deleteManyMock).toHaveBeenCalledWith({
+        where: { userId: 'user-1', roomId: 'room-1' },
+      });
+      expect(leaveMock).toHaveBeenCalledWith('room-1');
+    });
+
+    it('cekirdek_odadan_ayrilma_denemesini_reddeder', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({ name: 'general' }),
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.leaveRoom('user-1', 'room-general')).rejects.toThrow(
+        'Çekirdek bir odadan ayrılamazsın.',
       );
     });
   });
@@ -114,6 +296,7 @@ describe('RoomsService', () => {
           name: 'elden-ring',
           description: 'Elden Ring tartışması',
           creatorId: 'user-1',
+          members: { create: { userId: 'user-1' } },
         },
         select: {
           id: true,
