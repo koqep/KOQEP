@@ -11,6 +11,7 @@ import {
 } from "../../lib/api";
 import MessageContent from "./MessageContent";
 import RoomModerationSection from "./RoomModerationSection";
+import AssignModeratorSection from "./AssignModeratorSection";
 import { useFocusOnMount } from "./useFocusOnMount";
 
 const MUTE_DURATION_HOURS = 24;
@@ -191,6 +192,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
       )}
 
       <RoomModerationSection accessToken={accessToken} />
+      <AssignModeratorSection accessToken={accessToken} />
     </section>
   );
 }

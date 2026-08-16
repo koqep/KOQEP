@@ -250,6 +250,18 @@ export default function RoomView({
           if (cancelled) return;
           setMyProfile((prev) => (prev ? { ...prev, mutedUntil: null } : prev));
         });
+        // M7a Slice C: moderatör atandığında/kaldırıldığında "moderasyon"
+        // butonunun bir sonraki reconnect'e kadar beklemeden anlık
+        // görünmesi/kaybolması için - mute/unmute'un AYNI deseni.
+        socket.on(
+          "moderation:role-changed",
+          (payload: { role: "user" | "moderator" }) => {
+            if (cancelled) return;
+            setMyProfile((prev) =>
+              prev ? { ...prev, role: payload.role } : prev,
+            );
+          },
+        );
         // M5 Slice D: oda-geneli moderatör aksiyonları - HERKES için (sadece
         // moderatör değil), moderatörün kendi soketi de aynı odaya join'li
         // olduğu için AYNI broadcast'i alıyor - ayrı bir REST-response-

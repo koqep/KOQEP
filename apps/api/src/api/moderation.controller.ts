@@ -10,6 +10,10 @@ import {
 import { ReportsService, ReportSummary } from '../services/reports.service';
 import { MutesService } from '../services/mutes.service';
 import { RoomModerationService } from '../services/room-moderation.service';
+import {
+  ModeratorRoleService,
+  ModeratorRoleResult,
+} from '../services/moderator-role.service';
 import { RoomSummary } from '../services/rooms.service';
 import { MessagesGateway } from './messages.gateway';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -17,6 +21,8 @@ import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { ModeratorGuard } from './moderator.guard';
 import { MuteUserDto } from './dto/mute-user.dto';
 import { RenameRoomDto } from './dto/rename-room.dto';
+import { AssignModeratorDto } from './dto/assign-moderator.dto';
+import { RevokeModeratorDto } from './dto/revoke-moderator.dto';
 
 @Controller('moderation')
 @UseGuards(JwtAuthGuard, ModeratorGuard)
@@ -25,6 +31,7 @@ export class ModerationController {
     private readonly reportsService: ReportsService,
     private readonly mutesService: MutesService,
     private readonly roomModerationService: RoomModerationService,
+    private readonly moderatorRoleService: ModeratorRoleService,
     private readonly messagesGateway: MessagesGateway,
   ) {}
 
@@ -121,5 +128,37 @@ export class ModerationController {
     await this.roomModerationService.deleteRoom(req.user.sub, id);
     this.messagesGateway.notifyRoomDeleted(id);
     return { ok: true };
+  }
+
+  // M7a Slice C: mute/rename'in AYNI REST->WS kompozisyon deseni. Path
+  // `:id` DEĞİL, body `email` - hedef bu controller'ın diğer route'larının
+  // aksine (zaten seçilmiş bir id ile başlıyorlar) moderatörün YAZDIĞI bir
+  // email'le başlıyor, BlocksController'ın POST /users/block deseni.
+  @Post('users/assign-moderator')
+  async assignModerator(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: AssignModeratorDto,
+  ): Promise<ModeratorRoleResult & { alreadyModerator: boolean }> {
+    const result = await this.moderatorRoleService.assignModerator(
+      req.user.sub,
+      dto.password,
+      dto.totpCode,
+      dto.email,
+    );
+    this.messagesGateway.notifyModeratorRoleChanged(result.id, 'moderator');
+    return result;
+  }
+
+  @Post('users/revoke-moderator')
+  async revokeModerator(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: RevokeModeratorDto,
+  ): Promise<ModeratorRoleResult & { wasNotModerator: boolean }> {
+    const result = await this.moderatorRoleService.revokeModerator(
+      req.user.sub,
+      dto.email,
+    );
+    this.messagesGateway.notifyModeratorRoleChanged(result.id, 'user');
+    return result;
   }
 }

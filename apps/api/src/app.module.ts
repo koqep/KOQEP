@@ -31,6 +31,7 @@ import { ReputationService } from './services/reputation.service';
 import { ReportsService } from './services/reports.service';
 import { MutesService } from './services/mutes.service';
 import { RoomModerationService } from './services/room-moderation.service';
+import { ModeratorRoleService } from './services/moderator-role.service';
 import { SocketRegistryService } from './services/socket-registry.service';
 import { PrismaModule } from './db/prisma.module';
 
@@ -97,6 +98,7 @@ const DEFAULT_RATE_LIMIT = 100;
     ReportsService,
     MutesService,
     RoomModerationService,
+    ModeratorRoleService,
     SocketRegistryService,
     MessagesGateway,
     { provide: APP_GUARD, useClass: ThrottlerGuard },

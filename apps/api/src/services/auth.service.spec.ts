@@ -571,6 +571,91 @@ describe('AuthService', () => {
     });
   });
 
+  // M7a Slice C: deleteAccount'ın kendi reauth mantığından çıkarılan
+  // metod - moderator-role.service.ts'in assignModerator'ı da bunu
+  // kullanıyor. deleteAccount'un kendi test bloğu bu mantığı DOLAYLI
+  // olarak zaten kapsıyor (refactor davranışı değiştirmedi) - bu blok
+  // DOĞRUDAN, metodun kendi sözleşmesi için.
+  describe('verifyCurrentPassword', () => {
+    it('gecer_dogru_sifreyle', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.verifyCurrentPassword('user-1', 'correct-password'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('reddeder_yanlis_sifreyi', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.verifyCurrentPassword('user-1', 'wrong'),
+      ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
+    });
+
+    it('reddeder_bulunamayan_kullaniciyi', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['user'],
+      };
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.verifyCurrentPassword('yok-1', 'x'),
+      ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
+    });
+
+    it('totp_acikken_kod_eksikse_reddeder', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+      const totpMock: Partial<TotpService> = { isEnabled: () => true };
+      const service = buildService(prismaMock, {}, totpMock);
+
+      await expect(
+        service.verifyCurrentPassword('user-1', 'correct-password'),
+      ).rejects.toMatchObject({ response: { code: 'TOTP_REQUIRED' } });
+    });
+
+    it('totp_acikken_gecerli_kodla_gecer', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+      };
+      const totpMock: Partial<TotpService> = {
+        isEnabled: () => true,
+        verifyDuringLogin: jest.fn().mockResolvedValue(true),
+      };
+      const service = buildService(prismaMock, {}, totpMock);
+
+      await expect(
+        service.verifyCurrentPassword('user-1', 'correct-password', '123456'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('deleteAccount', () => {
     it('siler_dogru_sifreyle', async () => {
       const passwordHash = await argon2.hash('correct-password');
