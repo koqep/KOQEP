@@ -305,6 +305,19 @@ export class MessagesGateway
     }
   }
 
+  // M7a Slice C: notifyUserMuted'in AYNI kişi-başı deseni - kaçırılan bir
+  // push (hedef o an bağlı değil) zararsız, ModeratorGuard HER istekte
+  // rolü DB'den taze okuyor, soket/JWT state'ine hiç güvenmiyor. Rolü
+  // değişen kullanıcı ilgili UI'ı bir sonraki reconnect'e kadar görmeyebilir
+  // ama attığı herhangi bir API çağrısı zaten anında doğru şekilde
+  // çalışır/reddedilir. Assign VE revoke için TEK metod (role parametresi
+  // ayrıştırıyor) - iki ayrı event adı gerekmiyor.
+  notifyModeratorRoleChanged(userId: string, role: 'moderator' | 'user'): void {
+    for (const socket of this.socketRegistry.getSockets(userId)) {
+      socket.emit('moderation:role-changed', { role });
+    }
+  }
+
   // M5 Slice D, M7a Slice B'de GÜNCELLENDİ: oda-geneli bir olay
   // (rename/archive/delete), engellenen-yazar filtrelemesi burada anlamsız
   // (mesaj içeriğiyle ilgili değil, HERKES bilmeli) - keşfedilebilir-odalar

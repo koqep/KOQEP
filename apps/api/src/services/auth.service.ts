@@ -262,19 +262,12 @@ export class AuthService {
     });
   }
 
-  // ADR-0005: hesap düzeyindeki PII'yi hard-delete eder (User satırının
-  // kendisi), mesaj içeriği yerinde kalır. Message.authorId zaten
-  // ON DELETE SET NULL (messages.service.ts zaten null yazarı
-  // "authorUsername: null" olarak dönüyor, MessageItem.tsx zaten "silinmiş
-  // kullanıcı" render ediyor). RefreshToken/TotpRecoveryCode/
-  // PasswordResetToken/EmailVerificationToken/Block satırları ON DELETE
-  // CASCADE ile otomatik siliniyor - "tüm refresh token'ların iptali"
-  // görevi, satırların iptal değil komple yok olmasıyla daha güçlü şekilde
-  // karşılanıyor. Invite.issuedById de SET NULL - davet hâlâ kullanılabilir
-  // kalıyor, sadece "kim yayınladı" bilgisi siliniyor (bkz. milestone Plan
-  // notları - GDPR/KVKK silme hakkı, M5'in henüz tasarlanmamış davetçi
-  // hesap-verebilirliği fikrinden önceliklidir).
-  async deleteAccount(
+  // M7a Slice C: deleteAccount'ın kendi şifre+TOTP reauth mantığından
+  // çıkarıldı - moderator-role.service.ts'in assignModerator'ı da AYNI
+  // reauth'u istiyor (kalıcı bir yetki-yükseltme aksiyonu, deleteAccount'un
+  // kalıcı hesap-silmesiyle aynı hassasiyet sınıfı - ele geçirilmiş bir
+  // OTURUM ile bile gerçek şifre/TOTP olmadan tetiklenemesin diye).
+  async verifyCurrentPassword(
     userId: string,
     password: string,
     totpCode?: string,
@@ -302,6 +295,26 @@ export class AuthService {
         });
       }
     }
+  }
+
+  // ADR-0005: hesap düzeyindeki PII'yi hard-delete eder (User satırının
+  // kendisi), mesaj içeriği yerinde kalır. Message.authorId zaten
+  // ON DELETE SET NULL (messages.service.ts zaten null yazarı
+  // "authorUsername: null" olarak dönüyor, MessageItem.tsx zaten "silinmiş
+  // kullanıcı" render ediyor). RefreshToken/TotpRecoveryCode/
+  // PasswordResetToken/EmailVerificationToken/Block satırları ON DELETE
+  // CASCADE ile otomatik siliniyor - "tüm refresh token'ların iptali"
+  // görevi, satırların iptal değil komple yok olmasıyla daha güçlü şekilde
+  // karşılanıyor. Invite.issuedById de SET NULL - davet hâlâ kullanılabilir
+  // kalıyor, sadece "kim yayınladı" bilgisi siliniyor (bkz. milestone Plan
+  // notları - GDPR/KVKK silme hakkı, M5'in henüz tasarlanmamış davetçi
+  // hesap-verebilirliği fikrinden önceliklidir).
+  async deleteAccount(
+    userId: string,
+    password: string,
+    totpCode?: string,
+  ): Promise<void> {
+    await this.verifyCurrentPassword(userId, password, totpCode);
 
     try {
       await this.prisma.user.delete({ where: { id: userId } });
