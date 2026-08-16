@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import {
-  listRooms,
+  listAllRoomsForModeration,
   renameRoom,
   archiveRoom,
   deleteRoom,
@@ -26,7 +26,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    listRooms(accessToken, true)
+    listAllRoomsForModeration(accessToken, true)
       .then((result) => {
         if (!cancelled) setRooms(result);
       })

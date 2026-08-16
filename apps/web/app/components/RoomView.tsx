@@ -13,6 +13,7 @@ import {
   getCurrentUser,
   getMessageEditHistory,
   listRooms,
+  leaveRoom,
   reportMessage,
   type UserProfile,
   type MessageEdit,
@@ -23,6 +24,7 @@ import BlockedUsersView from "./BlockedUsersView";
 import InviteView from "./InviteView";
 import DeleteAccountView from "./DeleteAccountView";
 import CreateRoomView from "./CreateRoomView";
+import DiscoverRoomsView from "./DiscoverRoomsView";
 import ModerationQueueView from "./ModerationQueueView";
 import RoomHeader from "./RoomHeader";
 import ChatPanel from "./ChatPanel";
@@ -34,6 +36,7 @@ type ActivePanel =
   | "invites"
   | "delete-account"
   | "create-room"
+  | "discover-rooms"
   | "moderation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -368,6 +371,35 @@ export default function RoomView({
     setNextCursor(history?.nextCursor ?? null);
   }
 
+  // room:deleted WS handler'ının AYNI "aktif oda listeden düşerse fallback'e
+  // geç" mantığı - burada sunucu-push yerine kullanıcının kendi eylemiyle
+  // tetikleniyor.
+  async function handleLeaveRoom(room: Room) {
+    try {
+      await leaveRoom(accessToken, room.id);
+    } catch {
+      // Sessizce yoksay - switcher eski listede kalır, kullanıcı tekrar deneyebilir.
+      return;
+    }
+    const next = roomsRef.current.filter((r) => r.id !== room.id);
+    setRooms(next);
+    if (activeRoomIdRef.current !== room.id) return;
+    const fallback = next[0] ?? null;
+    setActiveRoom(fallback);
+    setDraft("");
+    if (!fallback) {
+      setMessages([]);
+      setNextCursor(null);
+      return;
+    }
+    const generation = ++fetchGenerationRef.current;
+    const authHeaders = { Authorization: `Bearer ${accessToken}` };
+    const fresh = await fetchRoomHistory(fallback.name, authHeaders);
+    if (fetchGenerationRef.current !== generation) return;
+    setMessages(fresh?.messages ?? []);
+    setNextCursor(fresh?.nextCursor ?? null);
+  }
+
   async function handleToggleShowArchived() {
     const next = !showArchived;
     setShowArchived(next);
@@ -465,7 +497,9 @@ export default function RoomView({
         rooms={rooms}
         activeRoom={activeRoom}
         onRoomSwitch={(room) => void handleRoomSwitch(room)}
+        onLeaveRoom={(room) => void handleLeaveRoom(room)}
         onCreateRoomClick={() => setActivePanel("create-room")}
+        onDiscoverRoomsClick={() => setActivePanel("discover-rooms")}
         showArchived={showArchived}
         onToggleShowArchived={() => void handleToggleShowArchived()}
         onOpenTotp={() => setActivePanel("totp")}
@@ -504,6 +538,16 @@ export default function RoomView({
         <CreateRoomView
           accessToken={accessToken}
           onCreated={(room) => {
+            setRooms((prev) => [...prev, room]);
+            setActivePanel("none");
+            void handleRoomSwitch(room);
+          }}
+          onClose={() => setActivePanel("none")}
+        />
+      ) : activePanel === "discover-rooms" ? (
+        <DiscoverRoomsView
+          accessToken={accessToken}
+          onJoined={(room) => {
             setRooms((prev) => [...prev, room]);
             setActivePanel("none");
             void handleRoomSwitch(room);
