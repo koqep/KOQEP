@@ -437,6 +437,40 @@ export async function unmuteUser(
   await authedPostJson(`/moderation/users/${userId}/unmute`, accessToken);
 }
 
+export interface ModeratorRoleResult {
+  id: string;
+  email: string;
+  role: "user" | "moderator";
+}
+
+// M7a Slice C: deleteAccount'un AYNI şifre+opsiyonel-TOTP reauth deseni -
+// kalıcı bir yetki-yükseltme aksiyonu. TOTP_REQUIRED hatası ApiError.code
+// üzerinden ayırt edilebiliyor (authedPostJson'ın INVALID_TOKEN_CODE
+// ayrımıyla AYNI mekanizma, burada domain hatası olduğu için retry
+// tetiklenmiyor).
+export function assignModerator(
+  accessToken: string,
+  email: string,
+  password: string,
+  totpCode?: string,
+): Promise<ModeratorRoleResult & { alreadyModerator: boolean }> {
+  return authedPostJson(`/moderation/users/assign-moderator`, accessToken, {
+    email,
+    password,
+    totpCode,
+  });
+}
+
+// Reauth İSTEMİYOR - yetki azaltan yön kendi kendini iyileştiren bir hata.
+export function revokeModerator(
+  accessToken: string,
+  email: string,
+): Promise<ModeratorRoleResult & { wasNotModerator: boolean }> {
+  return authedPostJson(`/moderation/users/revoke-moderator`, accessToken, {
+    email,
+  });
+}
+
 export function renameRoom(
   accessToken: string,
   roomId: string,
