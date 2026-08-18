@@ -11,6 +11,8 @@ import { PrismaService } from './../src/db/prisma.service';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 import { EmailService } from './../src/services/email.service';
 import { buildEmailServiceMock } from './support/email-service-mock';
+import { PasswordPolicyService } from './../src/services/password-policy.service';
+import { buildPasswordPolicyServiceMock } from './support/password-policy-mock';
 
 describe('Account deletion (e2e)', () => {
   let app: INestApplication<App>;
@@ -26,6 +28,8 @@ describe('Account deletion (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(buildEmailServiceMock())
+      .overrideProvider(PasswordPolicyService)
+      .useValue(buildPasswordPolicyServiceMock())
       .compile();
 
     app = moduleFixture.createNestApplication();
