@@ -9,6 +9,12 @@ export function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+// M7a Slice F: HaveIBeenPwned'in k-anonymity range API'si SHA-1 istiyor -
+// SHA-256 değil, PasswordPolicyService bunu kullanıyor.
+export function sha1Hex(value: string): string {
+  return createHash('sha1').update(value).digest('hex');
+}
+
 // M6 Slice E (ADR-0008): TOTP secret'larını alan-seviyesinde şifreler.
 // argon2 burada işe yaramaz - tek yönlü, ama kod doğrulaması secret'ı
 // GERİ DÖNDÜRÜLEBİLİR şekilde okuyabilmeyi gerektiriyor.

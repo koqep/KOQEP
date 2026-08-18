@@ -75,6 +75,26 @@ export class EmailService {
     }
   }
 
+  // M7a Slice F: hesap art arda başarısız girişle kilitlenince hesap
+  // SAHİBİNİN kendi kayıtlı e-postasına gider - saldırgan bunu hiç
+  // görmez (enumeration riski yok), gerçek sahip NEDEN giremediğini
+  // öğrenir.
+  async sendAccountLockedNotificationEmail(to: string): Promise<void> {
+    if (this.useFakeTransport) {
+      return;
+    }
+    const { error } = await this.resend.emails.send({
+      from: this.fromAddress,
+      to,
+      subject: 'KOQEP — Hesabın geçici olarak kilitlendi',
+      html: `<p>Hesabına art arda başarısız giriş denemesi yapıldığı için hesabın kısa süreliğine kilitlendi. Bu sen değilsen, şifreni değiştirmeni öneririz.</p>`,
+    });
+
+    if (error) {
+      throw new Error(`Resend gönderim hatası: ${error.message}`);
+    }
+  }
+
   async sendEmailVerificationEmail(
     to: string,
     verifyLink: string,
