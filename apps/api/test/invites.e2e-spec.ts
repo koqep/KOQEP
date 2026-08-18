@@ -14,6 +14,8 @@ import {
   MESSAGE_SENT_XP,
 } from './../src/services/reputation.service';
 import { buildEmailServiceMock } from './support/email-service-mock';
+import { PasswordPolicyService } from './../src/services/password-policy.service';
+import { buildPasswordPolicyServiceMock } from './support/password-policy-mock';
 
 describe('Invites: kazanım + görüntüleme (e2e)', () => {
   let app: INestApplication<App>;
@@ -32,6 +34,8 @@ describe('Invites: kazanım + görüntüleme (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(buildEmailServiceMock())
+      .overrideProvider(PasswordPolicyService)
+      .useValue(buildPasswordPolicyServiceMock())
       .compile();
 
     app = moduleFixture.createNestApplication();

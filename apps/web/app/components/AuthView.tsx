@@ -150,6 +150,8 @@ export default function AuthView({ onAuthenticated }: Props) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+                minLength={8}
+                maxLength={200}
                 className={inputClassName}
               />
             </label>

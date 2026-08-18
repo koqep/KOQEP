@@ -18,5 +18,6 @@ export function buildEmailServiceMock() {
       .fn()
       .mockResolvedValue(undefined),
     sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendAccountLockedNotificationEmail: jest.fn().mockResolvedValue(undefined),
   };
 }

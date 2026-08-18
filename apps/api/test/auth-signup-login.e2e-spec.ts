@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
@@ -7,11 +11,14 @@ import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { EmailService } from './../src/services/email.service';
 import { buildEmailServiceMock } from './support/email-service-mock';
+import { PasswordPolicyService } from './../src/services/password-policy.service';
+import { buildPasswordPolicyServiceMock } from './support/password-policy-mock';
 
 describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   const emailServiceMock = buildEmailServiceMock();
+  const passwordPolicyServiceMock = buildPasswordPolicyServiceMock();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -19,6 +26,8 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(emailServiceMock)
+      .overrideProvider(PasswordPolicyService)
+      .useValue(passwordPolicyServiceMock)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -133,6 +142,33 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
       where: { code },
     });
     expect(invite.usedById).toBe(createdUser.id);
+  });
+
+  // M7a Slice F: gerçek api.pwnedpasswords.com'a GİTMİYOR - beforeAll'da
+  // overrideProvider edilen PasswordPolicyService bir kez breach:true
+  // döndürecek şekilde ayarlanıyor (mockRejectedValueOnce, sonraki
+  // testleri etkilememesi için).
+  it('reddeder_bilinen_sizdirilmis_sifreyi', async () => {
+    const { code } = await seedInvite();
+    passwordPolicyServiceMock.assertNotBreached.mockRejectedValueOnce(
+      new BadRequestException({
+        code: 'PASSWORD_BREACHED',
+        message:
+          'Bu şifre bilinen bir veri sızıntısında bulunmuş, başka bir şifre seç.',
+      }),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: code,
+        email: `user-${randomUUID()}@koqep.local`,
+        username: `user-${randomUUID()}`,
+        password: 'a-breached-password',
+      })
+      .expect(400);
+
+    expect((response.body as { code: string }).code).toBe('PASSWORD_BREACHED');
   });
 
   it('reddeder_tekrar_kullanilan_davet_kodunu', async () => {
@@ -407,6 +443,7 @@ describe('Auth signup: kanıtlanabilir onay (ValidationPipe) (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   const emailServiceMock = buildEmailServiceMock();
+  const passwordPolicyServiceMock = buildPasswordPolicyServiceMock();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -414,6 +451,8 @@ describe('Auth signup: kanıtlanabilir onay (ValidationPipe) (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(emailServiceMock)
+      .overrideProvider(PasswordPolicyService)
+      .useValue(passwordPolicyServiceMock)
       .compile();
 
     app = moduleFixture.createNestApplication();

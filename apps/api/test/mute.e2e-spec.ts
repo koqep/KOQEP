@@ -13,6 +13,8 @@ import { InvitesService } from './../src/services/invites.service';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 import { EmailService } from './../src/services/email.service';
 import { buildEmailServiceMock } from './support/email-service-mock';
+import { PasswordPolicyService } from './../src/services/password-policy.service';
+import { buildPasswordPolicyServiceMock } from './support/password-policy-mock';
 
 function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
@@ -38,6 +40,8 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(buildEmailServiceMock())
+      .overrideProvider(PasswordPolicyService)
+      .useValue(buildPasswordPolicyServiceMock())
       .compile();
 
     app = moduleFixture.createNestApplication();

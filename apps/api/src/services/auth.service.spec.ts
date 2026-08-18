@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -10,6 +14,7 @@ import { PasswordResetService } from './password-reset.service';
 import { EmailVerificationService } from './email-verification.service';
 import { EmailService } from './email.service';
 import { SocketRegistryService } from './socket-registry.service';
+import { PasswordPolicyService } from './password-policy.service';
 import { PrismaService } from '../db/prisma.service';
 
 describe('AuthService', () => {
@@ -29,9 +34,15 @@ describe('AuthService', () => {
         .fn()
         .mockResolvedValue(undefined),
       sendEmailVerificationEmail: jest.fn().mockResolvedValue(undefined),
+      sendAccountLockedNotificationEmail: jest
+        .fn()
+        .mockResolvedValue(undefined),
     },
     socketRegistryMock: Partial<SocketRegistryService> = {
       disconnectUser: jest.fn(),
+    },
+    passwordPolicyMock: Partial<PasswordPolicyService> = {
+      assertNotBreached: jest.fn().mockResolvedValue(undefined),
     },
   ): AuthService {
     return new AuthService(
@@ -43,6 +54,7 @@ describe('AuthService', () => {
       emailVerificationMock as EmailVerificationService,
       emailMock as EmailService,
       socketRegistryMock as SocketRegistryService,
+      passwordPolicyMock as PasswordPolicyService,
     );
   }
 
@@ -118,6 +130,37 @@ describe('AuthService', () => {
         dto.email,
         expect.stringContaining('verify-token') as string,
       );
+    });
+
+    it('reddeder_bilinen_sizdirilmis_sifreyi', async () => {
+      const prismaMock = buildTransactionalPrismaMock({ count: 1 });
+      const invitesMock: Partial<InvitesService> = {
+        findRedeemableInvite: jest.fn().mockResolvedValue(invite),
+      };
+      const passwordPolicyMock: Partial<PasswordPolicyService> = {
+        assertNotBreached: jest.fn().mockRejectedValue(
+          new BadRequestException({
+            code: 'PASSWORD_BREACHED',
+            message:
+              'Bu şifre bilinen bir veri sızıntısında bulunmuş, başka bir şifre seç.',
+          }),
+        ),
+      };
+
+      const service = buildService(
+        prismaMock,
+        invitesMock,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        passwordPolicyMock,
+      );
+
+      await expect(service.signup(dto)).rejects.toMatchObject({
+        response: { code: 'PASSWORD_BREACHED' },
+      });
     });
 
     it('e_posta_gonderim_hatasini_yutmaz_firlatir', async () => {
@@ -249,10 +292,18 @@ describe('AuthService', () => {
 
     it('reddeder_yanlis_sifreyi', async () => {
       const passwordHash = await argon2.hash('correct-password');
-      const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+      const user = {
+        id: 'user-1',
+        email: 'a@koqep.local',
+        passwordHash,
+        failedLoginCount: 0,
+        lockedUntil: null,
+        lockoutNotifiedAt: null,
+      };
       const prismaMock: Partial<PrismaService> = {
         user: {
           findUnique: jest.fn().mockResolvedValue(user),
+          update: jest.fn().mockResolvedValue({}),
         } as unknown as PrismaService['user'],
       };
 
@@ -373,6 +424,269 @@ describe('AuthService', () => {
 
         const payload = jwt.verify<{ sub: string; email: string }>(accessToken);
         expect(payload.sub).toBe(user.id);
+      });
+    });
+
+    // M7a Slice F: isCurrentlyLocked/computeNextLockoutState/
+    // shouldSendLockoutNotification EXPORT EDİLMİYOR (verifyPasswordSafely/
+    // isUniqueConstraintError'ın AYNI, bu dosyanın zaten kurulu deseni) -
+    // login()'in gözlemlenebilir davranışı üzerinden DOLAYLI test ediliyor.
+    describe('hesap kilidi (brute-force)', () => {
+      async function buildUser(
+        overrides: Partial<{
+          failedLoginCount: number;
+          lockedUntil: Date | null;
+          lockoutNotifiedAt: Date | null;
+        }> = {},
+      ): Promise<{
+        id: string;
+        email: string;
+        passwordHash: string;
+        emailVerifiedAt: Date;
+        failedLoginCount: number;
+        lockedUntil: Date | null;
+        lockoutNotifiedAt: Date | null;
+      }> {
+        const passwordHash = await argon2.hash('correct-password');
+        return {
+          id: 'user-1',
+          email: 'a@koqep.local',
+          passwordHash,
+          emailVerifiedAt: new Date(),
+          failedLoginCount: 0,
+          lockedUntil: null,
+          lockoutNotifiedAt: null,
+          ...overrides,
+        };
+      }
+
+      it('esikteki_yanlis_sifre_kilitler_ve_bildirimi_yaniti_beklemeden_ateşler', async () => {
+        const user = await buildUser({ failedLoginCount: 4 });
+        const updateMock = jest.fn().mockResolvedValue({});
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            update: updateMock,
+          } as unknown as PrismaService['user'],
+        };
+        let resolveEmail: () => void = () => {};
+        const emailPromise = new Promise<void>((resolve) => {
+          resolveEmail = resolve;
+        });
+        const sendLockEmailMock = jest.fn().mockReturnValue(emailPromise);
+        const emailMock: Partial<EmailService> = {
+          sendAccountLockedNotificationEmail: sendLockEmailMock,
+        };
+        const service = buildService(
+          prismaMock,
+          {},
+          undefined,
+          {},
+          undefined,
+          emailMock,
+        );
+
+        // login() e-posta promise'i HİÇ resolve edilmeden reddediyor -
+        // await edilmediğinin deterministik kanıtı (wall-clock ölçümü
+        // DEĞİL, kullanıcının review'ında önerilen teknik).
+        await expect(
+          service.login({ email: user.email, password: 'wrong' }),
+        ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
+
+        expect(updateMock).toHaveBeenCalledWith({
+          where: { id: user.id },
+          data: {
+            failedLoginCount: 0,
+            lockedUntil: expect.any(Date) as Date,
+          },
+        });
+        expect(sendLockEmailMock).toHaveBeenCalledWith(user.email);
+        resolveEmail();
+      });
+
+      it('kilitliyken_dogru_sifreyle_bile_ayni_invalid_credentials_ile_reddeder', async () => {
+        const user = await buildUser({
+          lockedUntil: new Date(Date.now() + 10 * 60 * 1000),
+        });
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+          } as unknown as PrismaService['user'],
+        };
+        const service = buildService(prismaMock);
+
+        await expect(
+          service.login({ email: user.email, password: 'correct-password' }),
+        ).rejects.toMatchObject({
+          response: {
+            code: 'INVALID_CREDENTIALS',
+            message: 'E-posta veya şifre hatalı.',
+          },
+        });
+      });
+
+      it('dogru_sifreyle_basarili_giris_kilit_sayacini_sifirlar', async () => {
+        const user = await buildUser({ failedLoginCount: 3 });
+        const updateMock = jest.fn().mockResolvedValue({});
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            update: updateMock,
+          } as unknown as PrismaService['user'],
+          refreshToken: {
+            create: jest.fn().mockResolvedValue({}),
+          } as unknown as PrismaService['refreshToken'],
+        };
+        const service = buildService(prismaMock);
+
+        await service.login({
+          email: user.email,
+          password: 'correct-password',
+        });
+
+        expect(updateMock).toHaveBeenCalledWith({
+          where: { id: user.id },
+          data: { failedLoginCount: 0, lockedUntil: null },
+        });
+      });
+
+      it('yanlis_totp_kodu_kilit_sayacini_hic_etkilemez', async () => {
+        const user = await buildUser();
+        const updateMock = jest.fn().mockResolvedValue({});
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            update: updateMock,
+          } as unknown as PrismaService['user'],
+        };
+        const totpMock: Partial<TotpService> = {
+          isEnabled: () => true,
+          verifyDuringLogin: jest.fn().mockResolvedValue(false),
+        };
+        const service = buildService(prismaMock, {}, totpMock);
+
+        await expect(
+          service.login({
+            email: user.email,
+            password: 'correct-password',
+            totpCode: '000000',
+          }),
+        ).rejects.toMatchObject({ response: { code: 'TOTP_REQUIRED' } });
+
+        // Şifre zaten doğruydu - başarılı-giriş sıfırlama dalı çalışır
+        // (failedLoginCount zaten 0 olduğu için update ÇAĞRILMAZ), ama
+        // ÖNEMLİ olan: hiçbir çağrı failedLoginCount'u ARTIRMAZ.
+        expect(updateMock).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              failedLoginCount: expect.any(Number) as number,
+            }) as unknown,
+          }),
+        );
+      });
+
+      it('soguma_penceresi_icindeyken_ikinci_kilit_bildirim_gondermez', async () => {
+        const user = await buildUser({
+          failedLoginCount: 4,
+          lockoutNotifiedAt: new Date(Date.now() - 60 * 60 * 1000), // 1 saat önce
+        });
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            update: jest.fn().mockResolvedValue({}),
+          } as unknown as PrismaService['user'],
+        };
+        const sendLockEmailMock = jest.fn().mockResolvedValue(undefined);
+        const emailMock: Partial<EmailService> = {
+          sendAccountLockedNotificationEmail: sendLockEmailMock,
+        };
+        const service = buildService(
+          prismaMock,
+          {},
+          undefined,
+          {},
+          undefined,
+          emailMock,
+        );
+
+        await expect(
+          service.login({ email: user.email, password: 'wrong' }),
+        ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
+
+        expect(sendLockEmailMock).not.toHaveBeenCalled();
+      });
+
+      it('soguma_penceresi_gectikten_sonra_ikinci_kilit_bildirim_gonderir', async () => {
+        const user = await buildUser({
+          failedLoginCount: 4,
+          lockoutNotifiedAt: new Date(Date.now() - 13 * 60 * 60 * 1000), // 13 saat önce
+        });
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            update: jest.fn().mockResolvedValue({}),
+          } as unknown as PrismaService['user'],
+        };
+        const sendLockEmailMock = jest.fn().mockResolvedValue(undefined);
+        const emailMock: Partial<EmailService> = {
+          sendAccountLockedNotificationEmail: sendLockEmailMock,
+        };
+        const service = buildService(
+          prismaMock,
+          {},
+          undefined,
+          {},
+          undefined,
+          emailMock,
+        );
+
+        await expect(
+          service.login({ email: user.email, password: 'wrong' }),
+        ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
+
+        expect(sendLockEmailMock).toHaveBeenCalledWith(user.email);
+      });
+
+      it('bildirim_gonderimi_basarisiz_olursa_lockoutNotifiedAt_guncellenmez', async () => {
+        const user = await buildUser({ failedLoginCount: 4 });
+        const updateMock = jest.fn().mockResolvedValue({});
+        const prismaMock: Partial<PrismaService> = {
+          user: {
+            findUnique: jest.fn().mockResolvedValue(user),
+            update: updateMock,
+          } as unknown as PrismaService['user'],
+        };
+        const sendLockEmailMock = jest
+          .fn()
+          .mockRejectedValue(new Error('resend patladı'));
+        const emailMock: Partial<EmailService> = {
+          sendAccountLockedNotificationEmail: sendLockEmailMock,
+        };
+        const service = buildService(
+          prismaMock,
+          {},
+          undefined,
+          {},
+          undefined,
+          emailMock,
+        );
+
+        await expect(
+          service.login({ email: user.email, password: 'wrong' }),
+        ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
+
+        // Fire-and-forget task'ın kendi mikro-görev kuyruğunda tamamlanmasını
+        // bekle - login() zaten dönmüş olsa da sendLockoutNotification hâlâ
+        // çalışıyor olabilir.
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(updateMock).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              lockoutNotifiedAt: expect.any(Date) as Date,
+            }) as unknown,
+          }),
+        );
       });
     });
   });
@@ -945,6 +1259,81 @@ describe('AuthService', () => {
         where: { userId: 'user-1', revokedAt: null },
         data: { revokedAt: expect.any(Date) as Date },
       });
+    });
+
+    // M7a Slice F (kullanıcının review'ında bulunan gerçek bug): e-posta
+    // erişimini kanıtlamak kilit mekanizmasının kendisinden daha güçlü bir
+    // doğrulama - sıfırlama sonrası kilit kalıcı kalırsa kullanıcı için
+    // açıklanamaz bir durum olurdu.
+    it('kilit_alanlarini_da_temizler', async () => {
+      const stored = {
+        id: 'prt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const { prismaMock, userUpdateSpy } = buildTransactionalPrismaMock({
+        count: 1,
+      });
+      (
+        prismaMock as unknown as {
+          passwordResetToken: { findUnique: jest.Mock };
+        }
+      ).passwordResetToken = {
+        findUnique: jest.fn().mockResolvedValue(stored),
+      };
+
+      const service = buildService(prismaMock);
+      await service.confirmPasswordReset('raw-token', 'a-new-password');
+
+      expect(userUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            failedLoginCount: 0,
+            lockedUntil: null,
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('reddeder_bilinen_sizdirilmis_sifreyi', async () => {
+      const stored = {
+        id: 'prt-1',
+        tokenHash: 'x',
+        userId: 'user-1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        passwordResetToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+        } as unknown as PrismaService['passwordResetToken'],
+      };
+      const passwordPolicyMock: Partial<PasswordPolicyService> = {
+        assertNotBreached: jest.fn().mockRejectedValue(
+          new BadRequestException({
+            code: 'PASSWORD_BREACHED',
+            message:
+              'Bu şifre bilinen bir veri sızıntısında bulunmuş, başka bir şifre seç.',
+          }),
+        ),
+      };
+
+      const service = buildService(
+        prismaMock,
+        {},
+        undefined,
+        {},
+        undefined,
+        undefined,
+        undefined,
+        passwordPolicyMock,
+      );
+
+      await expect(
+        service.confirmPasswordReset('raw-token', 'a-breached-password'),
+      ).rejects.toMatchObject({ response: { code: 'PASSWORD_BREACHED' } });
     });
 
     it('reddeder_bulunamayan_tokeni', async () => {

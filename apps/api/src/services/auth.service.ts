@@ -15,6 +15,7 @@ import { PasswordResetService } from './password-reset.service';
 import { EmailVerificationService } from './email-verification.service';
 import { EmailService } from './email.service';
 import { SocketRegistryService } from './socket-registry.service';
+import { PasswordPolicyService } from './password-policy.service';
 import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
@@ -29,6 +30,23 @@ const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // reuse detection with grace period" olarak bilinen, bilinçli ve dar
 // (10sn + tek kullanım) bir tavizdir, bkz. ADR-0002 Addendum.
 const REFRESH_TOKEN_REUSE_GRACE_MS = 10 * 1000;
+
+// M7a Slice F: hesap-bazlı brute-force kilidi - SADECE yanlış şifrede
+// artar (TOTP başarısızlığı hiç dokunmaz, bkz. login()'in kendi yorumu).
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+// Bir hedefe karşı sürdürülen bir saldırı bildirim sayısını günde en
+// fazla 2'ye sınırlıyor - kullanıcı İLK saldırıdan hemen haberdar olur,
+// aynı gün içindeki tekrarlar sessiz kalır ama saldırı ERTESİ gün de
+// sürerse yeniden bildirilir.
+const LOCKOUT_NOTIFICATION_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+// Kilitli-hesap yanıtının normal yanlış-şifre yanıtıyla ZAMANLAMA olarak
+// ayırt edilememesi için - gerçek bir şifreye karşılık gelmiyor, sadece
+// argon2'nin hesaplama SÜRESİNİ taklit ediyor (bkz. login()'in kendi
+// yorumu). `node -e "require('argon2').hash('dummy-lockout-timing-parity').then(console.log)"`
+// ile BİR KEZ üretildi.
+const LOCKOUT_DUMMY_HASH =
+  '$argon2id$v=19$m=65536,p=4,t=3$mZEgK4YC8J0DvNm3a3Ajdw$3AMUJYEn07X80qyfWXMFoRn5JhbJD6OkMgyXpYFh3SE';
 
 // M7a Slice A: web istemcisi 401 alan authed çağrıları BİR KEZ sessizce
 // refresh-ve-tekrar-dene mantığıyla iyileştiriyor (bkz. lib/api.ts) - ama
@@ -59,6 +77,7 @@ export class AuthService {
     private readonly emailVerificationService: EmailVerificationService,
     private readonly emailService: EmailService,
     private readonly socketRegistry: SocketRegistryService,
+    private readonly passwordPolicyService: PasswordPolicyService,
   ) {}
 
   async verifyAccessToken(
@@ -89,6 +108,8 @@ export class AuthService {
     if (existingUsername) {
       throw new ConflictException('Bu kullanıcı adı zaten alınmış.');
     }
+
+    await this.passwordPolicyService.assertNotBreached(dto.password);
 
     const passwordHash = await argon2.hash(dto.password);
     const userId = randomUUID();
@@ -168,14 +189,59 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
+    const now = new Date();
+
+    // M7a Slice F: kilitli bir hesap için ŞİFRE DOĞRULAMASI HİÇ YAPILMAZ
+    // ve AYRI bir hata kodu/mesaj DÖNMEZ - normal yanlış-şifre yanıtıyla
+    // birebir aynı ({code:'INVALID_CREDENTIALS', ...}), tetikleyen istekte
+    // bile. Ayrı bir 'ACCOUNT_LOCKED' kodu sıfır ön-bilgiyle bir
+    // email-enumeration oracle'ı olurdu (5 rastgele yanlış şifre → hangi
+    // kod döndüğüne bakarak email'in kayıtlı olup olmadığı öğrenilebilirdi
+    // - global IP throttle bunu hiç yavaşlatmaz, dağıtık script'lenebilir).
+    // Dummy hash'e karşı argon2 çalıştırmak zamanlama paritesi sağlıyor -
+    // aksi halde bu dal (argon2 atlanmış) normal yanlış-şifre dalından
+    // (argon2 çalışmış) ÖLÇÜLEBİLİR şekilde hızlı dönerdi.
+    if (user && isCurrentlyLocked(user, now)) {
+      await verifyPasswordSafely(LOCKOUT_DUMMY_HASH, dto.password);
+      throw new UnauthorizedException({
+        code: 'INVALID_CREDENTIALS',
+        message: 'E-posta veya şifre hatalı.',
+      });
+    }
+
     const isValid = user
       ? await verifyPasswordSafely(user.passwordHash, dto.password)
       : false;
 
     if (!user || !isValid) {
+      if (user) {
+        const next = computeNextLockoutState(user, now);
+        await this.prisma.user.update({ where: { id: user.id }, data: next });
+        // Kilit BU istekte tetiklendiyse (next.lockedUntil dolu) VE
+        // soğuma penceresi geçtiyse hesap sahibine bildirim - AMA `await`
+        // EDİLMİYOR: bir Resend ağ turu await edilirse, kilidi TETİKLEYEN
+        // istek diğer yanlış-şifre isteklerinden ÖLÇÜLEBİLİR şekilde
+        // YAVAŞ döner - yukarıdaki argon2-zamanlama düzeltmesinin
+        // kapattığı ile AYNI kategori bir enumeration oracle'ı, farklı
+        // bir kanaldan. `void` ile ateşle-unut, yanıt e-posta sonucunu
+        // hiç beklemeden döner.
+        if (
+          next.lockedUntil &&
+          shouldSendLockoutNotification(user.lockoutNotifiedAt, now)
+        ) {
+          void this.sendLockoutNotification(user.id, user.email, now);
+        }
+      }
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: 'E-posta veya şifre hatalı.',
+      });
+    }
+
+    if (user.failedLoginCount > 0 || user.lockedUntil) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginCount: 0, lockedUntil: null },
       });
     }
 
@@ -385,6 +451,8 @@ export class AuthService {
       );
     }
 
+    await this.passwordPolicyService.assertNotBreached(newPassword);
+
     const passwordHash = await argon2.hash(newPassword);
 
     await this.prisma.$transaction(async (tx) => {
@@ -398,9 +466,19 @@ export class AuthService {
         );
       }
 
+      // failedLoginCount/lockedUntil de burada temizlenir (M7a Slice F,
+      // kullanıcının review'ında bulunan gerçek bug) - e-posta erişimini
+      // kanıtlamak kilit mekanizmasının kendisinden (sadece "5 yanlış
+      // şifre denemesi") DAHA güçlü bir doğrulama; temizlenmezse kilitli
+      // bir kullanıcı yeni şifresiyle bile giriş yapamaz, kendisi için
+      // açıklanamaz bir durum olur.
       await tx.user.update({
         where: { id: stored.userId },
-        data: { passwordHash },
+        data: {
+          passwordHash,
+          failedLoginCount: 0,
+          lockedUntil: null,
+        },
       });
 
       // THREAT-MODEL satır 11: şifre değişince tüm aktif oturumlar iptal
@@ -462,6 +540,30 @@ export class AuthService {
     });
   }
 
+  // login()'den AWAIT EDİLMEDEN çağrılıyor (bkz. login()'in kendi
+  // yorumu) - yanıt yolunun dışında, kendi try/catch'i içinde.
+  // confirmPasswordReset'in ZATEN kurulu fail-open deseni (e-posta hatası
+  // birincil akışı etkilemez), sadece burada ayrıca AWAIT de edilmiyor.
+  // lockoutNotifiedAt SADECE gönderim BAŞARILI olursa güncellenir -
+  // geçici bir Resend hatası bir sonraki döngüde tekrar denenebilsin diye.
+  private async sendLockoutNotification(
+    userId: string,
+    email: string,
+    notifiedAt: Date,
+  ): Promise<void> {
+    try {
+      await this.emailService.sendAccountLockedNotificationEmail(email);
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { lockoutNotifiedAt: notifiedAt },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Hesap kilidi bildirimi gönderilemedi: ${(error as Error).message}`,
+      );
+    }
+  }
+
   private async issueTokenPair(
     userId: string,
     email: string,
@@ -490,6 +592,47 @@ async function verifyPasswordSafely(
   } catch {
     return false;
   }
+}
+
+// M7a Slice F: login()'in kendi gövdesinden AYRI, bağımsız test edilebilir
+// saf fonksiyonlar - "süre-dolmuş kilit sıfırlanır mı" aritmetiği
+// off-by-one/`<=` vs `<` gibi hataların en olası olduğu yer.
+function isCurrentlyLocked(
+  user: { lockedUntil: Date | null },
+  now: Date,
+): boolean {
+  return user.lockedUntil !== null && user.lockedUntil > now;
+}
+
+function computeNextLockoutState(
+  user: { failedLoginCount: number; lockedUntil: Date | null },
+  now: Date,
+): { failedLoginCount: number; lockedUntil: Date | null } {
+  const expired = user.lockedUntil !== null && user.lockedUntil <= now;
+  const baseCount = expired ? 0 : user.failedLoginCount;
+  const nextCount = baseCount + 1;
+  if (nextCount >= MAX_FAILED_LOGIN_ATTEMPTS) {
+    return {
+      failedLoginCount: 0,
+      lockedUntil: new Date(now.getTime() + LOCKOUT_DURATION_MS),
+    };
+  }
+  return { failedLoginCount: nextCount, lockedUntil: null };
+}
+
+// Kilit bildirimi TEK bir kilit döngüsü içinde spam DEĞİL (tetikleyen
+// istekte bir kez), ama DÖNGÜLER ARASI sınırsız OLABİLİRDİ - saldırgan 5
+// deneme/15dk bekle/5 deneme daha ile günde onlarca e-posta üretebilirdi.
+// Bu fonksiyon o boşluğu kapatıyor.
+function shouldSendLockoutNotification(
+  lockoutNotifiedAt: Date | null,
+  now: Date,
+): boolean {
+  return (
+    lockoutNotifiedAt === null ||
+    now.getTime() - lockoutNotifiedAt.getTime() >=
+      LOCKOUT_NOTIFICATION_COOLDOWN_MS
+  );
 }
 
 function isUniqueConstraintError(error: unknown, field: string): boolean {

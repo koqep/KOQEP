@@ -11,3 +11,11 @@
   `apps/api/test/support/email-service-mock.ts`'deki `buildEmailServiceMock()`
   ile `overrideProvider` et — CI'daki `RESEND_API_KEY` sahte, mock'lanmazsa
   gerçek Resend çağrısı 401 ile patlar (bu hata iki kez tekrarlandı).
+- Aynı dosyalar gerçek `/auth/signup` ya da `/auth/password-reset/confirm`
+  çağırıyorsa (yeni bir şifre SET edildiği HER yer) `PasswordPolicyService`'i
+  de MUTLAKA `apps/api/test/support/password-policy-mock.ts`'deki
+  `buildPasswordPolicyServiceMock()` ile `overrideProvider` et — mock'lanmazsa
+  gerçek `api.pwnedpasswords.com`'a gider (yavaş/kırılgan, üçüncü bir partiyi
+  otomatik test koşumlarından dövmek de sorunlu). EmailService kuralıyla AYNI
+  ciddiyette (M7a Slice F'de 5 mevcut dosyada bu satır atlanmıştı, hepsi
+  düzeltildi).

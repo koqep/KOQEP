@@ -7,6 +7,8 @@ import * as argon2 from 'argon2';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { EmailService } from './../src/services/email.service';
+import { PasswordPolicyService } from './../src/services/password-policy.service';
+import { buildPasswordPolicyServiceMock } from './support/password-policy-mock';
 
 describe('Password reset request/confirm (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,6 +19,7 @@ describe('Password reset request/confirm (e2e)', () => {
       .fn()
       .mockResolvedValue(undefined),
   };
+  const passwordPolicyServiceMock = buildPasswordPolicyServiceMock();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -24,6 +27,8 @@ describe('Password reset request/confirm (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(emailServiceMock)
+      .overrideProvider(PasswordPolicyService)
+      .useValue(passwordPolicyServiceMock)
       .compile();
 
     app = moduleFixture.createNestApplication();
