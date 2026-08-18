@@ -50,6 +50,19 @@ model User {
   // da en riskli kullanıcılarda etkisiz kalırdı.
   pendingInviteDebt Int     @default(0)
 
+  // M7a Slice F: hesap-bazlı brute-force kilidi - mutedUntil'in AYNI şekli.
+  // failedLoginCount SADECE yanlış ŞİFRE'de artar (TOTP başarısızlığı HİÇ
+  // dokunmaz - doğru şifreyi zaten bilen biri için yeni bir taciz aracı
+  // olurdu). lockedUntil'in kendisi login()'de İSTEMCİYE HİÇ sızmıyor
+  // (ayrı bir hata kodu email-enumeration oracle'ı olurdu) - sadece
+  // hesabın kendi kayıtlı e-postasına bir bildirim tetikler.
+  // lockoutNotifiedAt o bildirimin en son NE ZAMAN gönderildiğini tutar,
+  // döngüler-arası (kilit süresi dolup yeniden tetiklenen) e-posta
+  // spam'ini önlemek için (bkz. LOCKOUT_NOTIFICATION_COOLDOWN_MS).
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lockoutNotifiedAt DateTime?
+
   inviterId String?
   inviter   User?   @relation("UserInvitedBy", fields: [inviterId], references: [id], onDelete: SetNull)
   invitees  User[]  @relation("UserInvitedBy")
