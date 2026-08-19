@@ -3,19 +3,20 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-18
-**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C main'e MERGE EDİLDİ (kullanıcı production'da doğruladı, bootstrap SQL'ini çalıştırıp kendi hesabını moderatör yaptı). Slice F tamamlandı, dal `m7a/slice-f-account-hardening` henüz yerelde, push kullanıcının onayına kalıyor. M0-M6 TAMAMLANDI.
+**Son güncelleme:** 2026-08-19
+**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C/F main'e MERGE EDİLDİ. Slice G tamamlandı, dal `m7a/slice-g-landing-legal` henüz yerelde, push kullanıcının onayına kalıyor. Sıradaki dilim Slice H (analitik SQL). M0-M6 TAMAMLANDI.
 
 ## Şu an ne çalışıyor
 - **M0-M6 TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
 - **2026-08-12 — 500-kullanıcı kapsam turu:** hedef 20-30'dan 500'e çıktı, M7 **M7a** (kapı açma eşiği) / **M7b** (cila) 'ya bölündü. Detay: `docs/BACKLOG.md` "F. 500-KULLANICI KAPSAM TURU".
 - **2026-08-14/15/16 — M7a Slice A/B/C TAMAMLANDI, main'e merge edildi.** Oturum kalıcılığı (ADR-0002 Addendum), `RoomMember` üyelik modeli (ADR-0009), self-servis moderatör atama/kaldırma.
 - **2026-08-18 — M7a Slice F (hesap sertleştirme) TAMAMLANDI.** `PasswordPolicyService` HaveIBeenPwned k-anonymity ile bilinen sızdırılmış şifreleri reddediyor (signup+parola-sıfırlama, fail-open). `User.failedLoginCount`/`lockedUntil`/`lockoutNotifiedAt` ile hesap-bazlı brute-force kilidi — SADECE yanlış şifre sayaca dahil (TOTP değil, griefing riski), kilitli durum İSTEMCİYE HİÇ sızmıyor (enumeration riski), bildirim e-postası yanıtı BEKLEMEDEN ateşleniyor (zamanlama-oracle riski) + 12sn soğuma penceresi taşıyor. `THREAT-MODEL.md` satır 2 kapatıldı, `verifyCurrentPassword` yolu için AYRI açık bir madde bırakıldı. 238 birim+130 e2e (apps/api, iki koşu) + 75 Playwright (apps/web) testi geçti.
+- **2026-08-19 — M7a Slice G (landing/onboarding + hukuki EN/TR) TAMAMLANDI.** `/` artık `AuthView`'ın üstünde kısa, İngilizce bir tanıtım bloğu (`LandingIntro.tsx`) gösteriyor — ayrı route/state yok (kullanıcının bu turda seçtiği ucuz tasarım). `/privacy/en`+`/terms/en` yeni statik sayfalar (i18n framework yok), 4 sayfada dil-değiştirme linki + "hangi dil bağlayıcı" sorusunun hukuki incelemeden geçmediğini belirten not. 81 Playwright testi geçti.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M7a Slice F implementasyonu bitti, doğrulandı, dokümante edildi. Push kullanıcının onayında.
-- **Sonraki adım:** Slice F main'e merge edilip production'da doğrulanınca, M7a'nın bir sonraki dilimi (Slice G — landing/onboarding sayfası + hukuki EN/TR versiyon seçimi) plan-modu turuyla başlar.
+- **Görev:** Slice G implementasyonu bitti, doğrulandı, dokümante edildi. Push kullanıcının onayında.
+- **Sonraki adım:** Slice G main'e merge edilince, M7a'nın bir sonraki dilimi (Slice H — ürün analitiği SQL sorguları) plan-modu turuyla başlar.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
