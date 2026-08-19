@@ -24,6 +24,28 @@ function waitForEvent<T>(socket: Socket, event: string): Promise<T> {
   return new Promise((resolve) => socket.once(event, resolve));
 }
 
+// M7a Slice J: Room.lastActivityAt artık sendMessage'ın yanıt yolunda
+// DEĞİL (ateşle-unut) - Slice F'nin lockoutNotifiedAt deseniyle AYNI, sabit
+// bir sleep DEĞİL, kısa bir polling.
+async function waitForRoomActivityUpdate(
+  prisma: PrismaService,
+  roomId: string,
+  previousActivityAt: Date,
+): Promise<{ lastActivityAt: Date }> {
+  for (let i = 0; i < 20; i++) {
+    const room = await prisma.room.findUniqueOrThrow({
+      where: { id: roomId },
+    });
+    if (room.lastActivityAt.getTime() > previousActivityAt.getTime()) {
+      return room;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(
+    'e2e test: Room.lastActivityAt beklenen sürede güncellenmedi.',
+  );
+}
+
 describe('Messages Gateway (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -32,6 +54,7 @@ describe('Messages Gateway (e2e)', () => {
   const createdMessageIds: string[] = [];
   const createdReputationEventIds: string[] = [];
   const createdInviteIds: string[] = [];
+  const createdRoomIds: string[] = [];
   const openSockets: Socket[] = [];
 
   beforeAll(async () => {
@@ -118,6 +141,13 @@ describe('Messages Gateway (e2e)', () => {
         where: { id: { in: createdMessageIds } },
       });
     }
+    if (createdRoomIds.length > 0) {
+      // Message->Room FK'si RESTRICT - oda silinmeden ÖNCE mesajları
+      // silen bloğun ARKASINDA olmalı (yukarıdaki createdMessageIds
+      // temizliği zaten önce çalıştı). RoomMember Room silinince kendiliğinden
+      // gider (onDelete: Cascade, ADR-0009).
+      await prisma.room.deleteMany({ where: { id: { in: createdRoomIds } } });
+    }
     await app.close();
   });
 
@@ -161,6 +191,40 @@ describe('Messages Gateway (e2e)', () => {
     });
     expect(row).not.toBeNull();
     expect(row?.content).toBe(content);
+  }, 10000);
+
+  it('mesaj_gonderilince_lastActivityAt_ateşle_unut_ile_guncellenir', async () => {
+    // Kendi, YALNIZ bu teste ait bir oda - M7a Slice J'nin 30sn'lik
+    // debounce penceresi paylaşılan CORE_ROOM_NAMES odalarında bu dosyanın
+    // BAŞKA testlerinin yazımlarıyla çakışıp testi flaky yapardı.
+    const roomName = `test-lastactivity-${randomUUID()}`;
+    const room = await prisma.room.create({ data: { name: roomName } });
+    createdRoomIds.push(room.id);
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email: DEV_USER_EMAIL },
+    });
+    await joinRoomByName(prisma, user.id, roomName);
+
+    const sender = connect(accessToken);
+    await waitForEvent(sender, 'ready');
+
+    const content = `e2e-lastactivity-${randomUUID()}`;
+    const receivedPromise = waitForEvent<{ id: string; content: string }>(
+      sender,
+      'message:new',
+    );
+    sender.emit('message:send', { content, roomName });
+    const message = await receivedPromise;
+    createdMessageIds.push(message.id);
+
+    const updatedRoom = await waitForRoomActivityUpdate(
+      prisma,
+      room.id,
+      room.lastActivityAt,
+    );
+    expect(updatedRoom.lastActivityAt.getTime()).toBeGreaterThan(
+      room.lastActivityAt.getTime(),
+    );
   }, 10000);
 
   it('roomName_belirtilince_dogru_odaya_gider_diger_odanin_gecmisine_sizmaz', async () => {
