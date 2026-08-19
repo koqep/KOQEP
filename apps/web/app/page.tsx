@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AuthView from "./components/AuthView";
+import LandingIntro from "./components/LandingIntro";
 import RoomView from "./components/RoomView";
 import { refreshAccessToken, setAccessTokenRefreshedListener } from "../lib/api";
 
@@ -55,12 +56,15 @@ export default function Home() {
 
   if (!accessToken) {
     return (
-      <AuthView
-        onAuthenticated={(tokens, nextTotpEnabled) => {
-          setAccessToken(tokens.accessToken);
-          setTotpEnabled(nextTotpEnabled);
-        }}
-      />
+      <main className="animate-fade-in mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 p-4">
+        <LandingIntro />
+        <AuthView
+          onAuthenticated={(tokens, nextTotpEnabled) => {
+            setAccessToken(tokens.accessToken);
+            setTotpEnabled(nextTotpEnabled);
+          }}
+        />
+      </main>
     );
   }
 

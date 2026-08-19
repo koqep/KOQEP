@@ -87,7 +87,7 @@ export default function AuthView({ onAuthenticated }: Props) {
   }
 
   return (
-    <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
+    <div className="flex flex-col gap-4">
       <h1 className="mb-6 text-neutral-400">
         <span className="text-muted">#</span> koqep
       </h1>
@@ -248,6 +248,6 @@ export default function AuthView({ onAuthenticated }: Props) {
           </button>
         </>
       )}
-    </main>
+    </div>
   );
 }
