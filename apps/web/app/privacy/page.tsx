@@ -11,6 +11,12 @@ export default function PrivacyPage() {
         TASLAK — bağlayıcı değildir, gerçek hukuki metin henüz yayında değil.
       </p>
 
+      <p className="mb-6 text-xs">
+        Bu belgenin Türkçe ve İngilizce sürümleri arasında çelişki olması
+        durumunda hangisinin bağlayıcı olacağı henüz hukuki incelemeden
+        geçmedi.
+      </p>
+
       <div className="flex flex-col gap-4">
         <p>
           Bu sayfa, KOQEP&apos;in hangi verileri topladığını, neden
@@ -25,9 +31,14 @@ export default function PrivacyPage() {
         </p>
       </div>
 
-      <Link href="/" className="mt-8 inline-block text-muted hover:text-neutral-400">
-        ana sayfaya dön
-      </Link>
+      <p className="mt-8 flex gap-4 text-xs">
+        <Link href="/" className="text-muted hover:text-neutral-400">
+          ana sayfaya dön
+        </Link>
+        <Link href="/privacy/en" className="text-muted hover:text-neutral-400">
+          Switch to English
+        </Link>
+      </p>
     </main>
   );
 }
