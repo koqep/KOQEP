@@ -48,11 +48,20 @@ describe('MessagesService', () => {
     );
   }
 
+  // M7a Slice J: Room.lastActivityAt artık sendMessage'ın $transaction'ının
+  // İÇİNDE DEĞİL, ateşle-unut (void this.touchRoomActivity(...)) - test
+  // bunu bekleyebilmek için AuthService.sendLockoutNotification'ın
+  // (auth.service.spec.ts) AYNI microtask-flush desenini kullanıyor.
+  function flushMicrotasks(): Promise<void> {
+    return new Promise((resolve) => setImmediate(resolve));
+  }
+
   describe('sendMessage', () => {
     function buildSendMessagePrismaMock(
       foundRoom: { id: string; name: string },
       created: unknown,
       userFindUniqueSpy: jest.Mock = notMutedUserMock(),
+      roomUpdateSpy: jest.Mock = jest.fn().mockResolvedValue(foundRoom),
     ): {
       prismaMock: Partial<PrismaService>;
       findUniqueSpy: jest.Mock;
@@ -60,15 +69,14 @@ describe('MessagesService', () => {
       roomUpdateSpy: jest.Mock;
     } {
       const createSpy = jest.fn().mockResolvedValue(created);
-      const roomUpdateSpy = jest.fn().mockResolvedValue(foundRoom);
       const findUniqueSpy = jest.fn().mockResolvedValue(foundRoom);
       const txMock = {
         message: { create: createSpy },
-        room: { update: roomUpdateSpy },
       };
       const prismaMock: Partial<PrismaService> = {
         room: {
           findUnique: findUniqueSpy,
+          update: roomUpdateSpy,
         } as unknown as PrismaService['room'],
         user: {
           findUnique: userFindUniqueSpy,
@@ -112,6 +120,9 @@ describe('MessagesService', () => {
           data: { content: 'merhaba', roomId: room.id, authorId: 'user-1' },
         }),
       );
+      // touchRoomActivity await EDİLMİYOR (fire-and-forget) - microtask
+      // kuyruğunun tamamlanmasını bekle, sonra assert et.
+      await flushMicrotasks();
       expect(roomUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: room.id } }),
       );
@@ -131,6 +142,64 @@ describe('MessagesService', () => {
         authorUsername: 'dev',
         roomId: room.id,
       });
+    });
+
+    it('ayni_odaya_art_arda_gonderilen_mesajlarda_room_update_sadece_bir_kez_cagrilir', async () => {
+      const created = {
+        id: 'msg-1',
+        content: 'merhaba',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+      };
+      const { prismaMock, roomUpdateSpy } = buildSendMessagePrismaMock(
+        room,
+        created,
+      );
+      const service = buildService(prismaMock);
+
+      await service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba');
+      await service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'tekrar');
+      await flushMicrotasks();
+
+      // M7a Slice J: debounce penceresi (30sn) içinde ikinci çağrı sessizce
+      // atlanır - yük testinde (Slice I) bulunan satır-kilidi çakışmasının
+      // düzeltmesi tam olarak bu.
+      expect(roomUpdateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('room_update_basarisiz_olursa_sendMessage_yine_de_resolve_olur', async () => {
+      const created = {
+        id: 'msg-1',
+        content: 'merhaba',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+      };
+      const failingRoomUpdateSpy = jest
+        .fn()
+        .mockRejectedValue(new Error('DB gecici hatasi'));
+      const { prismaMock } = buildSendMessagePrismaMock(
+        room,
+        created,
+        undefined,
+        failingRoomUpdateSpy,
+      );
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).resolves.toEqual(
+        expect.objectContaining({ id: 'msg-1', content: 'merhaba' }),
+      );
+      await flushMicrotasks();
+
+      // M7a Slice J: hata catch içinde loglanip yutuluyor, sendMessage'in
+      // kendi yanıtına hiç sızmıyor - debounce state'i de geri alınıyor
+      // (bir sonraki mesaj tekrar dener, bkz. aşağıdaki assertion).
+      await service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'tekrar');
+      await flushMicrotasks();
+      expect(failingRoomUpdateSpy).toHaveBeenCalledTimes(2);
     });
 
     it('seviye_bir_atlayinca_tam_bir_davet_verir', async () => {

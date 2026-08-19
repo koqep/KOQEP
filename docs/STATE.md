@@ -4,7 +4,7 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-19
-**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C/F/G/H/I main'e MERGE EDİLDİ. **Yeni Slice J eklendi** (`Room.lastActivityAt` row-contention, A17, V1'e yükseltildi — eşik takibi 50 bağlantıda bile gecikme/100'de gerçek hata gösterdi, M7b'ye ERTELENMEDİ). Slice J henüz planlanmadı. M0-M6 TAMAMLANDI.
+**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C/F/G/H/I main'e MERGE EDİLDİ. Slice J'nin KOD tarafı tamamlandı (dal `m7a/slice-j-sendmessage-contention` henüz yerelde) — AC hâlâ açık, kalan tek şey founder'ın production `DATABASE_URL`'ine `connection_limit=30` eklemesi. M0-M6 TAMAMLANDI.
 
 ## Şu an ne çalışıyor
 - **M0-M6 TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
@@ -13,24 +13,24 @@
 - **2026-08-18 — M7a Slice F (hesap sertleştirme) TAMAMLANDI.** `PasswordPolicyService` HaveIBeenPwned k-anonymity ile bilinen sızdırılmış şifreleri reddediyor (signup+parola-sıfırlama, fail-open). `User.failedLoginCount`/`lockedUntil`/`lockoutNotifiedAt` ile hesap-bazlı brute-force kilidi — SADECE yanlış şifre sayaca dahil (TOTP değil, griefing riski), kilitli durum İSTEMCİYE HİÇ sızmıyor (enumeration riski), bildirim e-postası yanıtı BEKLEMEDEN ateşleniyor (zamanlama-oracle riski) + 12sn soğuma penceresi taşıyor. `THREAT-MODEL.md` satır 2 kapatıldı, `verifyCurrentPassword` yolu için AYRI açık bir madde bırakıldı. 238 birim+130 e2e (apps/api, iki koşu) + 75 Playwright (apps/web) testi geçti.
 - **2026-08-19 — M7a Slice G (landing/onboarding + hukuki EN/TR) TAMAMLANDI.** `/` artık `AuthView`'ın üstünde kısa, İngilizce bir tanıtım bloğu (`LandingIntro.tsx`) gösteriyor — ayrı route/state yok (kullanıcının bu turda seçtiği ucuz tasarım). `/privacy/en`+`/terms/en` yeni statik sayfalar (i18n framework yok), 4 sayfada dil-değiştirme linki + "hangi dil bağlayıcı" sorusunun hukuki incelemeden geçmediğini belirten not. 81 Playwright testi geçti.
 - **2026-08-19 — M7a Slice H (ürün analitiği) TAMAMLANDI.** `docs/RUNBOOK.md`'ye `## 6. Ürün analitiği` — DAU, kişi-başı-mesaj, gün-1/gün-7 dönüş, oda-aktivitesi + kullanıcının review'ında eklenen davet ağacı (recursive CTE) + moderasyon yükü. Kod değişikliği yok, 6 sorgu da local dev DB'ye karşı gerçek veriyle doğrulandı (fan-out düzeltmesi + `ROUND(double precision)` bug'ı bulunup düzeltildi).
-- **2026-08-19 — M7a Slice I (yük testi) TAMAMLANDI ama AC KARŞILANMADI, eşik takip edildi.** `ws-load-test.ts` yeniden yazıldı (sunucu+client AYRI process, `pidusage` gerçek RSS, marker-tabanlı gerçek gecikme). 500 bağlantıda `Room.lastActivityAt` satır kilidi çakışması bulundu (%12 hata). 50/100/150'de takip: 50'de p50 ~1.5sn gecikme, 100'de GERÇEK hata başlıyor (%1.25) — Faz 1'in kendi ölçeğinde (50 kullanıcı) güvenli DEĞİL, A17 M7b'ye değil M7a'nın yeni Slice J'sine taşındı.
+- **2026-08-19 — M7a Slice I (yük testi) + Slice J (row-contention düzeltmesi) TAMAMLANDI, AC KISMEN.** `Room.lastActivityAt` transaction'dan çıkarıldı + ateşle-unut + 30sn debounce. Düzeltme TEK BAŞINA yeterli değildi — kalan darboğaz Prisma'nın varsayılan connection pool'uydu, `connection_limit=30` ile 100-150 bağlantıda hata neredeyse sıfıra indi (500'de local Docker/Postgres'in kendi tavanına çarpılıyor, tam temiz alınamadı). Kod tarafı bitti, `connection_limit`'in production `DATABASE_URL`'ine eklenmesi founder'ın işi.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Slice I + eşik-takip ölçümleri bitti, push kullanıcının onayında. M7a-scale-gate.md'ye Slice J (henüz planlanmadı) eklendi.
-- **Sonraki adım:** Slice J plan-modu turuyla başlar (`Room.lastActivityAt` güncellemesini transaction dışına/debounce'a almak gibi bir tasarım) — bitmeden M7a "kapı açma eşiği" tam geçilmiş sayılmaz, Faz 1 açılmadan önce bitmeli.
+- **Görev:** Slice J'nin kodu bitti, doğrulandı, dokümante edildi. Push kullanıcının onayında.
+- **Sonraki adım:** Founder `connection_limit=30`'u production'a ekleyip Render Postgres plan kapasitesini doğrulayınca M7a'nın TÜM dilimleri (A-J) gerçek anlamda kapanır, sıradaki milestone M7b ya da M8.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
 - `GET /rooms?scope=all` (moderasyon) sayfalanmıyor — somut tetikleyici `docs/BACKLOG.md` A16'da.
 - `AuthService.verifyCurrentPassword` (deleteAccount + assignModerator reauth) hesap kilidi KORUMASI ALMIYOR — somut tetikleyici `THREAT-MODEL.md`'nin yeni open item'ında.
-- `MessagesService.sendMessage`'ın `Room.lastActivityAt` güncellemesi düşük eşzamanlılıkta (50-100 bağlantı) bile satır kilidi çakışmasına giriyor — `docs/BACKLOG.md` A17 (V1'e yükseltildi), `M7a-scale-gate.md`'nin Slice J'si (henüz planlanmadı, Faz 1 açılmadan bitmeli).
+- `connection_limit=30` production `DATABASE_URL`'ine HENÜZ eklenmedi (Slice J'nin kod tarafı bitti, bu config tarafı founder'ın işi) — `M7a-scale-gate.md`'nin founder-işleri listesinde.
 
 ## Yakın zamanda alınan kararlar
 - Access token bellek-içi (React state), refresh token httpOnly cookie'de — bkz. ADR-0002 + Addendum.
-- 2026-08-16 — moderatör atama HERHANGİ bir mevcut moderatörden yapılabiliyor (founder-only kısıtlama YOK) — atama reauth istiyor, kaldırma istemiyor.
 - 2026-08-18 — hesap kilidi bildirimi e-postası `login()`'in yanıt yolundan TAMAMEN çıkarıldı (await edilmiyor) — bir dış API çağrısını (Resend/HIBP) güvenlik-kritik bir yanıt yolunda await etmek zamanlama-tabanlı bir enumeration oracle'ı yaratır, ateşle-unut şart.
+- 2026-08-19 — production `DATABASE_URL`'ine `connection_limit=30` eklenmesine karar verildi (local ölçümle, `M7a-scale-gate.md`'nin Slice J notları) — kod değil, founder'ın Render config işi.
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
@@ -54,3 +54,5 @@
 - Postgres'te `ROUND(double precision, integer)` YOK — sadece `numeric` için tanımlı. `PERCENTILE_CONT`/`AVG(double precision)` gibi ifadeler `double precision` döner, `ROUND(...,N)` ile 2-argümanlı kullanmadan önce `::numeric` cast şart (M7a Slice H'de gerçek DB'ye karşı test edilirken bulundu — sözdizimi hatası, DB olmadan/sadece okuyarak fark edilmezdi). Docs-only bir SQL dilimi bile "kod değişikliği yok, test gerekmez" değildir — gerçek DB'ye karşı çalıştırmadan RUNBOOK'a SQL yazma.
 - `docker-compose.yml`'in local Postgres'i (`docker compose up -d postgres`) RUNBOOK/analitik SQL + yük testi doğrulaması için hazır — kapatmayı unutma (`docker compose stop postgres`), başlamadan önce çalışmıyorsa senin başlattığın anlamına gelir.
 - NestJS WS gateway'lerinde `WsException` OLMAYAN bir hata (ör. bir Prisma transaction timeout'u) çağıran soketin kendisine `'error'` DEĞİL ayrı bir `'exception'` event'i olarak emit edilir — bir yük testi/entegrasyon script'i SADECE `'error'`/`connect_error` dinlerse sunucu-tarafı gerçek hataları hiç görmez, sessizce "hatasız" raporlar (M7a Slice I'de tam bu yüzden ilk 500-bağlantılık koşum yanlış "başarılı" çıktı).
+- "Unable to start a transaction in the given time" hatası İKİ FARKLI kök nedenden gelebilir — aynı satırın kilidinde çakışma (transaction İÇİNDE bir hot-row var) YA DA Prisma'nın client-side connection pool'unun (varsayılan num_cpus×2+1) tükenmesi (transaction içinde HİÇ shared satır olmasa bile). `connection_limit`'i büyütmenin etkisi BUNA göre TERS yönde olabilir — hot-row varken pool büyütmek daha fazla transaction'ı AYNI kilitte çakıştırıp KÖTÜLEŞTİRİR (M7a Slice I), hot-row kalkınca (Slice J) AYNI ayarı büyütmek düzeltir. Birini test edip "pool boyutu sorun değil" sonucuna varmadan önce, hot-row'u ÖNCE gerçekten kaldır, SONRA pool'u tekrar test et.
+- Ardışık, soğumadan çalıştırılan yük testleri AYNI local Postgres container'ında gürültü biriktirir (WAL/otomatik vacuum/bağlantı state'i) — "önce vs sonra" gibi KESİN bir karşılaştırma gerekiyorsa her koşumdan önce `docker compose restart postgres` ile temiz taban çizgisi sağla, aksi halde sonuçlar (özellikle hata SAYISI/ORANI) yanıltıcı şekilde monoton olmayabilir.

@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   GoneException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Room } from '@prisma/client';
@@ -17,6 +18,14 @@ import { UserMutedException } from './user-muted.exception';
 
 export const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_PAGE_SIZE = 50;
+// M7a Slice J: Room.lastActivityAt'i sendMessage'ın transaction'ından
+// çıkarıp ateşle-unut yapınca, aynı odaya (özellikle CORE_ROOM_NAMES)
+// yüksek eşzamanlılıkta yazan istekler artık AYNI satırı tek-tek her
+// mesajda güncellemeye çalışmıyor - bu pencere içindeki TÜM yazımlar
+// tek bir gerçek UPDATE'e düşüyor. archiveSilentRooms'un (rooms.service.ts)
+// 14-GÜNLÜK eşiğine karşı 30sn ihmal edilebilir; CORE_ROOM_NAMES zaten o
+// sweep'in kapsamı dışı (name NOT IN CORE_ROOM_NAMES).
+const ROOM_ACTIVITY_DEBOUNCE_MS = 30_000;
 export const MODERATOR_REMOVED_CONTENT =
   '[Bu mesaj bir moderatör tarafından kaldırıldı.]';
 
@@ -48,6 +57,14 @@ interface MessageRow {
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+  // M7a Slice J: roomId -> son GERÇEK Room.update çağrısının epoch-ms'i.
+  // Tek-process (ADR-0003, "monolith-first") ömrü boyunca yaşıyor - ikinci
+  // bir instance'a geçilirse (founder'ın kendi açık kararı,
+  // M7a-scale-gate.md'nin Slice J notu) her instance kendi Map'ini tutar,
+  // debounce ZAYIFLAR (kırılmaz, N-instance kadar eşzamanlı yazıma iner).
+  private readonly lastActivityWrites = new Map<string, number>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly blocksService: BlocksService,
@@ -68,18 +85,10 @@ export class MessagesService {
       throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
     }
 
-    // M3 Slice A: Room.lastActivityAt burada güncellenmezse, Slice B'nin
-    // 14-gün-sessizlik arşivleme süpürmesi HER odayı aktiviteden bağımsız
-    // tam 14 günde arşivlerdi (2. tur kapsam gözden geçirmesinde bulunan
-    // sessiz bir açık).
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
         data: { content, roomId: room.id, authorId: userId },
         include: { author: { select: { username: true } } },
-      });
-      await tx.room.update({
-        where: { id: room.id },
-        data: { lastActivityAt: new Date() },
       });
       // M4 Slice A: ADR-0004'ün itibar günlüğü - mesaj gönderimi XP
       // kazandırıyor, aynı transaction içinde (mesaj var ama olayı yoksa
@@ -100,7 +109,48 @@ export class MessagesService {
       return created;
     });
 
+    // M7a Slice J: Room.lastActivityAt GÜNCELLEMESİ artık transaction'ın
+    // İÇİNDE DEĞİL - yük testinde (Slice I) aynı odaya eşzamanlı yazan
+    // yüzlerce istek bu satırın kilidinde çakışıp "Unable to start a
+    // transaction in the given time" hatası veriyordu (100 bağlantıda
+    // bile başlıyordu). MessageDto SADECE `created`'dan türüyor (bkz.
+    // toMessageDto), Room.update'in sonucuna hiç bağlı değildi - transaction
+    // dışına almak API'nin döndürdüğü veriyi DEĞİŞTİRMİYOR. `void` ile
+    // ateşle-unut (yanıt yolunu bloklamıyor) + debounce (touchRoomActivity).
+    void this.touchRoomActivity(room.id);
+
     return toMessageDto(message);
+  }
+
+  // M3 Slice A: Room.lastActivityAt güncellenmezse Slice B'nin 14-gün-
+  // sessizlik arşivleme süpürmesi HER odayı aktiviteden bağımsız tam 14
+  // günde arşivlerdi. Bu metot AuthService.sendLockoutNotification'ın
+  // (M7a Slice F) AYNI ateşle-unut desenini kullanıyor - kendi try/catch'i,
+  // hata çağırana hiç sızmıyor. AuthService'in aksine buradaki debounce
+  // state'i DB-kalıcı değil (in-memory) - bu yüzden hata durumunda `catch`
+  // içinde map'ten SİLİNİYOR, aksi halde geçici bir DB hatası sonraki
+  // mesajları da 30sn boyunca sessizce bloklardı.
+  private async touchRoomActivity(roomId: string): Promise<void> {
+    const now = Date.now();
+    const lastWrite = this.lastActivityWrites.get(roomId);
+    if (
+      lastWrite !== undefined &&
+      now - lastWrite < ROOM_ACTIVITY_DEBOUNCE_MS
+    ) {
+      return;
+    }
+    this.lastActivityWrites.set(roomId, now);
+    try {
+      await this.prisma.room.update({
+        where: { id: roomId },
+        data: { lastActivityAt: new Date(now) },
+      });
+    } catch (error) {
+      this.lastActivityWrites.delete(roomId);
+      this.logger.error(
+        `Room.lastActivityAt güncellenemedi (roomId=${roomId}): ${(error as Error).message}`,
+      );
+    }
   }
 
   async getRecentMessages(
