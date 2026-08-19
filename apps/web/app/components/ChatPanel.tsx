@@ -72,7 +72,11 @@ export default function ChatPanel({
           </button>
         )}
         {messages.length === 0 ? (
-          <p>henüz mesaj yok</p>
+          <p>
+            {activeRoom
+              ? `#${activeRoom.name} henüz sessiz — ilk mesajı sen yaz`
+              : "henüz mesaj yok"}
+          </p>
         ) : (
           <ul className="space-y-1">
             {messages.map((message) => {
