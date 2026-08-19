@@ -72,7 +72,7 @@ yürütülebilecek şekilde ertelenmesinden geliyor).
 - [x] `/` bir landing/onboarding sayfası — davet kodu olan biri bağlamsız bir login formuyla karşılaşmıyor. *(2026-08-19, Slice G tamamlandı — bkz. Plan notları)*
 - [x] ToS/Gizlilik'in EN ve TR ayrı sürümleri var, hangisi görüneceği seçilebiliyor (hukuki metnin kendisi founder'ın işi, sadece versiyon-seçme sayfası kod). *(2026-08-19, Slice G tamamlandı — bkz. Plan notları)*
 - [x] Founder kendi DB'sinden DAU/kişi-başı-mesaj/gün-1-gün-7-dönüş/oda-aktivitesi sorgularını çalıştırabiliyor (dokümante edilmiş SQL, `docs/RUNBOOK.md`'ye eklenir). *(2026-08-19, Slice H tamamlandı — bkz. Plan notları)*
-- [ ] Gerçekçi bir yük testi (en az 300-500 eşzamanlı bağlantı, gerçek gecikme/bellek ölçümüyle) hatasız geçiyor, sonuçlar dokümante edildi. *(2026-08-19, Slice I ÖLÇÜM ARACI tamamlandı ama BU KRİTER karşılanmadı — 500 bağlantıda gerçek hata bulundu, bkz. Plan notları + BACKLOG A17. Bilerek açık bırakıldı, sessizce geçilmedi.)*
+- [ ] Gerçekçi bir yük testi (en az 300-500 eşzamanlı bağlantı, gerçek gecikme/bellek ölçümüyle) hatasız geçiyor, sonuçlar dokümante edildi. *(2026-08-19, Slice I ÖLÇÜM ARACI tamamlandı ama BU KRİTER karşılanmadı — 500 bağlantıda gerçek hata bulundu, eşik takibinde bozulmanın 50-100 bağlantıda ZATEN başladığı doğrulandı (bkz. Plan notları). Slice J bu satırı kapatacak. BACKLOG A17. Bilerek açık bırakıldı, sessizce geçilmedi.)*
 - [ ] Postgres plan kapasitesi (RAM/bağlantı/depolama) 500 kullanıcı için Render dashboard'undan doğrulandı (founder'ın işi, kod değil).
 
 ## Tasks — kod dilimleri (Claude uygular, her biri kendi plan-modu turu)
@@ -84,6 +84,7 @@ yürütülebilecek şekilde ertelenmesinden geliyor).
 - [x] **Slice G — Landing/onboarding sayfası + hukuki EN/TR versiyon seçimi.** ~14-18 saat tahmin edilmişti, gerçek ~5-6h (bkz. Plan notları — BACKLOG'un "küçük kapsam" talimatı sayesinde en ucuz tasarım seçildi: ayrı route/state yok, mevcut `AuthView`'ın üstüne bir tanıtım bloğu). ToS/Gizlilik EN/TR versiyon seçme sayfaları (hukuki metnin KENDİSİ founder'ın işi).
 - [x] **Slice H — Ürün analitiği (SQL sorguları).** ~6-8 saat tahmin edilmişti, gerçek ~4-5h (bkz. Plan notları — kullanıcının review'ında AC'nin kelimesi kelimesine listelemediği ama dilimin kendi motivasyonundan doğan iki gerçek boşluk bulundu: davet ağacı + moderasyon yükü ölçülmüyordu). Dashboard DEĞİL, `docs/RUNBOOK.md`'ye eklenen dokümante edilmiş SQL sorguları (DAU, kişi-başı mesaj, gün-1/gün-7 dönüş, oda-aktivitesi, davet ağacı, moderasyon yükü) — üçüncü parti analitik YOK (gizlilik duruşuyla tutarlı). *(Geri bildirim/duyuru bu dilimden ÇIKARILDI — `M7b-scale-polish.md`'ye taşındı, kapı-açma engelleyicisi değil.)*
 - [x] **Slice I — Yük testi/kapasite doğrulaması.** ~10-13 saat tahmin edilmişti, gerçek ~7-8h (bkz. Plan notları). `apps/api/test/load/ws-load-test.ts` genişletildi (300-500 bağlantı, sunucu+client AYRI process, `pidusage` ile gerçek RSS, marker-tabanlı gerçek gecikme) VE GERÇEKTEN çalıştırıldı — **sonuç: AC'nin "hatasız geçiyor" şartı karşılanmadı**, 500 bağlantıda `MessagesService.sendMessage`'ın `Room.lastActivityAt` satır kilidinde çakışma bulundu (%12 hata, p50 ~5.5sn gecikme). Kullanıcının kararıyla bu dilim bilgiyi ÖLÇMEK+DOKÜMANTE ETMEK ile sınırlı tutuldu — kök nedenin düzeltilmesi (transaction yeniden tasarımı) BACKLOG A17'ye somut tetikleyiciyle açıldı, ayrı bir plan-modu turu gerektiriyor. *(Türkçe→İngilizce UI bitirme (A15) bu dilimden ÇIKARILDI — `M7b-scale-polish.md`'ye taşındı, kapı-açma engelleyicisi değil, kimlik-tutarlılığı Faz 3'e kadar bekleyebilir.)*
+- [ ] **Slice J — `MessagesService.sendMessage`'ın row-contention'ını düzelt (A17).** Saat tahmin edilmedi, henüz planlanmadı. Slice I'nin eşik-doğrulama takibinde (50/100/150 bağlantı, bkz. Plan notları) bulundu: bozulma 500'ü beklemiyor — 50 bağlantıda bile p50 gecikme ~1.5sn, 100 bağlantıda GERÇEK hatalar başlıyor (%1.25) — Faz 1'in kendi ölçeği (50 kullanıcı) bir burst senaryosunda GÜVENLİ değil. Bu yüzden M7b'ye ERTELENMEDİ, M7a'nın kendi (henüz kapanmamış) kapsamına eklendi — Faz 1 açılmadan bitmesi gerekiyor. Kendi plan-modu turu gerektiriyor (backend transaction tasarımı, `Room.lastActivityAt` güncellemesinin debounce/transaction-dışı bir yola alınması gibi).
 
 ## Tasks — founder'ın kendi eliyle yapacağı işler
 - [ ] Render Postgres planının gerçek RAM/CPU/bağlantı-limiti/depolama rakamlarını dashboard'dan doğrula, 500 kullanıcı için yeterli mi karar ver (gerekirse yükselt) — Faz 0'da, Faz 1 açılmadan.
@@ -178,6 +179,22 @@ Kullanıcıya iki gerçek tasarım seçeneği sunuldu (`pidusage` dev-dependency
 **Gerçek saat:** ~7-8h (araştırma+tasarım ~1.5h, script yeniden yazımı ~2h, EADDRINUSE/ts-node-soğuk-başlangıç debug'ı ~1h, exception-listener bug'ının bulunup düzeltilmesi + connection_limit hipotezinin test edilmesi ~2h, dokümantasyon ~1.5h).
 
 **Doğrulama:** `apps/api` lint/typecheck temiz. Script GERÇEKTEN 3 kez çalıştırıldı (10-bağlantılık smoke test + 500-bağlantılık varsayılan koşum + 500-bağlantılık `connection_limit=50` koşumu) — hepsi gerçek local Postgres'e (docker-compose) karşı, her koşum sonunda sentetik veri temizliği doğrulandı (`0 leftover synthetic users`).
+
+### Slice I takibi — eşik doğrulama (2026-08-19)
+Kullanıcının sorusu: A17'nin (row-contention) M7b'nin ilk dilimi mi olması gerektiği, yoksa M7a'nın kendi bitmemiş işi mi. İki karşı-argüman ortaya çıktı (ikisi de kabul edildi): (1) M7a Slice I'nin AC'si tam olarak bu yüzden açık bırakılmıştı — A17 zaten M7a'nın bitmemiş işi, M7b'nin "hiçbiri kapı açma koşulu değil" çerçevesine uymuyor; (2) test edilen 500 bağlantı, 50 gerçek kullanıcının organik üretebileceğinden çok daha agresif bir senkron patlamaydı — gerçek eşik bilinmeden karar verilemez. Karar: Slice I'nin doğal bir devamı olarak (yeni plan-modu turu gerekmedi), 50/100/150 bağlantıda yük testi tekrar çalıştırıldı.
+
+**Gerçek ölçüm sonuçları** (local Postgres, docker-compose, aynı script):
+
+| Bağlantı | Hata | Hata % | p50 gecikme | p95 gecikme | Peak RSS |
+|---|---|---|---|---|---|
+| 50 | 0/200 | %0 | 1508ms | 2504ms | 169MB |
+| 100 | 5/400 | %1.25 | 3843ms | 5198ms | 210MB |
+| 150 | 246/600 | %41 | 5404ms | 6172ms | 248MB |
+| 500 (Slice I'nin kendi koşumu) | 239/2000 | %12 | 5533ms | 6879ms | 327MB |
+
+**Dürüst bir gözlem:** hata ORANI monoton değil — 150, 500'den daha kötü çıktı. Bu muhtemelen art arda, aralıksız çalıştırılan testlerin AYNI local Postgres container'ında biriken kaynak baskısından ve script'in kendi rastgele jitter'ının (her koşuda gerçek eşzamanlılık farklı) getirdiği varyanstan kaynaklanıyor — "150 bağlantı 500'den kötü" diye genellenebilir bir sonuç DEĞİL, tek-seferlik bir gözlem olarak kaydediliyor. Buna karşın GECİKME sinyali monoton ve güvenilir (50→100→150→500 boyunca sürekli kötüleşiyor) — bu, tekrar-koşum gürültüsünden ETKİLENMEYEN, güvenilir bulgu.
+
+**Sonuç, kullanıcının kendi karar kuralına göre:** "50-100 civarında zaten bozulma varsa M7a'nın kendi Slice J'si" — 50 bağlantıda p50 gecikme ZATEN 1.5 saniye (sıfır hata olsa bile bu, kabul edilebilir bir UX değil), 100 bağlantıda GERÇEK hatalar başlıyor (%1.25). Faz 1'in kendi ölçeğinde (50 kullanıcı) bir burst senaryosu (herkesin aynı anda bir duyuruya tepki vermesi gibi) sorunsuz olacağı GARANTİ EDİLEMEZ. Bu yüzden A17, M7b'ye ERTELENMEDİ — M7a'nın kendi Tasks listesine yeni bir **Slice J** olarak eklendi (yukarıya bakın), Faz 1 açılmadan bitmesi gereken bir kalem olarak işaretlendi. `docs/BACKLOG.md` A17 bu eşik verisiyle güncellendi.
 
 ## Plan notları
 *(implementasyon sırasında doldurulur)*

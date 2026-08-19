@@ -4,7 +4,7 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-19
-**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C/F/G/H main'e MERGE EDİLDİ. Slice I (yük testi) tamamlandı ama kendi AC'si KARŞILANMADI (500 bağlantıda gerçek hata bulundu, BACKLOG A17) — **M7a bu dilimle TAM KAPANMIYOR**, founder'ın A17'yi ne zaman ele alacağına karar vermesi bekleniyor. M0-M6 TAMAMLANDI.
+**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C/F/G/H/I main'e MERGE EDİLDİ. **Yeni Slice J eklendi** (`Room.lastActivityAt` row-contention, A17, V1'e yükseltildi — eşik takibi 50 bağlantıda bile gecikme/100'de gerçek hata gösterdi, M7b'ye ERTELENMEDİ). Slice J henüz planlanmadı. M0-M6 TAMAMLANDI.
 
 ## Şu an ne çalışıyor
 - **M0-M6 TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
@@ -13,19 +13,19 @@
 - **2026-08-18 — M7a Slice F (hesap sertleştirme) TAMAMLANDI.** `PasswordPolicyService` HaveIBeenPwned k-anonymity ile bilinen sızdırılmış şifreleri reddediyor (signup+parola-sıfırlama, fail-open). `User.failedLoginCount`/`lockedUntil`/`lockoutNotifiedAt` ile hesap-bazlı brute-force kilidi — SADECE yanlış şifre sayaca dahil (TOTP değil, griefing riski), kilitli durum İSTEMCİYE HİÇ sızmıyor (enumeration riski), bildirim e-postası yanıtı BEKLEMEDEN ateşleniyor (zamanlama-oracle riski) + 12sn soğuma penceresi taşıyor. `THREAT-MODEL.md` satır 2 kapatıldı, `verifyCurrentPassword` yolu için AYRI açık bir madde bırakıldı. 238 birim+130 e2e (apps/api, iki koşu) + 75 Playwright (apps/web) testi geçti.
 - **2026-08-19 — M7a Slice G (landing/onboarding + hukuki EN/TR) TAMAMLANDI.** `/` artık `AuthView`'ın üstünde kısa, İngilizce bir tanıtım bloğu (`LandingIntro.tsx`) gösteriyor — ayrı route/state yok (kullanıcının bu turda seçtiği ucuz tasarım). `/privacy/en`+`/terms/en` yeni statik sayfalar (i18n framework yok), 4 sayfada dil-değiştirme linki + "hangi dil bağlayıcı" sorusunun hukuki incelemeden geçmediğini belirten not. 81 Playwright testi geçti.
 - **2026-08-19 — M7a Slice H (ürün analitiği) TAMAMLANDI.** `docs/RUNBOOK.md`'ye `## 6. Ürün analitiği` — DAU, kişi-başı-mesaj, gün-1/gün-7 dönüş, oda-aktivitesi + kullanıcının review'ında eklenen davet ağacı (recursive CTE) + moderasyon yükü. Kod değişikliği yok, 6 sorgu da local dev DB'ye karşı gerçek veriyle doğrulandı (fan-out düzeltmesi + `ROUND(double precision)` bug'ı bulunup düzeltildi).
-- **2026-08-19 — M7a Slice I (yük testi) TAMAMLANDI ama AC KARŞILANMADI.** `ws-load-test.ts` yeniden yazıldı (sunucu+client AYRI process, `pidusage` ile gerçek RSS, marker-tabanlı gerçek gecikme) ve GERÇEKTEN 500 bağlantıyla çalıştırıldı: `MessagesService.sendMessage`'ın `Room.lastActivityAt` satır kilidinde çakışma bulundu (%12 mesaj hatası, p50 ~5.5sn gecikme) — bellek/bağlantı DEĞİL. BACKLOG A17'ye somut tetikleyiciyle açıldı, düzeltme AYRI bir plan-modu turu.
+- **2026-08-19 — M7a Slice I (yük testi) TAMAMLANDI ama AC KARŞILANMADI, eşik takip edildi.** `ws-load-test.ts` yeniden yazıldı (sunucu+client AYRI process, `pidusage` gerçek RSS, marker-tabanlı gerçek gecikme). 500 bağlantıda `Room.lastActivityAt` satır kilidi çakışması bulundu (%12 hata). 50/100/150'de takip: 50'de p50 ~1.5sn gecikme, 100'de GERÇEK hata başlıyor (%1.25) — Faz 1'in kendi ölçeğinde (50 kullanıcı) güvenli DEĞİL, A17 M7b'ye değil M7a'nın yeni Slice J'sine taşındı.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Slice I'nin ölçüm kısmı bitti, push kullanıcının onayında. M7a'nın kendi AC'si (satır 75) bilerek açık bırakıldı.
-- **Sonraki adım:** Founder BACKLOG A17'yi (row-contention) ne zaman ele alacağına karar verir — bulunana kadar M7a "kapı açma eşiği" TAM anlamıyla geçilmiş sayılmaz, Faz 1 davet dalgası açılmadan önce gözden geçirilmeli.
+- **Görev:** Slice I + eşik-takip ölçümleri bitti, push kullanıcının onayında. M7a-scale-gate.md'ye Slice J (henüz planlanmadı) eklendi.
+- **Sonraki adım:** Slice J plan-modu turuyla başlar (`Room.lastActivityAt` güncellemesini transaction dışına/debounce'a almak gibi bir tasarım) — bitmeden M7a "kapı açma eşiği" tam geçilmiş sayılmaz, Faz 1 açılmadan önce bitmeli.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
 - `GET /rooms?scope=all` (moderasyon) sayfalanmıyor — somut tetikleyici `docs/BACKLOG.md` A16'da.
 - `AuthService.verifyCurrentPassword` (deleteAccount + assignModerator reauth) hesap kilidi KORUMASI ALMIYOR — somut tetikleyici `THREAT-MODEL.md`'nin yeni open item'ında.
-- `MessagesService.sendMessage`'ın `Room.lastActivityAt` güncellemesi yüksek eşzamanlılıkta satır kilidi çakışmasına giriyor (500 bağlantıda ölçülen: %12 hata, p50 ~5.5sn) — somut tetikleyici `docs/BACKLOG.md` A17'de.
+- `MessagesService.sendMessage`'ın `Room.lastActivityAt` güncellemesi düşük eşzamanlılıkta (50-100 bağlantı) bile satır kilidi çakışmasına giriyor — `docs/BACKLOG.md` A17 (V1'e yükseltildi), `M7a-scale-gate.md`'nin Slice J'si (henüz planlanmadı, Faz 1 açılmadan bitmeli).
 
 ## Yakın zamanda alınan kararlar
 - Access token bellek-içi (React state), refresh token httpOnly cookie'de — bkz. ADR-0002 + Addendum.
