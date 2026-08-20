@@ -4,33 +4,32 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-19
-**Aktif milestone:** **M7a** (`docs/milestones/M7a-scale-gate.md`) — Slice A/B/C/F/G/H/I main'e MERGE EDİLDİ. Slice J'nin KOD tarafı tamamlandı (dal `m7a/slice-j-sendmessage-contention` henüz yerelde) — AC hâlâ açık, kalan tek şey founder'ın production `DATABASE_URL`'ine `connection_limit=30` eklemesi. M0-M6 TAMAMLANDI.
+**M7a TAMAMEN KAPANDI (2026-08-19).** Tüm kod dilimleri (A-J) + tüm AC'ler bitti (dal `m7a/slice-j-sendmessage-contention` henüz push edilmedi). Tek kalıntı: Postgres RAM/CPU/depolama ölçülemedi (Render metrik paneli paket yükseltmesi istiyor) — `docs/BACKLOG.md` A18'e somut tetikleyiciyle ertelendi, Faz 1'i ENGELLEMİYOR. **Sıradaki milestone kararı bekliyor: M7b (cila) mı M8 mi.** M0-M6 TAMAMLANDI.
 
 ## Şu an ne çalışıyor
 - **M0-M6 TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde.
-- **2026-08-12 — 500-kullanıcı kapsam turu:** hedef 20-30'dan 500'e çıktı, M7 **M7a** (kapı açma eşiği) / **M7b** (cila) 'ya bölündü. Detay: `docs/BACKLOG.md` "F. 500-KULLANICI KAPSAM TURU".
 - **2026-08-14/15/16 — M7a Slice A/B/C TAMAMLANDI, main'e merge edildi.** Oturum kalıcılığı (ADR-0002 Addendum), `RoomMember` üyelik modeli (ADR-0009), self-servis moderatör atama/kaldırma.
 - **2026-08-18 — M7a Slice F (hesap sertleştirme) TAMAMLANDI.** `PasswordPolicyService` HaveIBeenPwned k-anonymity ile bilinen sızdırılmış şifreleri reddediyor (signup+parola-sıfırlama, fail-open). `User.failedLoginCount`/`lockedUntil`/`lockoutNotifiedAt` ile hesap-bazlı brute-force kilidi — SADECE yanlış şifre sayaca dahil (TOTP değil, griefing riski), kilitli durum İSTEMCİYE HİÇ sızmıyor (enumeration riski), bildirim e-postası yanıtı BEKLEMEDEN ateşleniyor (zamanlama-oracle riski) + 12sn soğuma penceresi taşıyor. `THREAT-MODEL.md` satır 2 kapatıldı, `verifyCurrentPassword` yolu için AYRI açık bir madde bırakıldı. 238 birim+130 e2e (apps/api, iki koşu) + 75 Playwright (apps/web) testi geçti.
 - **2026-08-19 — M7a Slice G (landing/onboarding + hukuki EN/TR) TAMAMLANDI.** `/` artık `AuthView`'ın üstünde kısa, İngilizce bir tanıtım bloğu (`LandingIntro.tsx`) gösteriyor — ayrı route/state yok (kullanıcının bu turda seçtiği ucuz tasarım). `/privacy/en`+`/terms/en` yeni statik sayfalar (i18n framework yok), 4 sayfada dil-değiştirme linki + "hangi dil bağlayıcı" sorusunun hukuki incelemeden geçmediğini belirten not. 81 Playwright testi geçti.
 - **2026-08-19 — M7a Slice H (ürün analitiği) TAMAMLANDI.** `docs/RUNBOOK.md`'ye `## 6. Ürün analitiği` — DAU, kişi-başı-mesaj, gün-1/gün-7 dönüş, oda-aktivitesi + kullanıcının review'ında eklenen davet ağacı (recursive CTE) + moderasyon yükü. Kod değişikliği yok, 6 sorgu da local dev DB'ye karşı gerçek veriyle doğrulandı (fan-out düzeltmesi + `ROUND(double precision)` bug'ı bulunup düzeltildi).
-- **2026-08-19 — M7a Slice I (yük testi) + Slice J (row-contention düzeltmesi) TAMAMLANDI, AC KISMEN.** `Room.lastActivityAt` transaction'dan çıkarıldı + ateşle-unut + 30sn debounce. Düzeltme TEK BAŞINA yeterli değildi — kalan darboğaz Prisma'nın varsayılan connection pool'uydu, `connection_limit=30` ile 100-150 bağlantıda hata neredeyse sıfıra indi (500'de local Docker/Postgres'in kendi tavanına çarpılıyor, tam temiz alınamadı). Kod tarafı bitti, `connection_limit`'in production `DATABASE_URL`'ine eklenmesi founder'ın işi.
+- **2026-08-19 — M7a Slice I+J TAMAMLANDI, AC TAM karşılandı.** `Room.lastActivityAt` transaction'dan çıkarıldı + ateşle-unut + 30sn debounce; kalan darboğaz (Prisma connection pool) `connection_limit=30` ile kapatıldı — founder production'a ekledi, deploy etti, doğruladı. `max_connections=100` (Basic-256mb, Render'ın resmi dokümantasyonundan) bunun rahatça üstünde. RAM/CPU/depolama Render'ın metrik paneli paket yükseltmesi istediği için ölçülemedi — BACKLOG A18'e somut tetikleyiciyle (50+ kullanıcı YA DA gözlemlenen yavaşlama) ertelendi. **M7a TAMAMEN KAPANDI.**
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** Slice J'nin kodu bitti, doğrulandı, dokümante edildi. Push kullanıcının onayında.
-- **Sonraki adım:** Founder `connection_limit=30`'u production'a ekleyip Render Postgres plan kapasitesini doğrulayınca M7a'nın TÜM dilimleri (A-J) gerçek anlamda kapanır, sıradaki milestone M7b ya da M8.
+- **Görev:** M7a'nın push'u kullanıcının onayında (`m7a/slice-j-sendmessage-contention`). Milestone kapandı.
+- **Sonraki adım:** Sıradaki milestone kararı kullanıcıya ait — M7b (cila, Faz 1 sonrası) mı M8 mi.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
 - Prisma majör sürüm güncellemesi bekliyor (6.x → 7.x) — şimdilik ertelendi.
 - `GET /rooms?scope=all` (moderasyon) sayfalanmıyor — somut tetikleyici `docs/BACKLOG.md` A16'da.
 - `AuthService.verifyCurrentPassword` (deleteAccount + assignModerator reauth) hesap kilidi KORUMASI ALMIYOR — somut tetikleyici `THREAT-MODEL.md`'nin yeni open item'ında.
-- `connection_limit=30` production `DATABASE_URL`'ine HENÜZ eklenmedi (Slice J'nin kod tarafı bitti, bu config tarafı founder'ın işi) — `M7a-scale-gate.md`'nin founder-işleri listesinde.
+- Render Postgres'in RAM/CPU/depolamasının 500 kullanıcıya yeteceği ÖLÇÜLEMEDİ (metrik paneli paket yükseltmesi istiyor, bağlantı-limiti AYRI, o doğrulandı) — somut tetikleyici `docs/BACKLOG.md` A18'de.
 
 ## Yakın zamanda alınan kararlar
 - Access token bellek-içi (React state), refresh token httpOnly cookie'de — bkz. ADR-0002 + Addendum.
 - 2026-08-18 — hesap kilidi bildirimi e-postası `login()`'in yanıt yolundan TAMAMEN çıkarıldı (await edilmiyor) — bir dış API çağrısını (Resend/HIBP) güvenlik-kritik bir yanıt yolunda await etmek zamanlama-tabanlı bir enumeration oracle'ı yaratır, ateşle-unut şart.
-- 2026-08-19 — production `DATABASE_URL`'ine `connection_limit=30` eklenmesine karar verildi (local ölçümle, `M7a-scale-gate.md`'nin Slice J notları) — kod değil, founder'ın Render config işi.
+- 2026-08-19 — production `DATABASE_URL`'ine `connection_limit=30` EKLENDİ (founder, doğrulanmış: `max_connections=100`, Basic-256mb, Render dokümantasyonu).
 
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
