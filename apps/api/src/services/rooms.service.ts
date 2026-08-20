@@ -23,6 +23,7 @@ export interface RoomSummary {
   description: string | null;
   lastActivityAt: Date;
   status: RoomStatus;
+  announcement: string | null;
 }
 
 export interface RoomPage {
@@ -36,6 +37,7 @@ const ROOM_SUMMARY_SELECT = {
   description: true,
   lastActivityAt: true,
   status: true,
+  announcement: true,
 } as const;
 
 interface PurgeCandidate {

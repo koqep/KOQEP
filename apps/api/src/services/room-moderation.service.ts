@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -8,10 +9,16 @@ import { Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 import { RoomSummary, isUniqueConstraintError } from './rooms.service';
+import { hasExcessiveCombiningMarks } from './content-validation.util';
 
 export const ROOM_RENAMED_ACTION = 'ROOM_RENAMED';
 export const ROOM_ARCHIVED_ACTION = 'ROOM_ARCHIVED';
 export const ROOM_DELETED_ACTION = 'ROOM_DELETED';
+// M7b Slice H2: set VE clear için TEK actionType -
+// notifyModeratorRoleChanged'ın "assign VE revoke için TEK metod" emsaliyle
+// aynı, targetRoomAnnouncement'ın null/dolu olması hangisi olduğunu zaten
+// söylüyor.
+export const ROOM_ANNOUNCEMENT_UPDATED_ACTION = 'ROOM_ANNOUNCEMENT_UPDATED';
 
 const roomSummarySelect = {
   id: true,
@@ -19,6 +26,7 @@ const roomSummarySelect = {
   description: true,
   lastActivityAt: true,
   status: true,
+  announcement: true,
 } as const;
 
 @Injectable()
@@ -161,6 +169,46 @@ export class RoomModerationService {
       await tx.room.delete({ where: { id: roomId } });
 
       return { deletedMessageCount };
+    });
+  }
+
+  // rename/archive/delete'in aksine assertNotCoreRoom KULLANMIYOR (BİLEREK)
+  // - çekirdek odalar (general/meta) tam da founder'ın Faz 1
+  // duyurusunu/karşılama mesajını pinleyeceği yerler, oradaki "yapısal
+  // odaları koru" gerekçesi burada geçerli değil. Durum kısıtı da yok -
+  // rename gibi, hem active hem archived odaya duyuru konabilir.
+  async setRoomAnnouncement(
+    moderatorId: string,
+    roomId: string,
+    announcement: string | undefined,
+  ): Promise<RoomSummary> {
+    const room = await this.findRoomOrThrow(roomId);
+    const normalized = announcement?.trim() || null;
+
+    // Mesaj içeriğiyle AYNI koruma (content-validation.util.ts, M7b Slice E)
+    // - HERKESE broadcast edilen bir metin, burası kontrolsüz bırakılırsa
+    // zalgo korumasını bypass eden bir yan kapı olurdu.
+    if (normalized && hasExcessiveCombiningMarks(normalized)) {
+      throw new BadRequestException('Duyuru geçersiz karakterler içeriyor.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.room.update({
+        where: { id: roomId },
+        data: { announcement: normalized },
+        select: roomSummarySelect,
+      });
+      await tx.moderationAuditLog.create({
+        data: {
+          moderatorId,
+          actionType: ROOM_ANNOUNCEMENT_UPDATED_ACTION,
+          targetRoomId: roomId,
+          targetRoomName: room.name,
+          targetRoomDescription: room.description,
+          targetRoomAnnouncement: normalized,
+        },
+      });
+      return updated;
     });
   }
 

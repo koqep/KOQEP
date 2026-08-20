@@ -190,6 +190,10 @@ model Room {
   lastActivityAt DateTime   @default(now())
   archivedAt     DateTime?
   lastViewedAt   DateTime?
+  // M7b Slice H2: moderatörün pinleyebileceği tek bir oda-duyurusu -
+  // description gibi serbest metin, ayrı bir model gerektirmeyecek kadar
+  // basit (tek mutable alan).
+  announcement   String?
 
   creatorId String?
   creator   User?   @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: SetNull)
@@ -344,6 +348,10 @@ model ModerationAuditLog {
 
   targetRoomName        String?
   targetRoomDescription String?
+  // M7b Slice H2: ROOM_ANNOUNCEMENT_UPDATED'in hedefi - yeni duyuru değeri
+  // (temizlendiğinde null) - targetRoomName/targetRoomDescription'ın AYNI
+  // snapshot gerekçesi.
+  targetRoomAnnouncement String?
   // SADECE ROOM_DELETED'de dolu - kaç mesajın odayla birlikte gittiğini
   // denetim izinde kalıcı kılıyor.
   deletedMessageCount Int?
