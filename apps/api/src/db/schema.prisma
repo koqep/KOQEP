@@ -197,6 +197,10 @@ model Room {
   messages       Message[]
   moderationLogs ModerationAuditLog[]
   members        RoomMember[]
+
+  // M7b Slice E: keşif/moderasyon listeleri artık lastActivityAt DESC'e
+  // göre sıralanıyor (rooms.service.ts) - composite sort'un birincil alanı.
+  @@index([lastActivityAt])
 }
 
 // M7a Slice B (ADR-0009): yayın/liste scoping için üyelik - erişim kontrolü

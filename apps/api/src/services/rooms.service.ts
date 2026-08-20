@@ -92,23 +92,29 @@ export class RoomsService {
   // olduğu seviyeyle birebir aynı (JwtAuthGuard dışında bir kısıtlama
   // YOK) - yeni bir moderatör-kontrolü eklemek bu dilimin amacıyla
   // ilgisiz scope creep olurdu.
+  // M7b Slice E: aktiviteye göre sıralanıyor (keşif ile TUTARLI olsun diye,
+  // kullanıcının kararı) - "benim odalarım" (listRooms) BİLEREK alfabetik
+  // kalıyor, switcher'ın buton konumu sabit tutulmalı (kas hafızası).
   async listAllRooms(includeArchived = false): Promise<RoomSummary[]> {
     return this.prisma.room.findMany({
       where: {
         status: includeArchived ? { in: ['active', 'archived'] } : 'active',
       },
       select: ROOM_SUMMARY_SELECT,
-      orderBy: { name: 'asc' },
+      orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
     });
   }
 
   // Üye olunmayan aktif odalar - `includeArchived`'ı BİLEREK yok sayıyor
   // (ölü bir odayı "keşfetmenin" anlamı yok). Sayfalı: getRecentMessages'ın
-  // (messages.service.ts) AYNI cursor+limit deseni - Room.name @unique
-  // olduğu için cursor alanı olarak doğrudan kullanılabiliyor. Sıralama
-  // BİLEREK alfabetik kalıyor (aktiviteye göre sıralama M7b Slice E'ye
-  // scoped, burada mekanik olarak absorbe edilmiyor - o dilimin kendi
-  // dosyasında açık bir bağımlılık notu var).
+  // (messages.service.ts) AYNI cursor+limit deseni. M7b Slice E: aktiviteye
+  // göre sıralanıyor - ama cursor YİNE `name` üzerinden (Room.name @unique,
+  // Prisma'nın cursor alanı unique olmak ZORUNDA, orderBy'daki DİĞER
+  // alanların unique olması gerekmiyor - getRecentMessages'ın
+  // `orderBy:[{createdAt:'desc'},{id:'desc'}]`+`cursor:{id}` deseniyle
+  // AYNI mantık). `lastActivityAt` unique DEĞİL - iki oda aynı pencerede
+  // (ROOM_ACTIVITY_DEBOUNCE_MS) güncellenmiş olabilir, o yüzden cursor
+  // ASLA lastActivityAt üzerinden verilmiyor, sadece ikincil sıralama.
   async listDiscoverableRooms(
     userId: string,
     cursor?: string,
@@ -117,7 +123,7 @@ export class RoomsService {
     const rows = await this.prisma.room.findMany({
       where: { status: 'active', members: { none: { userId } } },
       select: ROOM_SUMMARY_SELECT,
-      orderBy: { name: 'asc' },
+      orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
       take: limit + 1,
       ...(cursor ? { cursor: { name: cursor }, skip: 1 } : {}),
     });

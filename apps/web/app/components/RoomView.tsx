@@ -41,6 +41,31 @@ type ActivePanel =
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
+const DRAFT_STORAGE_PREFIX = "koqep:draft:";
+const DRAFT_STORAGE_DEBOUNCE_MS = 500;
+
+function readDraftsFromStorage(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const drafts: Record<string, string> = {};
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i);
+    if (!key || !key.startsWith(DRAFT_STORAGE_PREFIX)) continue;
+    const roomId = key.slice(DRAFT_STORAGE_PREFIX.length);
+    const value = window.localStorage.getItem(key);
+    if (value) drafts[roomId] = value;
+  }
+  return drafts;
+}
+
+function clearAllDraftsFromStorage() {
+  if (typeof window === "undefined") return;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i);
+    if (key?.startsWith(DRAFT_STORAGE_PREFIX)) keysToRemove.push(key);
+  }
+  for (const key of keysToRemove) window.localStorage.removeItem(key);
+}
 
 interface Message {
   id: string;
@@ -69,7 +94,9 @@ export default function RoomView({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activeRoom, setActiveRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [draft, setDraft] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
+    readDraftsFromStorage(),
+  );
   const [isReady, setIsReady] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -87,6 +114,43 @@ export default function RoomView({
   const hasConnectedBeforeRef = useRef(false);
   const messagesSectionRef = useRef<HTMLElement | null>(null);
   const pendingScrollAdjustmentRef = useRef<number | null>(null);
+  const draftDebounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // drafts state bellek-içi kaynak-doğruluk; localStorage yazımı her tuş
+  // vuruşunda değil, oda başına debounce'lu (500ms) - sekme kapanması/
+  // tarayıcı çökmesi senaryosunu da kapsayan ikinci bir kalıcılık katmanı.
+  function setRoomDraft(roomId: string, value: string) {
+    setDrafts((prev) => ({ ...prev, [roomId]: value }));
+    const timers = draftDebounceTimersRef.current;
+    if (timers[roomId]) clearTimeout(timers[roomId]);
+    timers[roomId] = setTimeout(() => {
+      if (typeof window === "undefined") return;
+      const key = DRAFT_STORAGE_PREFIX + roomId;
+      if (value) window.localStorage.setItem(key, value);
+      else window.localStorage.removeItem(key);
+    }, DRAFT_STORAGE_DEBOUNCE_MS);
+  }
+
+  // Bir odanın taslağını hem bellekten hem localStorage'dan HEMEN temizler
+  // (gönderim sonrası, odadan ayrılınca, oda silinince) - bekleyen bir
+  // debounce yazımı varsa onu da iptal eder (yoksa eski değer gecikmeli
+  // olarak geri yazılabilirdi).
+  function clearRoomDraft(roomId: string) {
+    const timers = draftDebounceTimersRef.current;
+    if (timers[roomId]) {
+      clearTimeout(timers[roomId]);
+      delete timers[roomId];
+    }
+    setDrafts((prev) => {
+      if (!(roomId in prev)) return prev;
+      const next = { ...prev };
+      delete next[roomId];
+      return next;
+    });
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(DRAFT_STORAGE_PREFIX + roomId);
+    }
+  }
 
   // handleLoadOlder mesajları listenin BAŞINA ekliyor - hiçbir şey
   // yapılmazsa scroll görsel olarak aşağı "zıplar" (yeni içerik üstte
@@ -307,7 +371,7 @@ export default function RoomView({
           if (activeRoomIdRef.current === payload.roomId) {
             const fallback = next[0] ?? null;
             setActiveRoom(fallback);
-            setDraft("");
+            clearRoomDraft(payload.roomId);
             if (fallback) {
               const generation = ++fetchGenerationRef.current;
               void fetchRoomHistory(fallback.name, authHeaders).then(
@@ -373,7 +437,6 @@ export default function RoomView({
     setActivePanel("none");
     if (next.id === activeRoom?.id) return;
     setActiveRoom(next);
-    setDraft("");
 
     const generation = ++fetchGenerationRef.current;
     const authHeaders = { Authorization: `Bearer ${accessToken}` };
@@ -398,7 +461,7 @@ export default function RoomView({
     if (activeRoomIdRef.current !== room.id) return;
     const fallback = next[0] ?? null;
     setActiveRoom(fallback);
-    setDraft("");
+    clearRoomDraft(room.id);
     if (!fallback) {
       setMessages([]);
       setNextCursor(null);
@@ -440,7 +503,7 @@ export default function RoomView({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const content = draft.trim();
+    const content = (activeRoom ? drafts[activeRoom.id] : undefined)?.trim() ?? "";
     if (!content || !socketRef.current || !activeRoom || isSending) {
       return;
     }
@@ -451,7 +514,7 @@ export default function RoomView({
 
     setSendError(null);
     setIsSending(true);
-    setDraft("");
+    clearRoomDraft(activeRoom.id);
     try {
       // .timeout() zorunlu: düz .emit'in ack callback'i disconnect anında
       // sessizce kaybolur (socket.io-client kaynağında doğrulandı) -
@@ -490,12 +553,18 @@ export default function RoomView({
       // Çıkış API çağrısı başarısız olsa da yerel oturumu kapat - kullanıcı
       // takılıp kalmasın, sunucu tarafı token zaten süresi dolunca geçersiz olur.
     }
+    // Gizlilik önlemi: paylaşımlı bir bilgisayarda çıkış yapmayan/farklı
+    // hesapla giren biri önceki kullanıcının taslağını görmesin - Slice A'nın
+    // access-token'ı BİLEREK localStorage'a hiç yazmama kararıyla aynı ihtiyat.
+    clearAllDraftsFromStorage();
     onLoggedOut();
   }
 
   const isMuted = myProfile?.mutedUntil
     ? new Date(myProfile.mutedUntil) > new Date()
     : false;
+
+  const draft = (activeRoom ? drafts[activeRoom.id] : undefined) ?? "";
 
   const canSend =
     isReady &&
@@ -587,7 +656,9 @@ export default function RoomView({
           sendError={sendError}
           activeRoom={activeRoom}
           draft={draft}
-          onDraftChange={setDraft}
+          onDraftChange={(value) =>
+            activeRoom ? setRoomDraft(activeRoom.id, value) : undefined
+          }
           isReady={isReady}
           canSend={canSend}
           isSending={isSending}
