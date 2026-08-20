@@ -310,6 +310,7 @@ export interface Room {
   description: string | null;
   lastActivityAt: string;
   status: "active" | "archived" | "deleted";
+  announcement: string | null;
 }
 
 export function listRooms(
@@ -490,4 +491,16 @@ export async function deleteRoom(
   roomId: string,
 ): Promise<void> {
   await authedPostJson(`/moderation/rooms/${roomId}/delete`, accessToken);
+}
+
+export function setRoomAnnouncement(
+  accessToken: string,
+  roomId: string,
+  announcement: string | null,
+): Promise<Room> {
+  return authedPostJson<Room>(
+    `/moderation/rooms/${roomId}/announcement`,
+    accessToken,
+    { announcement: announcement ?? undefined },
+  );
 }

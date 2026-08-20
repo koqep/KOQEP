@@ -6,9 +6,15 @@ import {
   renameRoom,
   archiveRoom,
   deleteRoom,
+  setRoomAnnouncement,
   type Room,
 } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+
+// apps/api/src/api/dto/set-room-announcement.dto.ts'teki MAX_ROOM_ANNOUNCEMENT_LENGTH
+// ile AYNI değer - MAX_MESSAGE_LENGTH'in zaten kurduğu "küçük sabiti
+// frontend/backend arasında kopyala" deseni.
+const MAX_ROOM_ANNOUNCEMENT_LENGTH = 280;
 
 interface Props {
   accessToken: string;
@@ -20,6 +26,8 @@ export default function RoomModerationSection({ accessToken }: Props) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [announcingId, setAnnouncingId] = useState<string | null>(null);
+  const [announcementDraft, setAnnouncementDraft] = useState("");
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
     null,
   );
@@ -62,6 +70,47 @@ export default function RoomModerationSection({ accessToken }: Props) {
       setRenamingId(null);
     } catch {
       setError("Oda yeniden adlandırılamadı, tekrar dene.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  function startAnnouncing(room: Room) {
+    setError(null);
+    setAnnouncingId(room.id);
+    setAnnouncementDraft(room.announcement ?? "");
+  }
+
+  async function submitAnnouncement(
+    event: FormEvent<HTMLFormElement>,
+    room: Room,
+  ) {
+    event.preventDefault();
+    setError(null);
+    setPendingId(room.id);
+    try {
+      const updated = await setRoomAnnouncement(
+        accessToken,
+        room.id,
+        announcementDraft.trim() || null,
+      );
+      replaceInList(updated);
+      setAnnouncingId(null);
+    } catch {
+      setError("Duyuru kaydedilemedi, tekrar dene.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function clearAnnouncement(room: Room) {
+    setError(null);
+    setPendingId(room.id);
+    try {
+      const updated = await setRoomAnnouncement(accessToken, room.id, null);
+      replaceInList(updated);
+    } catch {
+      setError("Duyuru kaldırılamadı, tekrar dene.");
     } finally {
       setPendingId(null);
     }
@@ -144,6 +193,66 @@ export default function RoomModerationSection({ accessToken }: Props) {
                   <span className="text-muted">#</span>
                   {room.name}{" "}
                   <span className="text-muted">({room.status})</span>
+                </p>
+              )}
+
+              {announcingId === room.id ? (
+                <form
+                  onSubmit={(event) => void submitAnnouncement(event, room)}
+                  className="mb-2 flex items-start gap-2"
+                >
+                  <textarea
+                    aria-label="oda duyurusunu düzenle"
+                    value={announcementDraft}
+                    onChange={(event) =>
+                      setAnnouncementDraft(event.target.value)
+                    }
+                    maxLength={MAX_ROOM_ANNOUNCEMENT_LENGTH}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- "duyuru ekle/düzenle"ye tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
+                    autoFocus
+                    className={`flex-1 ${inputClassName}`}
+                  />
+                  <span className="text-muted">
+                    {announcementDraft.length}/{MAX_ROOM_ANNOUNCEMENT_LENGTH}
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={pendingId === room.id}
+                    className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
+                  >
+                    kaydet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnnouncingId(null)}
+                    className="text-muted hover:text-neutral-400"
+                  >
+                    iptal
+                  </button>
+                </form>
+              ) : room.announcement ? (
+                <p className="mb-2 text-neutral-400">
+                  <span className="text-muted">duyuru:</span>{" "}
+                  {room.announcement}{" "}
+                  <button
+                    type="button"
+                    disabled={pendingId === room.id}
+                    onClick={() => void clearAnnouncement(room)}
+                    className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
+                  >
+                    duyuruyu kaldır
+                  </button>
+                </p>
+              ) : (
+                <p className="mb-2">
+                  <button
+                    type="button"
+                    disabled={pendingId === room.id}
+                    onClick={() => startAnnouncing(room)}
+                    className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
+                  >
+                    duyuru ekle
+                  </button>
                 </p>
               )}
 

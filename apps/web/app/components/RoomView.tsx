@@ -346,6 +346,25 @@ export default function RoomView({
             );
           },
         );
+        // M7b Slice H2: room:renamed'ın AYNI desen.
+        socket.on(
+          "room:announcement-updated",
+          (payload: { roomId: string; announcement: string | null }) => {
+            if (cancelled) return;
+            setRooms((prev) =>
+              prev.map((r) =>
+                r.id === payload.roomId
+                  ? { ...r, announcement: payload.announcement }
+                  : r,
+              ),
+            );
+            setActiveRoom((prev) =>
+              prev && prev.id === payload.roomId
+                ? { ...prev, announcement: payload.announcement }
+                : prev,
+            );
+          },
+        );
         socket.on("room:archived", (payload: { roomId: string }) => {
           if (cancelled) return;
           setRooms((prev) =>
