@@ -99,7 +99,7 @@ describe('RoomsService', () => {
           lastActivityAt: true,
           status: true,
         },
-        orderBy: { name: 'asc' },
+        orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
       });
     });
   });
@@ -131,7 +131,7 @@ describe('RoomsService', () => {
           lastActivityAt: true,
           status: true,
         },
-        orderBy: { name: 'asc' },
+        orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
         take: 31,
       });
       expect(page).toEqual({
