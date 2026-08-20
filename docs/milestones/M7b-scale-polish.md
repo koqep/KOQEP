@@ -56,24 +56,37 @@ göre esner, taahhüt değil öncelik sırasıdır.
 - [ ] Susturma bildirimi SEBEP içeriyor; içerik kaldırma AYRI, hedefe özel bir bildirim üretiyor (genel `message:updated`'a gömülü değil).
 - [ ] Kullanıcı kendi mesajını silebiliyor.
 - [ ] Düzenlenmiş bir mesaj sıradan bir görüntüleyene "(düzenlendi)" gösteriyor.
-- [ ] Oda listesi aktiviteye göre sıralanıyor/filtrelenebiliyor (sadece alfabetik değil).
+- [x] Oda listesi aktiviteye göre sıralanıyor/filtrelenebiliyor (sadece alfabetik değil). *(2026-08-20, Slice E — sadece keşif+moderasyon listeleri; switcher bilerek sabit alfabetik kaldı.)*
 - [ ] Bir geri bildirim yolu var (mailto tabanlı minimum) VE moderatör pinlenmiş bir duyuru mesajı atabiliyor.
-- [ ] Mesajlarda çıplak URL'ler tıklanabilir (`target=_blank rel=noopener`), önizleme YOK.
-- [ ] Birleşik-işaret/zalgo suistimaline karşı bir grapheme-sınırı var.
-- [ ] Oda değiştirince yazılmakta olan taslak KAYBOLMUYOR.
+- [x] Mesajlarda çıplak URL'ler tıklanabilir (`target=_blank rel=noopener`), önizleme YOK. *(2026-08-20, Slice E.)*
+- [x] Birleşik-işaret/zalgo suistimaline karşı bir grapheme-sınırı var. *(2026-08-20, Slice E — `THREAT-MODEL.md` satır 42 kapatıldı.)*
+- [x] Oda değiştirince yazılmakta olan taslak KAYBOLMUYOR. *(2026-08-20, Slice E — bellek-içi + localStorage debounce, sekme kapanmasını da kapsıyor.)*
 - [ ] Zaten yıllardır bekleyen Türkçe→İngilizce UI geçişi (BACKLOG A15) BİTTİ — runtime dil SEÇİMİ olmadan, varsayılan tamamen İngilizce.
 
 ## Tasks — kod dilimleri (Claude uygular, her biri kendi plan-modu turu)
 
 - [ ] **Slice D1 — Rate limit gözden geçirmesi.** ~3-5 saat. Global 100/60s limitin Faz 1'in GERÇEK trafiğine göre gözden geçirilmesi (muhtemelen artış, aynı NAT/ofis IP'sinden çok sayıda meşru kullanıcı senaryosu) — Faz 1→2 arası, tahminle değil ölçülmüş veriyle.
 - [ ] **Slice D2 — Moderasyon itirazı + kendi mesajını silme + "düzenlendi" göstergesi.** ~20-26 saat (12-15 + 5-7 + 3-4). Susturma/içerik-kaldırmaya SEBEP alanı eklenir, içerik kaldırma için hedefe özel bir bildirim (mevcut WS kanalları yeniden kullanılır, yeni altyapı değil). Kendi mesajını silme: `ADR-0005`'in anonimleştirme desenine tutarlı bir soft-delete (içerik `[Bu mesaj yazarı tarafından silindi.]` gibi bir sabitle değiştirilir, `MODERATOR_REMOVED_CONTENT`'in kendi deseni). "Düzenlendi" göstergesi: veri zaten var (`MessageEdit` ilişkisi), sadece bir görünüm kararı.
-- [ ] **Slice E — Oda keşfedilebilirliği + taslak kalıcılığı + zalgo koruması + tıklanabilir linkler.** ~14-20 saat (5-7 + 2-3 + 3-5 + 2-4). `RoomsService.listRooms`'a aktivite sıralaması, `RoomView.tsx`'in `draft` state'i `Record<roomId,string>`'e döner, mesaj içerik doğrulamasına grapheme-sınırı eklenir, `MessageContent.tsx`'e linkify (önizleme YOK). **Oda listesi kısmı M7a'nın Slice B'siyle (`RoomMember`, tamamlandı) aynı yüzeyi paylaşıyor.** **Açık bağımlılık:** M7a Slice B'nin `scope=discoverable`/`scope=all` keşif listeleri bu dilim inene kadar `name asc` (alfabetik) sıralı — oda sayısı arttıkça (özellikle Faz 2/3'te) kullanılamaz hale gelir, bu dilim oda sayısı büyümeden ÖNCE inmeli, sonraya bırakılabilecek bir cila maddesi değil.
+- [x] **Slice E — Oda keşfedilebilirliği + taslak kalıcılığı + zalgo koruması + tıklanabilir linkler.** TAMAMLANDI (2026-08-20). ~14-20 saat (5-7 + 2-3 + 3-5 + 2-4). `RoomsService.listRooms`'a aktivite sıralaması, `RoomView.tsx`'in `draft` state'i `Record<roomId,string>`'e döner, mesaj içerik doğrulamasına grapheme-sınırı eklenir, `MessageContent.tsx`'e linkify (önizleme YOK). **Oda listesi kısmı M7a'nın Slice B'siyle (`RoomMember`, tamamlandı) aynı yüzeyi paylaşıyor.** **Açık bağımlılık:** M7a Slice B'nin `scope=discoverable`/`scope=all` keşif listeleri bu dilim inene kadar `name asc` (alfabetik) sıralı — oda sayısı arttıkça (özellikle Faz 2/3'te) kullanılamaz hale gelir, bu dilim oda sayısı büyümeden ÖNCE inmeli, sonraya bırakılabilecek bir cila maddesi değil.
 - [ ] **Slice H2 — Geri bildirim/duyuru.** ~4-6 saat. `mailto:` linki (yeni backend gerekmiyor). Duyuru: moderatörün pinleyebileceği tek bir mesaj alanı (`Room` ya da ayrı küçük bir model — implementasyon sırasında karar). **Faz 1 açılışıyla birlikte yapılması önerilir** (kapı açma koşulu değil ama amaca en çok hizmet eden zamanlama).
 - [ ] **Slice I2 — Türkçe→İngilizce UI geçişinin bitirilmesi (A15).** ~8-11 saat. A15'in kendi tetikleyicisi (İngilizce dosya oranı ≥%50) muhtemelen bu dilimin KENDİSİYLE ateşleniyor — kalan Türkçe component'ler İngilizceye çevrilir, **runtime dil SEÇİMİ/`User.locale` EKLENMEZ** (o M9'un tam kapsamı). Playwright seçicileri bu geçişle birlikte `data-testid`'e taşınmalı (388 Türkçe-bağımlı seçici, M9'un kendi maliyet analizinde) — **BU dilimde SADECE değişen dosyaların seçicileri güncellenir, TAM testid geçişi M9'a kalır** (aksi halde bu dilim M9'un maliyetini üstleniyor demektir).
 
 ## Tasks — founder'ın kendi eliyle yapacağı işler
 - [ ] Faz 1'in ilk 2-3 haftasının rate-limit/hata loglarını gözden geçir (Slice D1'in girdisi).
 - [ ] Faz 1 sırasında moderasyon vakalarının HACMİNİ takip et — Slice D2'nin (moderasyon itirazı) Faz 2'den erkene çekilip çekilmeyeceğine bu veriyle karar ver.
+
+## Plan notları
+
+### Slice E — Oda keşfedilebilirliği + taslak kalıcılığı + zalgo koruması + tıklanabilir linkler (2026-08-20, tamamlandı)
+İki Explore agent'ıyla (backend: oda sıralaması/cursor mekaniği/içerik doğrulama katmanı; frontend: taslak state'i/switcher/keşif UI/mesaj render zinciri) araştırıldı, plan bir turda `AskUserQuestion` (switcher de aktiviteye göre sıralansın mı — HAYIR, sabit kaldı) + kullanıcının 3 maddelik `ExitPlanMode` review'ıyla onaylandı: (1) taslak kalıcılığının SADECE bellek-içi mi yoksa localStorage'ı da mı kapsayacağı netleştirilmeli (localStorage da kapsama alındı — ucuz, sekme kapanması/tarayıcı çökmesi senaryosunu da çözüyor), (2) zalgo korumasının `editMessage`'ı da kapsayıp kapsamadığı doğrulanmalı (kapsıyor — `assertNotMuted`'ın dual-handler emsaliyle AYNI mantık, masum-mesaj-sonra-zalgo-düzenleme bypass'ını kapatıyor), (3) linkify'ın `dangerouslySetInnerHTML` KULLANMADIĞI kesin doğrulanmalı (doğrulandı — düz JSX + regex'in kendisi ikinci bir bağımsız güvenlik katmanı).
+
+5 izole commit: (1) şema migration (`Room.lastActivityAt` index) + backend keşif/moderasyon sıralaması, (2) backend zalgo koruması (`content-validation.util.ts`, `Intl.Segmenter`, native Node 22, yeni bağımlılık yok) + testleri, (3) frontend taslak kalıcılığı (`RoomView.tsx`'in `draft` state'i `Record<roomId,string>`'e döndü, localStorage 500ms debounce, çıkışta tüm `koqep:draft:` anahtarları temizleniyor), (4) frontend linkify (`MessageContent.tsx`, sadece "text" segment'lerine ikinci geçiş) + keşif listesinde aktivite gösterimi (`formatRelativeActivity` `RoomHeader.tsx`'ten `lib/format.ts`'e çıkarıldı) + testleri, (5) dokümantasyon.
+
+**Yerel test ortamı tuzağı (kod bug'ı DEĞİL):** local Postgres'i `DROP DATABASE`+`migrate deploy`+`db:seed` ile CI'ınkiyle "aynı" taze duruma getirdiğimi sanıp fullstack Playwright süitini çalıştırdım — 8 testin 8'i de "mesaj yaz" kutusunun hiç etkinleşmediği (`isReady` hep false) şekilde başarısız oldu. Kök neden: `db:seed` dev kullanıcıyı `prisma.user.upsert` ile DOĞRUDAN yaratıyor, signup akışının (çekirdek odalara otomatik üyelik) DIŞINDA — CI (`ci.yml`) `db:seed`'den SONRA ayrıca `db:backfill-room-members` çalıştırıyor, ben bunu atlamıştım. Backfill'i çalıştırınca 8/8 yeşile döndü. STATE.md'ye tuzak olarak eklendi.
+
+**Gerçek saat:** milestone tahmini 14-20h idi, gerçek harcama bu aralığın ÜST ucuna yakın (backend şema+sıralama+testler ~4h, backend zalgo+testler ~4h, frontend taslak+localStorage+fullstack testler ~4h, frontend linkify+aktivite gösterimi+testler ~3h, yerel-DB tuzağının teşhisi ~1.5h, dokümantasyon ~1h).
+
+**Doğrulama:** `apps/api` lint/typecheck/build + 247 birim + 133 e2e testi (iki koşu, flakiness yok — `room-member-backfill`'in bilinen paralel-worker flake'i tek dosya izole koşusunda geçti). `apps/web` lint/typecheck/build + 85 Playwright (mocked, desktop 83 + mobile-375 2) + 8 Playwright (fullstack, gerçek DB+API, backfill dahil temiz seed sonrası).
 
 ## Risks
 - Bu dosyanın sıralaması M7a'nın Faz 1 verisine BAĞIMLI — M7a bitip Faz 1 gerçekten açılmadan bu dosyanın kendi plan-modu turlarının bir kısmı (özellikle rate limit, moderasyon itirazının zamanlaması) anlamlı şekilde başlayamaz. Slice E (oda keşfi, taslak, zalgo, link) ve Slice H2/I2 gibi veri-bağımsız kalemler M7a ile PARALEL de planlanabilir.
