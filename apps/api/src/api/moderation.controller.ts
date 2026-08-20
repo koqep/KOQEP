@@ -21,6 +21,7 @@ import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { ModeratorGuard } from './moderator.guard';
 import { MuteUserDto } from './dto/mute-user.dto';
 import { RenameRoomDto } from './dto/rename-room.dto';
+import { SetRoomAnnouncementDto } from './dto/set-room-announcement.dto';
 import { AssignModeratorDto } from './dto/assign-moderator.dto';
 import { RevokeModeratorDto } from './dto/revoke-moderator.dto';
 
@@ -128,6 +129,22 @@ export class ModerationController {
     await this.roomModerationService.deleteRoom(req.user.sub, id);
     this.messagesGateway.notifyRoomDeleted(id);
     return { ok: true };
+  }
+
+  // M7b Slice H2: rename'in AYNI REST->WS kompozisyon deseni.
+  @Post('rooms/:id/announcement')
+  async setRoomAnnouncement(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: SetRoomAnnouncementDto,
+  ): Promise<RoomSummary> {
+    const room = await this.roomModerationService.setRoomAnnouncement(
+      req.user.sub,
+      id,
+      dto.announcement,
+    );
+    this.messagesGateway.notifyRoomAnnouncementUpdated(id, room.announcement);
+    return room;
   }
 
   // M7a Slice C: mute/rename'in AYNI REST->WS kompozisyon deseni. Path

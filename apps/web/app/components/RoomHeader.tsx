@@ -10,6 +10,12 @@ import { formatRelativeActivity } from "../../lib/format";
 // GÖSTERMEZ - backend'in kendi ForbiddenException reddiyle simetrik.
 const CORE_ROOM_NAMES = ["general", "meta"];
 
+// M7b Slice H2: kişisel gelen kutusu, kurumsal bir adres değil (bilerek
+// kabul edilen kısıt, docs/BACKLOG.md'de somut bir tetikleyiciyle not
+// düşülü) - kurumsal bir adrese (ör. support@koqep.com) geçiş bu TEK
+// satırın değişmesinden ibaret olsun diye ayrı bir sabitte yaşıyor.
+const FEEDBACK_EMAIL = "ussasa155@gmail.com";
+
 interface Props {
   rooms: Room[];
   activeRoom: Room | null;
@@ -129,6 +135,12 @@ export default function RoomHeader({
         >
           invites
         </button>
+        <a
+          href={`mailto:${FEEDBACK_EMAIL}?subject=KOQEP%20geri%20bildirim`}
+          className="text-muted hover:text-neutral-400"
+        >
+          geri bildirim
+        </a>
         {isModerator && (
           <button
             type="button"

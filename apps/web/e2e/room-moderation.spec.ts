@@ -84,6 +84,63 @@ test("moderator_odayi_yeniden_adlandirir", async ({ page }) => {
   await expect(page.getByText("#duzeltilmis-isim (active)")).toBeVisible();
 });
 
+test("moderator_oda_duyurusu_ekler_ve_kaldirir", async ({ page }) => {
+  await page.route("**/rooms*", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: "room-1",
+          name: "general",
+          description: null,
+          lastActivityAt: new Date().toISOString(),
+          status: "active",
+          announcement: null,
+        },
+      ],
+    }),
+  );
+  let announcementBody: unknown;
+  await page.route(
+    "**/moderation/rooms/room-1/announcement",
+    async (route) => {
+      announcementBody = route.request().postDataJSON();
+      const announcement =
+        (announcementBody as { announcement?: string }).announcement ?? null;
+      await route.fulfill({
+        json: {
+          id: "room-1",
+          name: "general",
+          description: null,
+          lastActivityAt: new Date().toISOString(),
+          status: "active",
+          announcement,
+        },
+      });
+    },
+  );
+  await login(page, "moderator");
+  await page.getByRole("button", { name: "moderasyon" }).click();
+
+  await expect(page.getByRole("button", { name: "duyuru ekle" })).toBeVisible();
+  await page.getByRole("button", { name: "duyuru ekle" }).click();
+  await page
+    .getByLabel("oda duyurusunu düzenle")
+    .fill("Faz 1'e hoş geldiniz!");
+  await page.getByRole("button", { name: "kaydet" }).click();
+
+  expect(announcementBody).toEqual({ announcement: "Faz 1'e hoş geldiniz!" });
+  await expect(page.getByText("Faz 1'e hoş geldiniz!")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "duyuruyu kaldır" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "duyuruyu kaldır" }).click();
+
+  expect(announcementBody).toEqual({});
+  await expect(page.getByText("Faz 1'e hoş geldiniz!")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "duyuru ekle" })).toBeVisible();
+});
+
 test("moderator_aktif_odayi_arsivler_sonra_arsivlenmis_odayi_iki_adimli_onayla_siler", async ({
   page,
 }) => {

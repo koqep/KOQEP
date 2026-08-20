@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -9,6 +10,7 @@ import {
   ROOM_RENAMED_ACTION,
   ROOM_ARCHIVED_ACTION,
   ROOM_DELETED_ACTION,
+  ROOM_ANNOUNCEMENT_UPDATED_ACTION,
 } from './room-moderation.service';
 import { PrismaService } from '../db/prisma.service';
 
@@ -428,6 +430,178 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.deleteRoom('moderator-1', 'yok-oda'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setRoomAnnouncement', () => {
+    it('duyuruyu_ayarlar_ve_denetim_satirina_yazar', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'oda',
+        description: 'aciklama',
+        status: 'active',
+      };
+      const roomUpdateSpy = jest.fn().mockResolvedValue({
+        id: 'room-1',
+        name: 'oda',
+        description: 'aciklama',
+        lastActivityAt: new Date(),
+        status: 'active',
+        announcement: 'Faz 1e hos geldiniz!',
+      });
+      const auditCreateSpy = jest.fn().mockResolvedValue({});
+      const txMock = {
+        room: { update: roomUpdateSpy },
+        moderationAuditLog: { create: auditCreateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        $transaction: buildTransactionMock(txMock),
+      };
+
+      const service = new RoomModerationService(prismaMock as PrismaService);
+      const result = await service.setRoomAnnouncement(
+        'moderator-1',
+        'room-1',
+        'Faz 1e hos geldiniz!',
+      );
+
+      expect(roomUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'room-1' },
+          data: { announcement: 'Faz 1e hos geldiniz!' },
+        }),
+      );
+      expect(auditCreateSpy).toHaveBeenCalledWith({
+        data: {
+          moderatorId: 'moderator-1',
+          actionType: ROOM_ANNOUNCEMENT_UPDATED_ACTION,
+          targetRoomId: 'room-1',
+          targetRoomName: 'oda',
+          targetRoomDescription: 'aciklama',
+          targetRoomAnnouncement: 'Faz 1e hos geldiniz!',
+        },
+      });
+      expect(result.announcement).toBe('Faz 1e hos geldiniz!');
+    });
+
+    it('bos_metinle_cagrilinca_duyuruyu_temizler', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'oda',
+        description: null,
+        status: 'active',
+      };
+      const roomUpdateSpy = jest.fn().mockResolvedValue({
+        id: 'room-1',
+        name: 'oda',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        announcement: null,
+      });
+      const auditCreateSpy = jest.fn().mockResolvedValue({});
+      const txMock = {
+        room: { update: roomUpdateSpy },
+        moderationAuditLog: { create: auditCreateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        $transaction: buildTransactionMock(txMock),
+      };
+
+      const service = new RoomModerationService(prismaMock as PrismaService);
+      await service.setRoomAnnouncement('moderator-1', 'room-1', '   ');
+
+      expect(roomUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { announcement: null } }),
+      );
+      expect(auditCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            targetRoomAnnouncement: null,
+          }) as Prisma.ModerationAuditLogUncheckedCreateInput,
+        }),
+      );
+    });
+
+    // rename/archive/delete'in "çekirdek odayı reddeder" testlerinin TERSİ -
+    // çekirdek odalar (general/meta) tam da founder'ın duyuru pinleyeceği
+    // yerler, buraya kısıt UYGULANMAMASI bilerek.
+    it('cekirdek_odaya_da_duyuru_konabilir', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'general',
+        description: null,
+        status: 'active',
+      };
+      const roomUpdateSpy = jest.fn().mockResolvedValue({
+        id: 'room-1',
+        name: 'general',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        announcement: 'bir duyuru',
+      });
+      const txMock = {
+        room: { update: roomUpdateSpy },
+        moderationAuditLog: { create: jest.fn().mockResolvedValue({}) },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        $transaction: buildTransactionMock(txMock),
+      };
+
+      const service = new RoomModerationService(prismaMock as PrismaService);
+      const result = await service.setRoomAnnouncement(
+        'moderator-1',
+        'room-1',
+        'bir duyuru',
+      );
+
+      expect(roomUpdateSpy).toHaveBeenCalled();
+      expect(result.announcement).toBe('bir duyuru');
+    });
+
+    it('zalgo_icerikli_duyuruyu_reddeder', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'oda',
+        description: null,
+        status: 'active',
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+      };
+      const zalgo = 'z' + '́'.repeat(20) + ' duyuru';
+
+      const service = new RoomModerationService(prismaMock as PrismaService);
+
+      await expect(
+        service.setRoomAnnouncement('moderator-1', 'room-1', zalgo),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('reddeder_bilinmeyen_odayi', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = new RoomModerationService(prismaMock as PrismaService);
+
+      await expect(
+        service.setRoomAnnouncement('moderator-1', 'yok-oda', 'bir duyuru'),
       ).rejects.toThrow(NotFoundException);
     });
   });

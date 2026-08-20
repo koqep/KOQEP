@@ -52,6 +52,7 @@ describe('RoomsService', () => {
           description: true,
           lastActivityAt: true,
           status: true,
+          announcement: true,
         },
         orderBy: { name: 'asc' },
       });
@@ -98,6 +99,7 @@ describe('RoomsService', () => {
           description: true,
           lastActivityAt: true,
           status: true,
+          announcement: true,
         },
         orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
       });
@@ -130,6 +132,7 @@ describe('RoomsService', () => {
           description: true,
           lastActivityAt: true,
           status: true,
+          announcement: true,
         },
         orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
         take: 31,
@@ -304,6 +307,7 @@ describe('RoomsService', () => {
           description: true,
           lastActivityAt: true,
           status: true,
+          announcement: true,
         },
       });
       expect(joinMock).toHaveBeenCalledWith('room-1');

@@ -64,7 +64,12 @@ test("kod_blogu_icindeki_url_link_olmaz", async ({ page }) => {
   await login(page);
 
   await expect(page.locator("pre")).toHaveText("https://koqep.dev/kod");
-  await expect(page.getByRole("link")).toHaveCount(0);
+  // "geri bildirim" (RoomHeader'ın mailto linki, M7b Slice H2) sayfada
+  // HER ZAMAN bir <a> - bare getByRole("link") onu da sayardı, bu yüzden
+  // mesaj içeriğinden gelen linklerle SINIRLI (http ile başlayan) filtre.
+  await expect(
+    page.getByRole("link").filter({ hasText: "http" }),
+  ).toHaveCount(0);
 });
 
 test("url_icermeyen_mesajda_hic_link_olusmaz", async ({ page }) => {

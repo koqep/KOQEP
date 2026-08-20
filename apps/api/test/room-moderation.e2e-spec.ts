@@ -275,6 +275,74 @@ describe('Moderasyon: oda yeniden adlandırma/arşivleme/silme (e2e)', () => {
     expect(audit?.deletedMessageCount).toBe(1);
   }, 20000);
 
+  it('moderator_duyuru_koyar_ilgili_kullanici_gercek_zamanli_bildirim_alir_ve_temizler', async () => {
+    const room = await createTestRoom('active');
+    const moderator = await createTestUser('moderator');
+    const member = await createTestUser();
+    const socket = connectSocket(member.accessToken);
+    await waitForEvent(socket, 'ready');
+
+    const updatedPromise = waitForEvent<{
+      roomId: string;
+      announcement: string | null;
+    }>(socket, 'room:announcement-updated');
+    const announcement = `duyuru-${randomUUID()}`;
+
+    const response = await request(app.getHttpServer())
+      .post(`/moderation/rooms/${room.id}/announcement`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .send({ announcement })
+      .expect(201);
+    expect((response.body as { announcement: string }).announcement).toBe(
+      announcement,
+    );
+
+    const pushed = await updatedPromise;
+    expect(pushed).toEqual({ roomId: room.id, announcement });
+
+    const dbRoom = await prisma.room.findUnique({ where: { id: room.id } });
+    expect(dbRoom?.announcement).toBe(announcement);
+
+    const audit = await prisma.moderationAuditLog.findFirst({
+      where: {
+        targetRoomId: room.id,
+        actionType: 'ROOM_ANNOUNCEMENT_UPDATED',
+      },
+    });
+    expect(audit?.targetRoomAnnouncement).toBe(announcement);
+
+    // Temizleme - AYNI endpoint, boş body.
+    const clearedPromise = waitForEvent<{
+      roomId: string;
+      announcement: string | null;
+    }>(socket, 'room:announcement-updated');
+    await request(app.getHttpServer())
+      .post(`/moderation/rooms/${room.id}/announcement`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .send({})
+      .expect(201);
+    const clearedPush = await clearedPromise;
+    expect(clearedPush).toEqual({ roomId: room.id, announcement: null });
+
+    const dbRoomAfterClear = await prisma.room.findUnique({
+      where: { id: room.id },
+    });
+    expect(dbRoomAfterClear?.announcement).toBeNull();
+  }, 15000);
+
+  it('cekirdek_odaya_da_duyuru_konabilir', async () => {
+    const moderator = await createTestUser('moderator');
+    const coreRoom = await prisma.room.findUniqueOrThrow({
+      where: { name: CORE_ROOM_NAMES[0] },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/moderation/rooms/${coreRoom.id}/announcement`)
+      .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .send({ announcement: `karsilama-${randomUUID()}` })
+      .expect(201);
+  });
+
   it('cekirdek_oda_uc_aksiyon_icin_de_reddedilir', async () => {
     const moderator = await createTestUser('moderator');
     const coreRoom = await prisma.room.findUniqueOrThrow({
@@ -315,6 +383,11 @@ describe('Moderasyon: oda yeniden adlandırma/arşivleme/silme (e2e)', () => {
       .post(`/moderation/rooms/${room.id}/delete`)
       .set(authHeader)
       .expect(403);
+    await request(app.getHttpServer())
+      .post(`/moderation/rooms/${room.id}/announcement`)
+      .set(authHeader)
+      .send({ announcement: 'bir duyuru' })
+      .expect(403);
   });
 
   it('bilinmeyen_oda_404_doner', async () => {
@@ -333,6 +406,11 @@ describe('Moderasyon: oda yeniden adlandırma/arşivleme/silme (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/rooms/${randomUUID()}/delete`)
       .set(authHeader)
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/moderation/rooms/${randomUUID()}/announcement`)
+      .set(authHeader)
+      .send({ announcement: 'bir duyuru' })
       .expect(404);
   });
 });

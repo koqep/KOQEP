@@ -2,6 +2,7 @@
 
 import { type FormEvent, type RefObject } from "react";
 import MessageItem from "./MessageItem";
+import MessageContent from "./MessageContent";
 import type { Room, UserProfile, MessageEdit } from "../../lib/api";
 
 interface Message {
@@ -57,6 +58,12 @@ export default function ChatPanel({
 }: Props) {
   return (
     <>
+      {activeRoom?.announcement && (
+        <p className="border-b border-neutral-800 pb-2 text-neutral-300">
+          <span className="text-muted">duyuru:</span>{" "}
+          <MessageContent content={activeRoom.announcement} />
+        </p>
+      )}
       <section
         ref={messagesSectionRef}
         className="flex-1 overflow-y-auto py-4 text-muted"

@@ -362,4 +362,15 @@ export class MessagesGateway
       socket.emit('room:deleted', { roomId });
     }
   }
+
+  // M7b Slice H2: notifyRoomRenamed'ın AYNI global-broadcast deseni ve
+  // gerekçesi.
+  notifyRoomAnnouncementUpdated(
+    roomId: string,
+    announcement: string | null,
+  ): void {
+    for (const socket of this.socketRegistry.getAllSockets()) {
+      socket.emit('room:announcement-updated', { roomId, announcement });
+    }
+  }
 }
