@@ -7,6 +7,7 @@ import {
   ApiError,
   type Room,
 } from "../../lib/api";
+import { formatRelativeActivity } from "../../lib/format";
 import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
@@ -107,6 +108,9 @@ export default function DiscoverRoomsView({
                 {room.description && (
                   <span className="text-muted"> — {room.description}</span>
                 )}
+                <span className="block text-sm text-muted">
+                  son aktivite: {formatRelativeActivity(room.lastActivityAt)}
+                </span>
               </span>
               <button
                 type="button"

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Room } from "../../lib/api";
+import { formatRelativeActivity } from "../../lib/format";
 
 // apps/api/src/db/core-rooms.constants.ts ile AYNI değer -
 // MAX_MESSAGE_LENGTH/MAX_ROOM_NAME_LENGTH'in zaten kurduğu "küçük sabiti
@@ -25,21 +26,6 @@ interface Props {
   onLogout: () => void;
   isModerator: boolean;
   onOpenModeration: () => void;
-}
-
-// Odanın son ne zaman aktif olduğunu kabaca gösteriyor - tam bir "keşfet"
-// görünümü (sıralama/filtreleme) bilerek kapsam dışı, sadece switcher'ın
-// title tooltip'inde ucuz bir canlılık sinyali (M3 kapsam gözden geçirmesi,
-// 2. tur, madde 2).
-function formatRelativeActivity(isoDate: string): string {
-  const diffMs = Date.now() - new Date(isoDate).getTime();
-  const diffMinutes = Math.floor(diffMs / (60 * 1000));
-  if (diffMinutes < 1) return "az önce";
-  if (diffMinutes < 60) return `${diffMinutes}dk önce`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}s önce`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}g önce`;
 }
 
 export default function RoomHeader({
