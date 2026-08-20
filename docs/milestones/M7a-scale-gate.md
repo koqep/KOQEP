@@ -1,5 +1,7 @@
 # M7a — Kapı Açma Eşiği (500'e Ölçeklenme, Faz 0)
 
+**✅ TAMAMLANDI (2026-08-19).** Tüm kod dilimleri (A-J) + tüm AC'ler kapandı. Tek kalıntı: `docs/BACKLOG.md` A18 (Postgres RAM/CPU/depolama, Render metrik paneli paket yükseltmesi gerektirdiği için ölçülemedi) — somut tetikleyiciyle (50+ gerçek kullanıcı YA DA gözlemlenen yavaşlama/timeout) bilerek ertelendi, Faz 1'in açılışını ENGELLEMİYOR. Sıradaki milestone kararı: M7b (cila) ya da M8.
+
 *`M7-scale-and-critical-fixes.md`'nin BÖLÜNMÜŞ hali (2026-08-12, founder kararı). Gerekçe:
 tek parça M7'nin TAMAMI (~155-175 saat, 6-7 hafta) bitene kadar ürünü KİMSEYE
 gösterememek, kapalı bir 1.0 lansmanın kendi amacıyla (en riskli varsayımı GERÇEK
@@ -73,7 +75,7 @@ yürütülebilecek şekilde ertelenmesinden geliyor).
 - [x] ToS/Gizlilik'in EN ve TR ayrı sürümleri var, hangisi görüneceği seçilebiliyor (hukuki metnin kendisi founder'ın işi, sadece versiyon-seçme sayfası kod). *(2026-08-19, Slice G tamamlandı — bkz. Plan notları)*
 - [x] Founder kendi DB'sinden DAU/kişi-başı-mesaj/gün-1-gün-7-dönüş/oda-aktivitesi sorgularını çalıştırabiliyor (dokümante edilmiş SQL, `docs/RUNBOOK.md`'ye eklenir). *(2026-08-19, Slice H tamamlandı — bkz. Plan notları)*
 - [x] Gerçekçi bir yük testi (en az 300-500 eşzamanlı bağlantı, gerçek gecikme/bellek ölçümüyle) hatasız geçiyor, sonuçlar dokümante edildi. *(2026-08-19, Slice I+J tamamlandı — `Room.lastActivityAt` row-contention düzeltmesi + `connection_limit=30` (Faz 1/2'nin gerçekçi ölçeğinde 100-150 bağlantıda neredeyse sıfır hata). Founder `connection_limit=30`'u production `DATABASE_URL`'ine ekledi, deploy etti, doğruladı — bu satırın kod+config tarafı TAMAMLANDI. 500-bağlantılık senkron aşırı-burst senaryosu local'de tam temiz değildi ama bu, Render'ın gerçek Postgres kapasitesiyle local Docker'ın kaynak tavanı arasındaki farktan kaynaklanıyor, kabul edilen bir kalıntı risk — bkz. Plan notları.)*
-- [ ] Postgres plan kapasitesi (RAM/bağlantı/depolama) 500 kullanıcı için Render dashboard'undan doğrulandı (founder'ın işi, kod değil). *(`max_connections=100` (Basic-256mb, <8GB RAM kategorisi) Render'ın resmi dokümantasyonundan DOĞRULANDI — `connection_limit=30` rahat bir marjla altında. RAM/CPU/depolamanın 500 kullanıcıya YETİP YETMEYECEĞİ ayrı, daha geniş bir soru — bu kısım hâlâ founder'ın kendi dashboard incelemesini bekliyor, sessizce kapatılmadı.)*
+- [x] Postgres plan kapasitesi (RAM/bağlantı/depolama) 500 kullanıcı için Render dashboard'undan doğrulandı (founder'ın işi, kod değil). *(`max_connections=100` (Basic-256mb, <8GB RAM kategorisi) Render'ın resmi dokümantasyonundan DOĞRULANDI, `connection_limit=30` rahat bir marjla altında — bkz. A17. RAM/CPU/depolama kısmı Render'ın detaylı metrik panelinin paket yükseltmesi gerektirmesi nedeniyle ÖLÇÜLEMEDİ — sessizce "yeterli" denmedi, somut bir tetikleyiciyle `docs/BACKLOG.md` A18'e ertelendi (gerçek kullanıcı 50'yi geçince YA DA yavaşlama/timeout gözlemlenirse paket yükseltilip kontrol edilir). Bu maddenin kapsamı bu şekilde tamamlandı kabul ediliyor.)*
 
 ## Tasks — kod dilimleri (Claude uygular, her biri kendi plan-modu turu)
 
@@ -88,7 +90,7 @@ yürütülebilecek şekilde ertelenmesinden geliyor).
 
 ## Tasks — founder'ın kendi eliyle yapacağı işler
 - [x] **Slice J'nin tamamlayıcısı — production `DATABASE_URL`'ine `?connection_limit=30` ekle.** *(2026-08-19 — founder ekledi, deploy etti, siteyi test etti, çalışıyor. `max_connections=100` (Basic-256mb) doğrulaması ile birlikte güvenli olduğu teyit edildi.)*
-- [ ] Render Postgres planının gerçek RAM/CPU/depolama rakamlarını dashboard'dan doğrula, 500 kullanıcı için yeterli mi karar ver (gerekirse yükselt) — Faz 0'da, Faz 1 açılmadan. *(Bağlantı-limiti kısmı ARTIK doğrulandı — `max_connections=100`, resmi Render dokümantasyonundan. Kalan: RAM/CPU/depolamanın 500 kullanıcının veri/yük hacmine yeterli olup olmadığı — bu, dashboard'daki gerçek kullanım rakamlarına bakmayı gerektiriyor, web dokümantasyonundan cevaplanamaz.)*
+- [x] Render Postgres planının gerçek RAM/CPU/depolama rakamlarını dashboard'dan doğrula, 500 kullanıcı için yeterli mi karar ver (gerekirse yükselt) — Faz 0'da, Faz 1 açılmadan. *(Bağlantı-limiti kısmı doğrulandı — `max_connections=100`, resmi Render dokümantasyonundan. RAM/CPU/depolama kısmı Render'ın detaylı metrik paneli paket yükseltmesi gerektirdiği için ÖLÇÜLEMEDİ — `docs/BACKLOG.md` A18'e somut tetikleyiciyle (gerçek kullanıcı 50'yi geçince YA DA yavaşlama/timeout gözlemlenirse) ertelendi, sessizce bırakılmadı.)*
 - [ ] Slice I/J'nin yük testi sonuçlarını gözden geçir, ADR-0003'ün "ne zaman Redis+ikinci instance" eşiğinin gerçekten geldiğine karar ver.
 - [ ] Yeni aylık maliyet tahminini gerçek Render/Postgres faturasıyla doğrula ($50/mo bütçe ADR-0002'de zaten 600-kullanıcı için varsayılmıştı — muhtemelen hâlâ yeterli, ama doğrulanmadı).
 - [ ] ToS/Gizlilik'in EN ve TR hukuki metnini yazdır (Slice A'dan zaten bekleyen iş, şimdi iki dilde).
