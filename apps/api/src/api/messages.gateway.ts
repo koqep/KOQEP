@@ -26,6 +26,7 @@ import {
   MessagesService,
 } from '../services/messages.service';
 import type { MessageDto } from '../services/messages.service';
+import { hasExcessiveCombiningMarks } from '../services/content-validation.util';
 import { UserMutedException } from '../services/user-muted.exception';
 import { BlocksService } from '../services/blocks.service';
 import { WsThrottlerGuard } from './ws-throttler.guard';
@@ -145,6 +146,17 @@ export class MessagesGateway
       // altyapisi RATE_LIMITED icin zaten var).
       throw new WsException({ status: 'error', code: 'MESSAGE_TOO_LONG' });
     }
+    if (hasExcessiveCombiningMarks(content)) {
+      // M7b Slice E: zalgo/birleşik-işaret koruması - THREAT-MODEL.md'nin
+      // açık maddesi. handleMessageEdit'te de AYNI kontrol var - assertNotMuted
+      // ile aynı gerekçe (M5 Slice B): sadece sendMessage'ı engellemek,
+      // masum bir mesaj gönderip SONRA editMessage ile zalgo'ya çevirmeyi
+      // (denetimi bypass etmeyi) mümkün kılardı.
+      throw new WsException({
+        status: 'error',
+        code: 'MESSAGE_INVALID_CONTENT',
+      });
+    }
 
     let message: MessageDto;
     try {
@@ -208,6 +220,12 @@ export class MessagesGateway
     }
     if (content.length > MAX_MESSAGE_LENGTH) {
       throw new WsException({ status: 'error', code: 'MESSAGE_TOO_LONG' });
+    }
+    if (hasExcessiveCombiningMarks(content)) {
+      throw new WsException({
+        status: 'error',
+        code: 'MESSAGE_INVALID_CONTENT',
+      });
     }
 
     let message: MessageDto;

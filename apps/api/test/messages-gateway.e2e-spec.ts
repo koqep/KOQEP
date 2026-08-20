@@ -398,6 +398,59 @@ describe('Messages Gateway (e2e)', () => {
     expect(row).toBeNull();
   }, 10000);
 
+  it('zalgo_icerikli_mesaj_gonderiminde_yapisal_hata_gonderilir_kaydedilmez', async () => {
+    const token = await createOtherUserToken();
+    const client = connect(token);
+    await waitForEvent(client, 'ready');
+
+    // M7b Slice E: U+0301 COMBINING ACUTE ACCENT - bir harfe yığılan
+    // birleşik işaretler (content-validation.util.spec.ts'in aynı deseni).
+    const zalgo = 'z' + '́'.repeat(20) + ' test';
+    const exceptionPromise = waitForEvent<{ status: string; code: string }>(
+      client,
+      'exception',
+    );
+    client.emit('message:send', { content: zalgo });
+    const exception = await exceptionPromise;
+    expect(exception.code).toBe('MESSAGE_INVALID_CONTENT');
+
+    const row = await prisma.message.findFirst({ where: { content: zalgo } });
+    expect(row).toBeNull();
+  }, 10000);
+
+  it('zalgo_icerikli_duzenlemede_de_yapisal_hata_gonderilir_kaydedilmez', async () => {
+    const token = await createOtherUserToken();
+    const client = connect(token);
+    await waitForEvent(client, 'ready');
+
+    const original = `zalgo-duzenleme-testi-${randomUUID()}`;
+    const sendAck = await new Promise<{ status: string }>((resolve) => {
+      client.emit('message:send', { content: original }, resolve);
+    });
+    expect(sendAck).toEqual({ status: 'ok' });
+    const createdRow = await prisma.message.findFirst({
+      where: { content: original },
+    });
+    expect(createdRow).not.toBeNull();
+    if (createdRow) createdMessageIds.push(createdRow.id);
+
+    // Masum bir mesaj gönderip SONRA editMessage ile zalgo'ya çevirmeyi
+    // dener - sendMessage'ı engellemek TEK BAŞINA yeterli olmazdı.
+    const zalgo = 'z' + '́'.repeat(20) + ' test';
+    const exceptionPromise = waitForEvent<{ status: string; code: string }>(
+      client,
+      'exception',
+    );
+    client.emit('message:edit', { messageId: createdRow?.id, content: zalgo });
+    const exception = await exceptionPromise;
+    expect(exception.code).toBe('MESSAGE_INVALID_CONTENT');
+
+    const unchanged = await prisma.message.findUnique({
+      where: { id: createdRow?.id },
+    });
+    expect(unchanged?.content).toBe(original);
+  }, 10000);
+
   it('basarili_gonderimde_ve_duzenlemede_ack_doner', async () => {
     const client = connect(accessToken);
     await waitForEvent(client, 'ready');
