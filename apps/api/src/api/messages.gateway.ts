@@ -267,6 +267,46 @@ export class MessagesGateway
     return { status: 'ok' };
   }
 
+  // M7b Slice D2: handleMessageEdit'in AYNI hata-eşleme deseni - zalgo/uzunluk
+  // kontrolü GEREKMİYOR (sabit metin, kullanıcı girdisi yok). Yeni bir WS
+  // event'i GEREKTİRMİYOR - mevcut message:updated'ı kullanıyor (frontend
+  // zaten id'ye göre birleştiriyor).
+  @SubscribeMessage('message:delete')
+  @UseGuards(WsThrottlerGuard)
+  @Throttle({
+    default: { limit: MESSAGE_SEND_LIMIT, ttl: MESSAGE_SEND_TTL_MS },
+  })
+  async handleMessageDelete(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { messageId?: unknown },
+  ): Promise<AckResponse | void> {
+    const { userId } = client.data as SocketData;
+    const messageId = body?.messageId;
+
+    if (typeof messageId !== 'string') {
+      return;
+    }
+
+    let message: MessageDto;
+    try {
+      message = await this.messagesService.deleteOwnMessage(userId, messageId);
+    } catch (error) {
+      if (error instanceof GoneException) {
+        throw new WsException({ status: 'error', code: 'ROOM_ARCHIVED' });
+      }
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        return;
+      }
+      throw error;
+    }
+
+    await this.broadcastToRoom(message, userId, 'message:updated');
+    return { status: 'ok' };
+  }
+
   // Blanket oda broadcast'i yerine bilerek tek tek emit ediyoruz: bu
   // yazarı engellemiş kullanıcıların socket'lerine mesaj hiç ulaşmamalı
   // (block-user özelliği, M1 Slice D). message:send ve message:edit
@@ -311,15 +351,29 @@ export class MessagesGateway
   // önceki dar yarış penceresi) push sessizce kaçar - zararsız, enforcement
   // (messages.service.ts) her zaman DB'den taze mutedUntil okuyor, bu
   // sadece bir bildirim kolaylığı, güvenlik sınırı değil.
-  notifyUserMuted(userId: string, mutedUntil: Date): void {
+  notifyUserMuted(userId: string, mutedUntil: Date, reason: string): void {
     for (const socket of this.socketRegistry.getSockets(userId)) {
-      socket.emit('moderation:muted', { mutedUntil: mutedUntil.toISOString() });
+      socket.emit('moderation:muted', {
+        mutedUntil: mutedUntil.toISOString(),
+        reason,
+      });
     }
   }
 
   notifyUserUnmuted(userId: string): void {
     for (const socket of this.socketRegistry.getSockets(userId)) {
       socket.emit('moderation:unmuted', {});
+    }
+  }
+
+  // M7b Slice D2: notifyUserMuted'ın AYNI hedefe-özel deseni - oda-geneli
+  // broadcastMessageUpdate'in (herkes placeholder metni görür) AYRI, SADECE
+  // yazara giden bir bildirim. authorId null olabilir (hesabı silinmiş/
+  // anonimleştirilmiş yazar, ADR-0005) - hedef yoksa sessizce no-op.
+  notifyContentRemoved(authorId: string | null, reason: string): void {
+    if (!authorId) return;
+    for (const socket of this.socketRegistry.getSockets(authorId)) {
+      socket.emit('moderation:content-removed', { reason });
     }
   }
 

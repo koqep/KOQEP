@@ -20,6 +20,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { ModeratorGuard } from './moderator.guard';
 import { MuteUserDto } from './dto/mute-user.dto';
+import { RemoveContentDto } from './dto/remove-content.dto';
 import { RenameRoomDto } from './dto/rename-room.dto';
 import { SetRoomAnnouncementDto } from './dto/set-room-announcement.dto';
 import { AssignModeratorDto } from './dto/assign-moderator.dto';
@@ -45,16 +46,18 @@ export class ModerationController {
   async removeContent(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
+    @Body() dto: RemoveContentDto,
   ): Promise<{ ok: true }> {
-    const { dto, authorId } = await this.reportsService.removeContent(
-      req.user.sub,
-      id,
-    );
+    const { dto: messageDto, authorId } =
+      await this.reportsService.removeContent(req.user.sub, id, dto.reason);
     // M5 Slice A: REST -> WS broadcast, bu kod tabanında ilk kez, controller
     // katmanında (servis gateway'e bağımlı OLMUYOR) - moderatör içerik
     // kaldırmayı REST üzerinden yapıyor ama oda WS ile canlı, diğer
     // katılımcılar refresh olmadan güncellemeyi görmeli.
-    await this.messagesGateway.broadcastMessageUpdate(dto, authorId);
+    await this.messagesGateway.broadcastMessageUpdate(messageDto, authorId);
+    // M7b Slice D2: broadcastMessageUpdate'in AYRI, hedefe-özel eşleniği -
+    // SADECE yazara "neden" bilgisini taşıyor.
+    this.messagesGateway.notifyContentRemoved(authorId, dto.reason);
     return { ok: true };
   }
 
@@ -80,8 +83,9 @@ export class ModerationController {
       req.user.sub,
       id,
       dto.durationHours,
+      dto.reason,
     );
-    this.messagesGateway.notifyUserMuted(id, mutedUntil);
+    this.messagesGateway.notifyUserMuted(id, mutedUntil, dto.reason);
     return { mutedUntil };
   }
 

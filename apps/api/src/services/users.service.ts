@@ -10,6 +10,7 @@ export interface UserProfile {
   level: number;
   totalXp: number;
   mutedUntil: Date | null;
+  muteReason: string | null;
 }
 
 @Injectable()
@@ -26,6 +27,7 @@ export class UsersService {
         level: true,
         totalXp: true,
         mutedUntil: true,
+        muteReason: true,
       },
     });
     if (!user) {

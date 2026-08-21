@@ -67,11 +67,21 @@ describe('MutesService', () => {
         invitesServiceMock as InvitesService,
       );
       const before = Date.now();
-      const result = await service.applyMute('moderator-1', 'user-1', 24);
+      const result = await service.applyMute(
+        'moderator-1',
+        'user-1',
+        24,
+        'kural ihlali',
+      );
       const after = Date.now();
 
       expect(userUpdateMock).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'user-1' } }),
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: expect.objectContaining({
+            muteReason: 'kural ihlali',
+          }) as Prisma.UserUncheckedUpdateInput,
+        }),
       );
       const call = userUpdateMock.mock.calls[0] as [
         { data: { mutedUntil: Date } },
@@ -84,6 +94,7 @@ describe('MutesService', () => {
           moderatorId: 'moderator-1',
           actionType: MUTE_APPLIED_ACTION,
           targetUserId: 'user-1',
+          reason: 'kural ihlali',
         },
       });
       expect(result.mutedUntil.getTime()).toBe(mutedUntilMs);
@@ -104,7 +115,7 @@ describe('MutesService', () => {
       );
 
       await expect(
-        service.applyMute('moderator-1', 'yok-kullanici', 24),
+        service.applyMute('moderator-1', 'yok-kullanici', 24, 'kural ihlali'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -126,8 +137,8 @@ describe('MutesService', () => {
         prismaMock as PrismaService,
         invitesServiceMock as InvitesService,
       );
-      await service.applyMute('moderator-1', 'user-1', 1);
-      await service.applyMute('moderator-1', 'user-1', 24);
+      await service.applyMute('moderator-1', 'user-1', 1, 'kural ihlali');
+      await service.applyMute('moderator-1', 'user-1', 24, 'kural ihlali');
 
       expect(userUpdateMock).toHaveBeenCalledTimes(2);
       const firstCall = userUpdateMock.mock.calls[0] as [
@@ -164,7 +175,7 @@ describe('MutesService', () => {
         prismaMock as PrismaService,
         invitesServiceMock as InvitesService,
       );
-      await service.applyMute('moderator-1', 'user-1', 24);
+      await service.applyMute('moderator-1', 'user-1', 24, 'kural ihlali');
 
       expect(invitesServiceMock.applyInviterConsequence).toHaveBeenCalledWith(
         expect.anything(),
@@ -207,7 +218,7 @@ describe('MutesService', () => {
         prismaMock as PrismaService,
         invitesServiceMock as InvitesService,
       );
-      await service.applyMute('moderator-1', 'user-1', 24);
+      await service.applyMute('moderator-1', 'user-1', 24, 'kural ihlali');
 
       expect(auditCreateMock).toHaveBeenCalledWith({
         data: {
@@ -235,7 +246,7 @@ describe('MutesService', () => {
         prismaMock as PrismaService,
         invitesServiceMock as InvitesService,
       );
-      await service.applyMute('moderator-1', 'user-1', 24);
+      await service.applyMute('moderator-1', 'user-1', 24, 'kural ihlali');
 
       expect(invitesServiceMock.applyInviterConsequence).not.toHaveBeenCalled();
     });
@@ -258,7 +269,7 @@ describe('MutesService', () => {
         prismaMock as PrismaService,
         invitesServiceMock as InvitesService,
       );
-      await service.applyMute('moderator-1', 'user-1', 24);
+      await service.applyMute('moderator-1', 'user-1', 24, 'kural ihlali');
 
       expect(invitesServiceMock.applyInviterConsequence).not.toHaveBeenCalled();
     });
@@ -288,7 +299,7 @@ describe('MutesService', () => {
 
       expect(userUpdateMock).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { mutedUntil: null },
+        data: { mutedUntil: null, muteReason: null },
       });
       expect(auditCreateMock).toHaveBeenCalledWith({
         data: {

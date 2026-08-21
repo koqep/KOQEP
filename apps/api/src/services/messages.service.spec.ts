@@ -615,7 +615,10 @@ describe('MessagesService', () => {
       expect(updateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'msg-1' },
-          data: { content: 'yeni icerik' },
+          data: expect.objectContaining({
+            content: 'yeni icerik',
+            editedAt: expect.any(Date) as Date,
+          }) as Prisma.MessageUncheckedUpdateInput,
         }),
       );
       expect(result.content).toBe('yeni icerik');

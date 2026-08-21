@@ -28,6 +28,10 @@ const DEFAULT_PAGE_SIZE = 50;
 const ROOM_ACTIVITY_DEBOUNCE_MS = 30_000;
 export const MODERATOR_REMOVED_CONTENT =
   '[Bu mesaj bir moderatör tarafından kaldırıldı.]';
+// M7b Slice D2: deleteOwnMessage'ın sabit placeholder'ı -
+// MODERATOR_REMOVED_CONTENT'in AYNI deseni (ADR-0005'in "asla hard-delete"
+// kuralına tutarlı soft-delete).
+export const AUTHOR_DELETED_CONTENT = '[Bu mesaj yazarı tarafından silindi.]';
 
 export interface MessageDto {
   id: string;
@@ -35,6 +39,8 @@ export interface MessageDto {
   createdAt: Date;
   authorUsername: string | null;
   roomId: string;
+  // M7b Slice D2: "(düzenlendi)" göstergesi - SADECE editMessage set eder.
+  editedAt: Date | null;
 }
 
 export interface MessagePage {
@@ -53,6 +59,7 @@ interface MessageRow {
   createdAt: Date;
   roomId: string;
   author: { username: string } | null;
+  editedAt: Date | null;
 }
 
 @Injectable()
@@ -239,7 +246,46 @@ export class MessagesService {
       });
       return tx.message.update({
         where: { id: messageId },
-        data: { content },
+        data: { content, editedAt: new Date() },
+        include: { author: { select: { username: true } } },
+      });
+    });
+
+    return toMessageDto(updated);
+  }
+
+  // M7b Slice D2: editMessage'ın AYNI iskeleti (yazar/oda kontrolü,
+  // MessageEdit snapshot) - TEK fark assertNotMuted YOK: mute koruması
+  // "susturulmuş biri eski bir mesajı saldırgan içeriğe çevirebilir"
+  // riskine karşı (M5 Slice B), silme YENİ içerik EKLEMİYOR, sabit bir
+  // placeholder'a değiştiriyor - aynı risk yok, susturulmuş biri kendi
+  // mesajını silebilmeli. editedAt BİLEREK set EDİLMİYOR - placeholder
+  // metnin kendisi zaten "yazarı tarafından silindi" diyor.
+  async deleteOwnMessage(
+    userId: string,
+    messageId: string,
+  ): Promise<MessageDto> {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+      include: { room: { select: { status: true } } },
+    });
+    if (!message) {
+      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+    }
+    if (message.room.status !== 'active') {
+      throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
+    }
+    if (message.authorId !== userId) {
+      throw new ForbiddenException('Sadece kendi mesajını silebilirsin.');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.messageEdit.create({
+        data: { messageId, previousContent: message.content },
+      });
+      return tx.message.update({
+        where: { id: messageId },
+        data: { content: AUTHOR_DELETED_CONTENT },
         include: { author: { select: { username: true } } },
       });
     });
@@ -362,5 +408,6 @@ function toMessageDto(message: MessageRow): MessageDto {
     createdAt: message.createdAt,
     authorUsername: message.author?.username ?? null,
     roomId: message.roomId,
+    editedAt: message.editedAt,
   };
 }

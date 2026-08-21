@@ -37,6 +37,10 @@ model User {
   totalXp         Int       @default(0)
   level           Int       @default(0)
   mutedUntil      DateTime?
+  // M7b Slice D2: mutedUntil'in AYNI canlı-durum şekli - reload/reconnect
+  // sonrası da görünür kalması için, tek seferlik bir WS toast değil.
+  // liftMute mutedUntil ile BİRLİKTE null'a çeker.
+  muteReason      String?
   // M6 Slice A: gizlilik politikası/kullanım şartları onayının kanıtlanabilir
   // kaydı - zorunlu ama kaydedilmeyen bir checkbox sonradan hiçbir şey
   // kanıtlamaz. Mevcut kullanıcılar bu onayı hiç vermedi, null kalması
@@ -229,6 +233,11 @@ model Message {
   id        String   @id @default(uuid())
   content   String
   createdAt DateTime @default(now())
+  // M7b Slice D2: "(düzenlendi)" göstergesi - SADECE editMessage bunu set
+  // ediyor. removeMessageContent/deleteOwnMessage BİLEREK set ETMİYOR -
+  // ikisi de zaten kendi açıklayıcı placeholder metnini taşıyor, üstüne
+  // "(düzenlendi)" eklemek yanıltıcı/gereksiz olurdu.
+  editedAt  DateTime?
 
   roomId String
   room   Room   @relation(fields: [roomId], references: [id])
@@ -312,6 +321,10 @@ model ModerationAuditLog {
   // istemesin.
   actionType String
   createdAt  DateTime @default(now())
+  // M7b Slice D2: moderatörün aksiyon SEBEBİ - Report.reason'dan (RAPORLAYANIN
+  // sebebi) FARKLI bir kavram. Bugün SADECE MUTE_APPLIED/CONTENT_REMOVED
+  // dolduruyor, diğer actionType'larda null.
+  reason      String?
 
   moderatorId String?
   moderator   User?   @relation("ModerationActor", fields: [moderatorId], references: [id], onDelete: SetNull)

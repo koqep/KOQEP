@@ -246,6 +246,7 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/reports/${report.id}/remove-content`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .send({ reason: 'kural ihlali' })
       .expect(201);
 
     const updated = await updatedPromise;
@@ -409,7 +410,7 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${reporter.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(201);
 
     await request(app.getHttpServer())

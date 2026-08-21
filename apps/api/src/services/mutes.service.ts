@@ -28,6 +28,7 @@ export class MutesService {
     moderatorId: string,
     targetUserId: string,
     durationHours: number,
+    reason: string,
   ): Promise<{ mutedUntil: Date }> {
     const target = await this.findUserOrThrow(targetUserId);
     // M5 Slice E: davetçi hesap verebilirliği SADECE susturulmamıştan
@@ -41,13 +42,14 @@ export class MutesService {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: targetUserId },
-        data: { mutedUntil },
+        data: { mutedUntil, muteReason: reason },
       });
       await tx.moderationAuditLog.create({
         data: {
           moderatorId,
           actionType: MUTE_APPLIED_ACTION,
           targetUserId,
+          reason,
         },
       });
 
@@ -100,7 +102,7 @@ export class MutesService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: targetUserId },
-        data: { mutedUntil: null },
+        data: { mutedUntil: null, muteReason: null },
       }),
       this.prisma.moderationAuditLog.create({
         data: {
