@@ -76,6 +76,60 @@ test("baskasinin_mesajinda_moderator_gecmisi_gorur_ama_duzenleyemez", async ({
   await expect(page.getByRole("button", { name: "geçmiş" })).toBeVisible();
 });
 
+test("editedAt_dolu_mesajda_duzenlendi_gostergesi_gorunur_bosta_gorunmez", async ({
+  page,
+}) => {
+  await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: { email: "test@koqep.local", username: "test", role: "user" },
+    }),
+  );
+  await page.route("**/rooms", (route) =>
+    route.fulfill({
+      json: [{ id: "room-1", name: "general", status: "active" }],
+    }),
+  );
+  await page.route("**/rooms/*/messages", (route) =>
+    route.fulfill({
+      json: {
+        messages: [
+          {
+            id: "msg-1",
+            content: "duzenlenmis mesaj",
+            createdAt: new Date().toISOString(),
+            authorUsername: "baskasi",
+            roomId: "room-1",
+            editedAt: new Date().toISOString(),
+          },
+          {
+            id: "msg-2",
+            content: "duzenlenmemis mesaj",
+            createdAt: new Date().toISOString(),
+            authorUsername: "baskasi",
+            roomId: "room-1",
+            editedAt: null,
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel("e-posta").fill("test@koqep.local");
+  await page.getByLabel("şifre").fill("a-strong-password");
+  await page.getByRole("button", { name: "giriş yap" }).click();
+
+  await expect(
+    page.getByText("duzenlenmis mesaj (düzenlendi)"),
+  ).toBeVisible();
+  await expect(page.getByText("duzenlenmemis mesaj")).toBeVisible();
+  await expect(
+    page.getByText("duzenlenmemis mesaj (düzenlendi)"),
+  ).toHaveCount(0);
+});
+
 test("gecmis_butonuna_basinca_onceki_icerik_listelenir", async ({ page }) => {
   await login(page, "user", "test");
   await page.route("**/rooms/*/messages/*/edits", (route) =>
