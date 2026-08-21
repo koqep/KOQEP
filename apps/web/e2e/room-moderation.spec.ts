@@ -16,9 +16,9 @@ async function login(page: Page, role: "user" | "moderator") {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 }
 
 test("moderator_odalar_bolumunu_gorur", async ({ page }) => {
@@ -36,14 +36,14 @@ test("moderator_odalar_bolumunu_gorur", async ({ page }) => {
     }),
   );
   await login(page, "moderator");
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  await expect(page.getByText("odalar")).toBeVisible();
+  await expect(page.getByText("rooms")).toBeVisible();
   await expect(page.getByText("#general (active)")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "yeniden adlandır" }),
+    page.getByRole("button", { name: "rename" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "arşivle" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "archive", exact: true })).toBeVisible();
 });
 
 test("moderator_odayi_yeniden_adlandirir", async ({ page }) => {
@@ -74,11 +74,11 @@ test("moderator_odayi_yeniden_adlandirir", async ({ page }) => {
     });
   });
   await login(page, "moderator");
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  await page.getByRole("button", { name: "yeniden adlandır" }).click();
-  await page.getByLabel("oda ismini düzenle").fill("duzeltilmis-isim");
-  await page.getByRole("button", { name: "kaydet" }).click();
+  await page.getByRole("button", { name: "rename" }).click();
+  await page.getByLabel("edit room name").fill("duzeltilmis-isim");
+  await page.getByRole("button", { name: "save" }).click();
 
   expect(renameBody).toEqual({ name: "duzeltilmis-isim" });
   await expect(page.getByText("#duzeltilmis-isim (active)")).toBeVisible();
@@ -119,26 +119,26 @@ test("moderator_oda_duyurusu_ekler_ve_kaldirir", async ({ page }) => {
     },
   );
   await login(page, "moderator");
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  await expect(page.getByRole("button", { name: "duyuru ekle" })).toBeVisible();
-  await page.getByRole("button", { name: "duyuru ekle" }).click();
+  await expect(page.getByRole("button", { name: "add announcement" })).toBeVisible();
+  await page.getByRole("button", { name: "add announcement" }).click();
   await page
-    .getByLabel("oda duyurusunu düzenle")
+    .getByLabel("edit room announcement")
     .fill("Faz 1'e hoş geldiniz!");
-  await page.getByRole("button", { name: "kaydet" }).click();
+  await page.getByRole("button", { name: "save" }).click();
 
   expect(announcementBody).toEqual({ announcement: "Faz 1'e hoş geldiniz!" });
   await expect(page.getByText("Faz 1'e hoş geldiniz!")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "duyuruyu kaldır" }),
+    page.getByRole("button", { name: "remove announcement" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "duyuruyu kaldır" }).click();
+  await page.getByRole("button", { name: "remove announcement" }).click();
 
   expect(announcementBody).toEqual({});
   await expect(page.getByText("Faz 1'e hoş geldiniz!")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "duyuru ekle" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "add announcement" })).toBeVisible();
 });
 
 test("moderator_aktif_odayi_arsivler_sonra_arsivlenmis_odayi_iki_adimli_onayla_siler", async ({
@@ -174,24 +174,24 @@ test("moderator_aktif_odayi_arsivler_sonra_arsivlenmis_odayi_iki_adimli_onayla_s
     await route.fulfill({ json: { ok: true } });
   });
   await login(page, "moderator");
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  // Aktif oda: sadece "yeniden adlandır"/"arşivle" var, "sil" YOK.
-  await expect(page.getByRole("button", { name: "sil", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "arşivle" }).click();
+  // Aktif oda: sadece "rename"/"archive" var, "delete" YOK.
+  await expect(page.getByRole("button", { name: "delete", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "archive", exact: true }).click();
 
   await expect(page.getByText("#kotuye-kullanilan (archived)")).toBeVisible();
-  await expect(page.getByRole("button", { name: "arşivle" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "archive", exact: true })).toHaveCount(0);
 
-  // İki adımlı onay - "vazgeç" hiçbir şeyi silmiyor.
-  await page.getByRole("button", { name: "sil", exact: true }).click();
-  await expect(page.getByText("emin misin?", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: "vazgeç" }).click();
-  await expect(page.getByText("emin misin?", { exact: false })).toHaveCount(0);
+  // İki adımlı onay - "cancel" hiçbir şeyi silmiyor.
+  await page.getByRole("button", { name: "delete", exact: true }).click();
+  await expect(page.getByText("are you sure?", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "cancel" }).click();
+  await expect(page.getByText("are you sure?", { exact: false })).toHaveCount(0);
   expect(deleteWasCalled).toBe(false);
 
-  await page.getByRole("button", { name: "sil", exact: true }).click();
-  await page.getByRole("button", { name: "evet, sil" }).click();
+  await page.getByRole("button", { name: "delete", exact: true }).click();
+  await page.getByRole("button", { name: "yes, delete" }).click();
 
   expect(deleteWasCalled).toBe(true);
   // "odalar" bölümünün kendi listesi boşaldı - RoomHeader'ın switcher'ı
@@ -200,5 +200,5 @@ test("moderator_aktif_odayi_arsivler_sonra_arsivlenmis_odayi_iki_adimli_onayla_s
   // (apps/api/test/room-moderation.e2e-spec.ts'te gerçek soketle
   // kanıtlandı) - bu testte gerçek bir WS bağlantısı yok (sadece mock'lu
   // REST), switcher'ın kendisi bu harness'ta test edilemez.
-  await expect(page.getByText("oda yok")).toBeVisible();
+  await expect(page.getByText("no rooms")).toBeVisible();
 });

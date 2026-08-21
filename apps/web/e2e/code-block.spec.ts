@@ -10,10 +10,10 @@ async function login(page: import("@playwright/test").Page) {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
 test("kod_blogu_pre_olarak_render_edilir_cevresindeki_metin_etkilenmez", async ({

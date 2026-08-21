@@ -6,16 +6,16 @@ async function login(page: import("@playwright/test").Page) {
   await mockRoomEndpoints(page);
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
 test("panel_acilir_onay_adimindan_sonra_form_gorunur", async ({ page }) => {
   await login(page);
 
-  await page.getByRole("button", { name: "hesabı sil" }).click();
+  await page.getByRole("button", { name: "delete account" }).click();
   await expect(page.getByText("This is permanent")).toHaveCount(0);
 
   await page.getByRole("button", { name: "delete my account" }).click();
@@ -31,7 +31,7 @@ test("yanlis_sifre_hata_gosterir", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "hesabı sil" }).click();
+  await page.getByRole("button", { name: "delete account" }).click();
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill("wrong-password");
   await page
@@ -50,7 +50,7 @@ test("totp_gerekince_alan_belirir", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "hesabı sil" }).click();
+  await page.getByRole("button", { name: "delete account" }).click();
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill("a-strong-password");
   await page
@@ -66,13 +66,13 @@ test("basarili_silme_giris_ekranina_doner", async ({ page }) => {
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "hesabı sil" }).click();
+  await page.getByRole("button", { name: "delete account" }).click();
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill("a-strong-password");
   await page
     .getByRole("button", { name: "permanently delete my account" })
     .click();
 
-  await expect(page.getByLabel("e-posta")).toBeVisible();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toHaveCount(0);
+  await expect(page.getByLabel("email")).toBeVisible();
+  await expect(page.getByPlaceholder("write a message...")).toHaveCount(0);
 });

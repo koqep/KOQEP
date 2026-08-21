@@ -26,10 +26,10 @@ async function login(page: Page) {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 }
 
 test("moderator_panelinde_ata_ve_kaldir_formlari_gorunur", async ({
@@ -38,10 +38,10 @@ test("moderator_panelinde_ata_ve_kaldir_formlari_gorunur", async ({
   await login(page);
 
   await expect(
-    page.getByRole("button", { name: "ata", exact: true }),
+    page.getByRole("button", { name: "assign", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "kaldır", exact: true }),
+    page.getByRole("button", { name: "revoke", exact: true }),
   ).toBeVisible();
 });
 
@@ -60,11 +60,11 @@ test("dogru_bilgilerle_atama_basari_mesaji_gosterir", async ({ page }) => {
     });
   });
 
-  await page.getByLabel("e-posta", { exact: true }).first().fill("yeni@koqep.local");
-  await page.getByLabel("kendi şifren").fill("a-strong-password");
-  await page.getByRole("button", { name: "ata", exact: true }).click();
+  await page.getByLabel("email", { exact: true }).first().fill("yeni@koqep.local");
+  await page.getByLabel("your password").fill("a-strong-password");
+  await page.getByRole("button", { name: "assign", exact: true }).click();
 
-  await expect(page.getByText("moderatör atandı")).toBeVisible();
+  await expect(page.getByText("moderator assigned")).toBeVisible();
   expect(assignBody).toEqual({
     email: "yeni@koqep.local",
     password: "a-strong-password",
@@ -81,9 +81,9 @@ test("yanlis_sifre_atamada_hata_gosterir", async ({ page }) => {
     }),
   );
 
-  await page.getByLabel("e-posta", { exact: true }).first().fill("yeni@koqep.local");
-  await page.getByLabel("kendi şifren").fill("wrong-password");
-  await page.getByRole("button", { name: "ata", exact: true }).click();
+  await page.getByLabel("email", { exact: true }).first().fill("yeni@koqep.local");
+  await page.getByLabel("your password").fill("wrong-password");
+  await page.getByRole("button", { name: "assign", exact: true }).click();
 
   await expect(page.getByText("Şifre hatalı.")).toBeVisible();
 });
@@ -100,12 +100,12 @@ test("totp_gerekince_alan_belirir", async ({ page }) => {
     }),
   );
 
-  await expect(page.getByLabel("totp kodu")).toHaveCount(0);
-  await page.getByLabel("e-posta", { exact: true }).first().fill("yeni@koqep.local");
-  await page.getByLabel("kendi şifren").fill("a-strong-password");
-  await page.getByRole("button", { name: "ata", exact: true }).click();
+  await expect(page.getByLabel("totp code")).toHaveCount(0);
+  await page.getByLabel("email", { exact: true }).first().fill("yeni@koqep.local");
+  await page.getByLabel("your password").fill("a-strong-password");
+  await page.getByRole("button", { name: "assign", exact: true }).click();
 
-  await expect(page.getByLabel("totp kodu")).toBeVisible();
+  await expect(page.getByLabel("totp code")).toBeVisible();
 });
 
 test("kaldirma_email_girip_submit_edince_basari_mesaji_gosterir", async ({
@@ -125,9 +125,9 @@ test("kaldirma_email_girip_submit_edince_basari_mesaji_gosterir", async ({
     });
   });
 
-  await page.getByLabel("e-posta", { exact: true }).last().fill("eski@koqep.local");
-  await page.getByRole("button", { name: "kaldır", exact: true }).click();
+  await page.getByLabel("email", { exact: true }).last().fill("eski@koqep.local");
+  await page.getByRole("button", { name: "revoke", exact: true }).click();
 
-  await expect(page.getByText("moderatör yetkisi kaldırıldı")).toBeVisible();
+  await expect(page.getByText("moderator role revoked")).toBeVisible();
   expect(revokeBody).toEqual({ email: "eski@koqep.local" });
 });

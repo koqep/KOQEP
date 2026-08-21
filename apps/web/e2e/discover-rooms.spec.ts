@@ -59,14 +59,14 @@ test("odalari_kesfet_acilinca_uye_olunmayan_aktif_odalar_listelenir_katilinca_sw
   });
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
-  await page.getByRole("button", { name: "keşfet" }).click();
+  await page.getByRole("button", { name: "discover" }).click();
   await expect(page.getByText("#elden-ring — boss rush")).toBeVisible();
 
-  await page.getByRole("button", { name: "katıl" }).click();
+  await page.getByRole("button", { name: "join" }).click();
 
   await expect(page.getByRole("button", { name: "#elden-ring" })).toBeVisible();
   expect(joinedRoomId).toBe("room-elden-ring");
@@ -129,16 +129,16 @@ test("kesif_listesi_daha_fazla_goster_ile_sayfalanir", async ({ page }) => {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
-  await page.getByRole("button", { name: "keşfet" }).click();
+  await page.getByRole("button", { name: "discover" }).click();
   await expect(page.getByText("#oda-1", { exact: false })).toBeVisible();
   await expect(page.getByText("#oda-2", { exact: false })).toHaveCount(0);
 
   const loadMoreButton = page.getByRole("button", {
-    name: "daha fazla göster",
+    name: "show more",
   });
   await expect(loadMoreButton).toBeVisible();
   await loadMoreButton.click();
@@ -186,9 +186,9 @@ test("cekirdek_olmayan_bir_odadan_switcher_uzerinden_ayrilinabilir_cekirdek_odad
   });
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
   const generalRoomButton = page.getByRole("button", { name: "#general" });
   const eldenRingButton = page.getByRole("button", { name: "#elden-ring" });
@@ -198,12 +198,12 @@ test("cekirdek_olmayan_bir_odadan_switcher_uzerinden_ayrilinabilir_cekirdek_odad
   // Çekirdek oda (general) "ayrıl" affordance'ı GÖSTERMEZ - backend'in
   // kendi ForbiddenException reddiyle simetrik bir frontend kararı.
   await expect(
-    generalRoomButton.locator("..").getByTitle("odadan ayrıl"),
+    generalRoomButton.locator("..").getByTitle("leave room"),
   ).toHaveCount(0);
 
   const leaveButton = eldenRingButton
     .locator("..")
-    .getByTitle("odadan ayrıl");
+    .getByTitle("leave room");
   await expect(leaveButton).toBeVisible();
   await leaveButton.click();
 

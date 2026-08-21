@@ -18,7 +18,7 @@ test("ana_sayfada_tanitim_metni_ve_giris_formu_birlikte_gorunur", async ({
     page.getByRole("heading", { name: "# KOQEP", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "giriş yap" }),
+    page.getByRole("button", { name: "log in" }),
   ).toBeVisible();
 });
 
