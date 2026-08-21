@@ -33,7 +33,7 @@ export default function CreateRoomView({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!ROOM_NAME_PATTERN.test(name)) {
-      setError("Oda adı sadece harf, rakam, - ve _ içerebilir.");
+      setError("Room name can only contain letters, numbers, - and _.");
       return;
     }
 
@@ -44,12 +44,12 @@ export default function CreateRoomView({
       onCreated(room);
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
-        setError("Günde en fazla 1 oda oluşturabilirsin. Daha sonra tekrar dene.");
+        setError("You can create at most 1 room per day. Try again later.");
       } else if (err instanceof ApiError && err.status === 409) {
-        setError("Bu isimde bir oda zaten var.");
+        setError("A room with this name already exists.");
       } else {
         setError(
-          err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+          err instanceof ApiError ? err.message : "Connection error. Try again.",
         );
       }
     } finally {
@@ -61,20 +61,20 @@ export default function CreateRoomView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> yeni oda
+          <span className="text-muted">#</span> new room
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="text-muted hover:text-neutral-400"
         >
-          kapat
+          close
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
-          oda adı
+          room name
           <input
             type="text"
             value={name}
@@ -85,7 +85,7 @@ export default function CreateRoomView({
           />
         </label>
         <label className="flex flex-col gap-1 text-muted">
-          açıklama (opsiyonel)
+          description (optional)
           <input
             type="text"
             value={description}
@@ -100,7 +100,7 @@ export default function CreateRoomView({
           disabled={isSubmitting || name.length === 0}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          oluştur
+          create
         </button>
       </form>
     </section>

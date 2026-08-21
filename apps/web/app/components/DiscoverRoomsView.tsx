@@ -67,7 +67,7 @@ export default function DiscoverRoomsView({
       onJoined(joined);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setJoiningId(null);
@@ -78,23 +78,23 @@ export default function DiscoverRoomsView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> odaları keşfet
+          <span className="text-muted">#</span> discover rooms
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="text-muted hover:text-neutral-400"
         >
-          kapat
+          close
         </button>
       </div>
 
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {rooms === null ? (
-        <p>yükleniyor...</p>
+        <p>loading...</p>
       ) : rooms.length === 0 ? (
-        <p>keşfedilecek başka aktif oda yok</p>
+        <p>no other active rooms to discover</p>
       ) : (
         <ul className="space-y-2">
           {rooms.map((room) => (
@@ -109,7 +109,7 @@ export default function DiscoverRoomsView({
                   <span className="text-muted"> — {room.description}</span>
                 )}
                 <span className="block text-sm text-muted">
-                  son aktivite: {formatRelativeActivity(room.lastActivityAt)}
+                  last active: {formatRelativeActivity(room.lastActivityAt)}
                 </span>
               </span>
               <button
@@ -118,7 +118,7 @@ export default function DiscoverRoomsView({
                 disabled={joiningId === room.id}
                 className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {joiningId === room.id ? "katılıyor..." : "katıl"}
+                {joiningId === room.id ? "joining..." : "join"}
               </button>
             </li>
           ))}
@@ -132,7 +132,7 @@ export default function DiscoverRoomsView({
           disabled={isLoadingMore}
           className="mt-4 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
         >
-          {isLoadingMore ? "yükleniyor..." : "daha fazla göster"}
+          {isLoadingMore ? "loading..." : "show more"}
         </button>
       )}
     </section>

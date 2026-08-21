@@ -46,7 +46,7 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
       setEmail("");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -60,7 +60,7 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
       setBlockedEmails((prev) => (prev ?? []).filter((e) => e !== targetEmail));
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     }
   }
@@ -69,20 +69,20 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> engellenenler
+          <span className="text-muted">#</span> blocked
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="text-muted hover:text-neutral-400"
         >
-          kapat
+          close
         </button>
       </div>
 
       <form onSubmit={handleBlock} className="mb-6 flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
-          e-posta
+          email
           <input
             type="email"
             value={email}
@@ -97,14 +97,14 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
           disabled={isSubmitting}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          engelle
+          block
         </button>
       </form>
 
       {blockedEmails === null ? (
-        <p>yükleniyor...</p>
+        <p>loading...</p>
       ) : blockedEmails.length === 0 ? (
-        <p>henüz kimseyi engellemedin</p>
+        <p>you haven&apos;t blocked anyone yet</p>
       ) : (
         <ul className="space-y-2">
           {blockedEmails.map((blockedEmail) => (
@@ -118,7 +118,7 @@ export default function BlockedUsersView({ accessToken, onClose }: Props) {
                 onClick={() => void handleUnblock(blockedEmail)}
                 className="text-muted hover:text-neutral-400"
               >
-                engeli kaldır
+                unblock
               </button>
             </li>
           ))}

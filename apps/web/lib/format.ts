@@ -4,10 +4,10 @@
 export function formatRelativeActivity(isoDate: string): string {
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const diffMinutes = Math.floor(diffMs / (60 * 1000));
-  if (diffMinutes < 1) return "az önce";
-  if (diffMinutes < 60) return `${diffMinutes}dk önce`;
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}s önce`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}g önce`;
+  return `${diffDays}d ago`;
 }
