@@ -4,7 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { MessagesService, MODERATOR_REMOVED_CONTENT } from './messages.service';
+import {
+  MessagesService,
+  MODERATOR_REMOVED_CONTENT,
+  AUTHOR_DELETED_CONTENT,
+} from './messages.service';
 import { BlocksService } from './blocks.service';
 import {
   ReputationService,
@@ -690,6 +694,152 @@ describe('MessagesService', () => {
       await expect(
         service.editMessage('user-1', 'msg-1', 'yeni icerik'),
       ).rejects.toThrow(UserMutedException);
+    });
+  });
+
+  describe('deleteOwnMessage', () => {
+    function buildTransactionalPrismaMock(
+      existingMessage: {
+        id: string;
+        content: string;
+        authorId: string | null;
+        room?: { status: string };
+      },
+      updated: unknown,
+    ): {
+      prismaMock: Partial<PrismaService>;
+      createSpy: jest.Mock;
+      updateSpy: jest.Mock;
+    } {
+      const createSpy = jest.fn().mockResolvedValue({});
+      const updateSpy = jest.fn().mockResolvedValue(updated);
+      const txMock = {
+        messageEdit: { create: createSpy },
+        message: { update: updateSpy },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue({
+            room: { status: 'active' },
+            ...existingMessage,
+          }),
+        } as unknown as PrismaService['message'],
+        // BİLEREK `user` mock'u YOK - deleteOwnMessage assertNotMuted
+        // ÇAĞIRMIYOR (editMessage'ın aksine); eğer çağırsaydı bu testler
+        // prisma.user.findUnique undefined hatasıyla PATLARDI, sessizce
+        // geçmezdi.
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+      return { prismaMock, createSpy, updateSpy };
+    }
+
+    it('yazar_icerigi_sabit_placeholderla_degistirir_ve_eskisini_gecmise_yazar_editedAt_set_ETMEZ', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'benim mesajim',
+        authorId: 'user-1',
+      };
+      const updated = {
+        id: 'msg-1',
+        content: AUTHOR_DELETED_CONTENT,
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+        editedAt: null,
+      };
+      const { prismaMock, createSpy, updateSpy } = buildTransactionalPrismaMock(
+        existing,
+        updated,
+      );
+
+      const service = buildService(prismaMock);
+      const result = await service.deleteOwnMessage('user-1', 'msg-1');
+
+      expect(createSpy).toHaveBeenCalledWith({
+        data: { messageId: 'msg-1', previousContent: 'benim mesajim' },
+      });
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'msg-1' },
+          data: { content: AUTHOR_DELETED_CONTENT },
+        }),
+      );
+      expect(result.content).toBe(AUTHOR_DELETED_CONTENT);
+      expect(result.editedAt).toBeNull();
+    });
+
+    // Susturulmuş kullanıcı KENDİ mesajını silebilmeli - editMessage'ın
+    // "reddeder_susturulmus_yazari" testinin TERSİ, mute koruması yeni
+    // içerik eklemeye karşı (M5 Slice B), silme sabit bir placeholder'a
+    // değiştiriyor, aynı risk yok.
+    it('susturulmus_yazar_kendi_mesajini_yine_de_silebilir', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'benim mesajim',
+        authorId: 'user-1',
+      };
+      const updated = {
+        id: 'msg-1',
+        content: AUTHOR_DELETED_CONTENT,
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+        editedAt: null,
+      };
+      const { prismaMock } = buildTransactionalPrismaMock(existing, updated);
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.deleteOwnMessage('user-1', 'msg-1'),
+      ).resolves.toMatchObject({ content: AUTHOR_DELETED_CONTENT });
+    });
+
+    it('reddeder_yazari_olmayan_kullaniciyi', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'benim mesajim',
+        authorId: 'user-1',
+      };
+      const { prismaMock } = buildTransactionalPrismaMock(existing, {});
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.deleteOwnMessage('baska-kullanici', 'msg-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('reddeder_bilinmeyen_mesaji', async () => {
+      const prismaMock: Partial<PrismaService> = {
+        message: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['message'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.deleteOwnMessage('user-1', 'yok-mesaj'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('reddeder_arsivlenmis_odadaki_silmeyi_gone_ile_yazar_olsa_bile', async () => {
+      const existing = {
+        id: 'msg-1',
+        content: 'benim mesajim',
+        authorId: 'user-1',
+        room: { status: 'archived' },
+      };
+      const { prismaMock } = buildTransactionalPrismaMock(existing, {});
+
+      const service = buildService(prismaMock);
+
+      await expect(service.deleteOwnMessage('user-1', 'msg-1')).rejects.toThrow(
+        GoneException,
+      );
     });
   });
 

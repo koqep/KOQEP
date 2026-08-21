@@ -160,7 +160,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     const socket = connectSocket(author.accessToken);
     await waitForEvent(socket, 'ready');
 
-    const mutedPromise = waitForEvent<{ mutedUntil: string }>(
+    const mutedPromise = waitForEvent<{ mutedUntil: string; reason: string }>(
       socket,
       'moderation:muted',
     );
@@ -174,16 +174,20 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
 
     const pushed = await mutedPromise;
     expect(pushed.mutedUntil).toBeTruthy();
+    expect(pushed.reason).toBe('kural ihlali');
 
     const dbUser = await prisma.user.findUnique({ where: { id: author.id } });
     expect(dbUser?.mutedUntil).not.toBeNull();
+    expect(dbUser?.muteReason).toBe('kural ihlali');
 
     const auditEntries = await prisma.moderationAuditLog.findMany({
       where: { moderatorId: moderator.id, targetUserId: author.id },
     });
-    expect(
-      auditEntries.some((entry) => entry.actionType === 'MUTE_APPLIED'),
-    ).toBe(true);
+    const muteAppliedEntry = auditEntries.find(
+      (entry) => entry.actionType === 'MUTE_APPLIED',
+    );
+    expect(muteAppliedEntry).toBeTruthy();
+    expect(muteAppliedEntry?.reason).toBe('kural ihlali');
   }, 15000);
 
   it('susturulmus_kullanicinin_gonderimi_ve_duzenlemesi_muted_koduyla_reddedilir', async () => {
@@ -239,6 +243,11 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
       .set('Authorization', `Bearer ${moderator.accessToken}`)
       .expect(201);
     await unmutedPromise;
+
+    const dbUserAfterUnmute = await prisma.user.findUnique({
+      where: { id: author.id },
+    });
+    expect(dbUserAfterUnmute?.muteReason).toBeNull();
 
     const sendAck = await new Promise<{ status: string }>((resolve) => {
       socket.emit(
