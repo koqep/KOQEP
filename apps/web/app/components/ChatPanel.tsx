@@ -69,7 +69,7 @@ export default function ChatPanel({
     <>
       {activeRoom?.announcement && (
         <p className="border-b border-neutral-800 pb-2 text-neutral-300">
-          <span className="text-muted">duyuru:</span>{" "}
+          <span className="text-muted">announcement:</span>{" "}
           <MessageContent content={activeRoom.announcement} />
         </p>
       )}
@@ -84,14 +84,14 @@ export default function ChatPanel({
             disabled={isLoadingOlder}
             className="mb-2 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
           >
-            {isLoadingOlder ? "yükleniyor..." : "daha eski mesajları yükle"}
+            {isLoadingOlder ? "loading..." : "load older messages"}
           </button>
         )}
         {messages.length === 0 ? (
           <p>
             {activeRoom
-              ? `#${activeRoom.name} henüz sessiz — ilk mesajı sen yaz`
-              : "henüz mesaj yok"}
+              ? `#${activeRoom.name} is quiet so far — send the first message`
+              : "no messages yet"}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -122,26 +122,26 @@ export default function ChatPanel({
       {contentRemovedNotice && (
         <p className="flex items-center gap-2 text-red-400">
           <span>
-            bir mesajın moderatör tarafından kaldırıldı — {contentRemovedNotice}
+            a message of yours was removed by a moderator — {contentRemovedNotice}
           </span>
           <button
             type="button"
             onClick={onDismissContentRemovedNotice}
             className="text-muted hover:text-neutral-400"
           >
-            tamam
+            ok
           </button>
         </p>
       )}
       {activeRoom && activeRoom.status !== "active" ? (
         <p className="border-t border-neutral-800 pt-2 text-muted">
-          bu oda arşivlenmiş, sadece okunabilir
+          this room is archived, read-only
         </p>
       ) : isMuted ? (
         <p className="border-t border-neutral-800 pt-2 text-muted">
-          susturuldun{muteReason && ` — ${muteReason}`}
+          you&apos;re muted{muteReason && ` — ${muteReason}`}
           {mutedUntil &&
-            `, ${new Date(mutedUntil).toLocaleString("tr-TR")} tarihine kadar mesaj gönderemez/düzenleyemezsin`}
+            ` until ${new Date(mutedUntil).toLocaleString("en-US")}, you can't send or edit messages`}
         </p>
       ) : (
         <form
@@ -154,8 +154,8 @@ export default function ChatPanel({
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             disabled={!isReady}
-            placeholder="mesaj yaz..."
-            aria-label="mesaj yaz"
+            placeholder="write a message..."
+            aria-label="write a message"
             className="flex-1 border border-transparent bg-transparent text-neutral-200 placeholder-muted outline-none focus-visible:border-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-100 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 disabled:cursor-not-allowed"
           />
           <span
@@ -167,7 +167,7 @@ export default function ChatPanel({
             disabled={!canSend || isSending}
             className="text-muted disabled:cursor-not-allowed"
           >
-            {isSending ? "gönderiliyor..." : "gönder"}
+            {isSending ? "sending..." : "send"}
           </button>
         </form>
       )}
