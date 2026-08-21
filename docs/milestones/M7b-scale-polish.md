@@ -9,6 +9,12 @@ bitmesi gereken (moderasyon hacmi/oda sayısı/kimlik tutarlılığı büyüdük
 gerekli hale gelen). Faz tanımları için `M7a-scale-gate.md`'nin "Aşamalı davet
 planı" tablosuna bakın.*
 
+**2026-08-21 — veri-bağımsız TÜM dilimler bitti (D2, E, H2, I2).** Kalan tek
+kalem D1 (rate limit gözden geçirmesi) — bu milestone TAMAMEN KAPANMADI,
+Faz 1'in gerçek trafik verisini bekliyor (founder'ın kendi görevi, satır 76,
+Faz 1'in ilk 2-3 haftasının log'larını gözden geçirmesi gerekiyor). D1
+tamamlanınca milestone kapanır.
+
 ## Goal
 M7a'nın açtığı kapının ARDINDAN ürünü daha adil, daha keşfedilebilir ve daha
 tutarlı hale getirmek — hiçbiri kapı açma koşulu değil, hepsi gerçek Faz 1/2
@@ -61,7 +67,7 @@ göre esner, taahhüt değil öncelik sırasıdır.
 - [x] Mesajlarda çıplak URL'ler tıklanabilir (`target=_blank rel=noopener`), önizleme YOK. *(2026-08-20, Slice E.)*
 - [x] Birleşik-işaret/zalgo suistimaline karşı bir grapheme-sınırı var. *(2026-08-20, Slice E — `THREAT-MODEL.md` satır 42 kapatıldı.)*
 - [x] Oda değiştirince yazılmakta olan taslak KAYBOLMUYOR. *(2026-08-20, Slice E — bellek-içi + localStorage debounce, sekme kapanmasını da kapsıyor.)*
-- [ ] Zaten yıllardır bekleyen Türkçe→İngilizce UI geçişi (BACKLOG A15) BİTTİ — runtime dil SEÇİMİ olmadan, varsayılan tamamen İngilizce.
+- [x] Zaten yıllardır bekleyen Türkçe→İngilizce UI geçişi (BACKLOG A15) BİTTİ — runtime dil SEÇİMİ olmadan, varsayılan tamamen İngilizce. *(2026-08-21, Slice I2.)*
 
 ## Tasks — kod dilimleri (Claude uygular, her biri kendi plan-modu turu)
 
@@ -69,7 +75,7 @@ göre esner, taahhüt değil öncelik sırasıdır.
 - [x] **Slice D2 — Moderasyon itirazı + kendi mesajını silme + "düzenlendi" göstergesi.** TAMAMLANDI (2026-08-21). ~20-26 saat (12-15 + 5-7 + 3-4). Susturma/içerik-kaldırmaya SEBEP alanı eklenir, içerik kaldırma için hedefe özel bir bildirim (mevcut WS kanalları yeniden kullanılır, yeni altyapı değil). Kendi mesajını silme: `ADR-0005`'in anonimleştirme desenine tutarlı bir soft-delete (içerik `[Bu mesaj yazarı tarafından silindi.]` gibi bir sabitle değiştirilir, `MODERATOR_REMOVED_CONTENT`'in kendi deseni). "Düzenlendi" göstergesi: veri zaten var (`MessageEdit` ilişkisi), sadece bir görünüm kararı. **Kapsam netliği:** başlıktaki "moderasyon itirazı" bu dilimin GÖVDE metninde tanımlandığı gibi SEBEP+hedefe-özel-bildirim katmanı olarak yapıldı — ayrı bir itiraz kuyruğu/panel (kullanıcının bir aksiyona resmi itiraz açabildiği bir akış) KAPSAM DIŞI kaldı, aşağıdaki founder görevinin (satır 76) hâlâ açık "moderasyon itirazı" referansı BUNU işaret ediyor.
 - [x] **Slice E — Oda keşfedilebilirliği + taslak kalıcılığı + zalgo koruması + tıklanabilir linkler.** TAMAMLANDI (2026-08-20). ~14-20 saat (5-7 + 2-3 + 3-5 + 2-4). `RoomsService.listRooms`'a aktivite sıralaması, `RoomView.tsx`'in `draft` state'i `Record<roomId,string>`'e döner, mesaj içerik doğrulamasına grapheme-sınırı eklenir, `MessageContent.tsx`'e linkify (önizleme YOK). **Oda listesi kısmı M7a'nın Slice B'siyle (`RoomMember`, tamamlandı) aynı yüzeyi paylaşıyor.** **Açık bağımlılık:** M7a Slice B'nin `scope=discoverable`/`scope=all` keşif listeleri bu dilim inene kadar `name asc` (alfabetik) sıralı — oda sayısı arttıkça (özellikle Faz 2/3'te) kullanılamaz hale gelir, bu dilim oda sayısı büyümeden ÖNCE inmeli, sonraya bırakılabilecek bir cila maddesi değil.
 - [x] **Slice H2 — Geri bildirim/duyuru.** TAMAMLANDI (2026-08-20). ~4-6 saat. `mailto:` linki (yeni backend gerekmiyor). Duyuru: moderatörün pinleyebileceği tek bir mesaj alanı (`Room` ya da ayrı küçük bir model — implementasyon sırasında karar). **Faz 1 açılışıyla birlikte yapılması önerilir** (kapı açma koşulu değil ama amaca en çok hizmet eden zamanlama).
-- [ ] **Slice I2 — Türkçe→İngilizce UI geçişinin bitirilmesi (A15).** ~8-11 saat. A15'in kendi tetikleyicisi (İngilizce dosya oranı ≥%50) muhtemelen bu dilimin KENDİSİYLE ateşleniyor — kalan Türkçe component'ler İngilizceye çevrilir, **runtime dil SEÇİMİ/`User.locale` EKLENMEZ** (o M9'un tam kapsamı). Playwright seçicileri bu geçişle birlikte `data-testid`'e taşınmalı (388 Türkçe-bağımlı seçici, M9'un kendi maliyet analizinde) — **BU dilimde SADECE değişen dosyaların seçicileri güncellenir, TAM testid geçişi M9'a kalır** (aksi halde bu dilim M9'un maliyetini üstleniyor demektir).
+- [x] **Slice I2 — Türkçe→İngilizce UI geçişinin bitirilmesi (A15).** TAMAMLANDI (2026-08-21). ~8-11 saat. `apps/web/app/**/*.tsx`'in TÜMÜ İngilizceye çevrildi, `<html lang="tr">` → `"en"`, karşılık gelen `apps/web/e2e/**` (22 dosya) + `apps/web/e2e-fullstack/**` (8 dosya) seçicileri güncellendi. **runtime dil SEÇİMİ/`User.locale` EKLENMEDİ** (o M9'un tam kapsamı). **Kapsam netliği (plan modunda kullanıcıyla netleştirildi):** SADECE frontend kapsandı, backend'in ~30 hata mesajı BİLEREK dışarıda bırakıldı, `docs/BACKLOG.md` A20'ye somut tetikleyiciyle not düşüldü.
 
 ## Tasks — founder'ın kendi eliyle yapacağı işler
 - [ ] Faz 1'in ilk 2-3 haftasının rate-limit/hata loglarını gözden geçir (Slice D1'in girdisi).
@@ -113,6 +119,21 @@ Kendi test koşumda ikinci bir gerçek bug bulundu (kullanıcı review'ında de�
 **Gerçek saat:** milestone tahmini 20-26h idi, gerçek harcama üst ucuna yakın (backend şema/servis/gateway/controller ~5h, backend testleri + mevcut test düzeltmeleri ~3h, frontend ~4h, frontend testleri + regresyon düzeltmeleri ~3h, dokümantasyon ~1h).
 
 **Doğrulama:** `apps/api` lint/typecheck/build + 257 birim + 138 e2e (iki koşu, temiz seed sonrası, flakiness yok). `apps/web` lint/typecheck/build + 92 Playwright (mocked) + 9 Playwright (fullstack, temiz seed sonrası).
+
+### Slice I2 — Türkçe→İngilizce UI geçişinin bitirilmesi (2026-08-21, tamamlandı)
+`Grep` taramasıyla kapsam belirlendi: `docs/BACKLOG.md` A15'in "bugün 2/15" tetikleyici sayımı bayattı (M6 Slice C'den beri 8 yeni component eklenmiş, oran gerçekte %11'di, A15'in kendi %50 eşiğinden çok uzak) ama milestone'un kendi Task metni bu dilimi zaten Faz 3 öncesi AC'ye bağlamıştı — sayımın güncelliğini kaybetmesi görevi geçersiz kılmadı.
+
+**Kapsam sorusu (`AskUserQuestion`, kullanıcı onayladı):** `lib/api.ts`'in `sendJson`'ı backend'in `err.message`'ını doğrudan fırlatıyor, 8+ frontend component'i bunu olduğu gibi gösteriyor — backend'de ~30 ayrı Türkçe hata mesajı var. Kullanıcı SADECE frontend'in kapsanmasını onayladı, backend mesajları için somut bir tetikleyici verdi ("Faz 1 açılışından SONRA... YA DA M9 i18n çalışması başlarsa" — reaktif değil, Faz 1'in kendi açılışına bağlı), `docs/BACKLOG.md` A20'ye o metinle işlendi.
+
+**Kullanıcının `ExitPlanMode` reddiyle bulunan gerçek bir plan kusuru:** ilk taslak "alan bazlı" (her commit kendi component+testiyle) bir ritim öneriyordu, "her commit sonrası tam süit çalışır" iddiasıyla. Kullanıcı, `AuthView.tsx`'in login alanlarının NEREDEYSE HER test dosyasının kendi `login()` yardımcısında kullanıldığını, dolayısıyla `AuthView.tsx`'i erken bir commit'te çevirmenin TÜM diğer test dosyalarını aynı anda kıracağını fark etti — "tam süit her commit'te yeşil" iddiası yanlıştı. Plan iki faza bölünerek düzeltildi: **Faz A** (6 commit, sadece component'ler, doğrulama sadece lint/typecheck/build — Playwright bilerek kırmızı kalıyor, regresyon değil) → **Faz B** (component'ler donduktan SONRA testler, artık izole doğrulanabilir).
+
+**Push disiplini (kullanıcının açık talebi):** 9 commit'in hiçbiri tek tek push edilmedi — hepsi yerel kaldı, Faz B'nin son commit'i (fullstack yeşil) VE Faz C bitince kullanıcıya haber verildi, o tek seferde push edip PR açacak.
+
+**Çeviri sonrası bulunan iki gerçek seçici çakışması (kullanıcı review'ında değil, kendi test koşumda):** İngilizce kelimeler Türkçe karşılıklarının taşımadığı alt-string çakışmaları üretti — `"archive"` butonunun `"show archived"` butonuyla (getByRole substring eşleşmesi) ve `invite.spec.ts`'in `"used"` metninin hem `"USED-CODE"` hem "unused invites..." paragrafıyla çakışması. `exact:true` ile düzeltildi.
+
+**Gerçek saat:** milestone tahmini 8-11h idi, gerçek harcama üst ucuna yakın (component çevirisi 6 commit ~4h, e2e mocked testler + seçici çakışması düzeltmesi ~3h, e2e-fullstack testler + yerel DB sıfırlama/backfill ~1.5h, dokümantasyon ~1h).
+
+**Doğrulama:** `apps/web` lint/typecheck/build (her Faz A commit'inde) + 92 Playwright (mocked, Faz B'nin son commit'inde) + 9 Playwright (fullstack, temiz seed+backfill sonrası).
 
 ## Risks
 - Bu dosyanın sıralaması M7a'nın Faz 1 verisine BAĞIMLI — M7a bitip Faz 1 gerçekten açılmadan bu dosyanın kendi plan-modu turlarının bir kısmı (özellikle rate limit, moderasyon itirazının zamanlaması) anlamlı şekilde başlayamaz. Slice E (oda keşfi, taslak, zalgo, link) ve Slice H2/I2 gibi veri-bağımsız kalemler M7a ile PARALEL de planlanabilir.

@@ -4,17 +4,18 @@
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
 **Son güncelleme:** 2026-08-21
-**M7a TAMAMEN KAPANDI (2026-08-19), M0-M6 TAMAMLANDI.** M7b (cila) sürüyor — Slice E, H2, D2 TAMAMLANDI (D2'nin push'u kullanıcı onayında). Kalan dilimler: D1 (rate limit, Faz 1 trafiği bekliyor), I2 (TR→EN UI, veri-bağımsız). Detaylar `docs/milestones/M7b-scale-polish.md`'nin Plan notları.
+**M7a TAMAMEN KAPANDI (2026-08-19), M0-M6 TAMAMLANDI.** M7b (cila) sürüyor — Slice E, H2, D2, I2 TAMAMLANDI (D2'nin push'u kullanıcı onayında, I2 push'a hazır). Kalan tek dilim: D1 (rate limit, Faz 1 trafiği bekliyor) — milestone TAMAMEN KAPANMADI. Detaylar `docs/milestones/M7b-scale-polish.md`'nin Plan notları.
 
 ## Şu an ne çalışıyor
 - **M0-M6 + M7a (Slice A-J) TAMAMEN BİTTİ.** Detaylar kendi milestone dosyalarının Plan notları bölümlerinde. M7a'nın tek kalıntısı: Postgres RAM/CPU/depolama ölçülemedi — `docs/BACKLOG.md` A18'e somut tetikleyiciyle ertelendi.
 - **2026-08-20 — M7b Slice E+H2 TAMAMLANDI, ikisi de merge oldu (PR #68, #69).** Oda keşfi aktiviteye göre sıralı + taslak kalıcılığı + zalgo koruması + tıklanabilir linkler (E); geri bildirim linki (`ussasa155@gmail.com`, `docs/BACKLOG.md` A19) + moderatör pinlenmiş oda duyurusu (H2).
 - **2026-08-21 — M7b Slice D2 (moderasyon sebebi/bildirimi + kendi mesajını silme + "düzenlendi" göstergesi) TAMAMLANDI, push kullanıcı onayında.** `MuteUserDto`/`RemoveContentDto` artık ZORUNLU bir `reason` alıyor (`User.muteReason`, `ModerationAuditLog.reason`), `MessagesGateway.notifyContentRemoved` yazara hedefe-özel bir WS bildirimi (`moderation:content-removed`). `MessagesService.deleteOwnMessage` — `editMessage`'ın aynı iskeleti ama `assertNotMuted` YOK (silme yeni içerik eklemiyor). `Message.editedAt` SADECE `editMessage` set ediyor. **ÖNEMLİ — bu dilim geriye dönük UYUMSUZ:** `reason` zorunlu hale gelince mevcut deploy edilmiş frontend'in reason'sız çağrısı 400 döner — Render (API) + Vercel (web) ARKA ARKAYA deploy edilmeli, aralarında sustur/içerik-kaldır kullanılmamalı.
+- **2026-08-21 — M7b Slice I2 (TR→EN UI geçişi bitirildi, BACKLOG A15) TAMAMLANDI, push kullanıcı onayında.** `apps/web/app/**/*.tsx` + `apps/web/e2e/**` (22 dosya) + `apps/web/e2e-fullstack/**` (8 dosya) İngilizceye çevrildi, `<html lang="tr">`→`"en"`. SADECE frontend kapsandı — backend'in ~30 Türkçe hata mesajı bilerek dışarıda, `docs/BACKLOG.md` A20'ye somut tetikleyiciyle not düşüldü. 9 commit yerel kaldı, kullanıcı tek seferde push edip PR açacak.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** M7b Slice D2'nin push'u kullanıcının onayında (`m7b/slice-d2-appeal-self-delete-edited-indicator`) — merge SONRASI Render+Vercel'i ARKA ARKAYA deploy etmeyi unutma (yukarıdaki not).
-- **Sonraki adım:** Merge sonrası kalan tek veri-bağımsız dilim I2 (TR→EN UI); D1 gerçek Faz 1 trafiği bekliyor.
+- **Görev:** M7b Slice D2'nin (`m7b/slice-d2-appeal-self-delete-edited-indicator`) VE Slice I2'nin (`m7b/slice-i2-en-ui-translation`, 9 commit) push'u kullanıcının onayında.
+- **Sonraki adım:** Kullanıcı push edip PR açtıktan sonra: D2 merge'i SONRASI Render+Vercel'i ARKA ARKAYA deploy et (yukarıdaki not). Sonra kalan tek dilim D1 — Faz 1 gerçek trafiği bekliyor, founder'ın ilk 2-3 haftanın log'larını gözden geçirmesi gerekiyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
