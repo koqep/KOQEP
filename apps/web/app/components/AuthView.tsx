@@ -79,7 +79,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           setError(err.message);
         }
       } else {
-        setError("Bağlantı hatası. Tekrar dene.");
+        setError("Connection error. Try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -94,17 +94,17 @@ export default function AuthView({ onAuthenticated }: Props) {
 
       {mode === "forgot-password" && resetRequested ? (
         <p className="text-neutral-400">
-          Bu e-posta kayıtlıysa bir sıfırlama bağlantısı gönderildi.
+          If this email is registered, a reset link has been sent.
         </p>
       ) : mode === "signup" && signupComplete ? (
         <p className="text-neutral-400">
-          Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.
+          Click the link sent to your email to complete your signup.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {mode === "signup" && (
             <label className="flex flex-col gap-1 text-muted">
-              davet kodu
+              invite code
               <input
                 type="text"
                 value={inviteCode}
@@ -116,7 +116,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           )}
 
           <label className="flex flex-col gap-1 text-muted">
-            e-posta
+            email
             <input
               type="email"
               value={email}
@@ -128,7 +128,7 @@ export default function AuthView({ onAuthenticated }: Props) {
 
           {mode === "signup" && (
             <label className="flex flex-col gap-1 text-muted">
-              kullanıcı adı
+              username
               <input
                 type="text"
                 value={username}
@@ -144,7 +144,7 @@ export default function AuthView({ onAuthenticated }: Props) {
 
           {mode !== "forgot-password" && (
             <label className="flex flex-col gap-1 text-muted">
-              şifre
+              password
               <input
                 type="password"
                 value={password}
@@ -159,7 +159,7 @@ export default function AuthView({ onAuthenticated }: Props) {
 
           {mode === "login" && totpRequired && (
             <label className="flex flex-col gap-1 text-muted">
-              totp kodu
+              totp code
               <input
                 type="text"
                 value={totpCode}
@@ -182,22 +182,23 @@ export default function AuthView({ onAuthenticated }: Props) {
                 className="mt-1"
               />
               <span>
+                I have read and accept the{" "}
                 <Link
                   href="/terms"
                   target="_blank"
                   className="text-neutral-400 hover:text-neutral-200"
                 >
-                  Kullanım Şartları
-                </Link>
-                &apos;nı ve{" "}
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
                 <Link
                   href="/privacy"
                   target="_blank"
                   className="text-neutral-400 hover:text-neutral-200"
                 >
-                  Gizlilik Politikası
+                  Privacy Policy
                 </Link>
-                &apos;nı okudum, kabul ediyorum.
+                .
               </span>
             </label>
           )}
@@ -210,10 +211,10 @@ export default function AuthView({ onAuthenticated }: Props) {
             className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {mode === "signup"
-              ? "kayıt ol"
+              ? "sign up"
               : mode === "forgot-password"
-                ? "gönder"
-                : "giriş yap"}
+                ? "send"
+                : "log in"}
           </button>
         </form>
       )}
@@ -224,7 +225,7 @@ export default function AuthView({ onAuthenticated }: Props) {
           onClick={() => switchMode("login")}
           className="mt-4 text-muted hover:text-neutral-400"
         >
-          girişe dön
+          back to login
         </button>
       ) : (
         <>
@@ -234,7 +235,7 @@ export default function AuthView({ onAuthenticated }: Props) {
               onClick={() => switchMode("forgot-password")}
               className="mt-4 text-muted hover:text-neutral-400"
             >
-              şifreni mi unuttun?
+              forgot your password?
             </button>
           )}
           <button
@@ -243,8 +244,8 @@ export default function AuthView({ onAuthenticated }: Props) {
             className="mt-2 text-muted hover:text-neutral-400"
           >
             {mode === "login"
-              ? "hesabın yok mu? kayıt ol"
-              : "zaten hesabın var mı? giriş yap"}
+              ? "don't have an account? sign up"
+              : "already have an account? log in"}
           </button>
         </>
       )}

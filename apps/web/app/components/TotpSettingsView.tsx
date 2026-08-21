@@ -54,7 +54,7 @@ export default function TotpSettingsView({
       setQr(await generateQr(nextSetup.otpauthUrl));
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -71,7 +71,7 @@ export default function TotpSettingsView({
       setTotpCode("");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -95,7 +95,7 @@ export default function TotpSettingsView({
       markEnabled(false);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -106,21 +106,21 @@ export default function TotpSettingsView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> iki adımlı doğrulama
+          <span className="text-muted">#</span> two-factor authentication
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="text-muted hover:text-neutral-400"
         >
-          kapat
+          close
         </button>
       </div>
 
       {recoveryCodes ? (
         <div className="flex flex-col gap-3">
           <p className="text-red-400">
-            Bu kodlar bir daha gösterilmeyecek. Şimdi bir yere kaydet.
+            These codes won&apos;t be shown again. Save them somewhere now.
           </p>
           <ul className="space-y-1 font-mono text-neutral-200">
             {recoveryCodes.map((code) => (
@@ -132,14 +132,14 @@ export default function TotpSettingsView({
             onClick={handleAcknowledgeRecoveryCodes}
             className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600"
           >
-            kaydettim
+            saved it
           </button>
         </div>
       ) : enabled ? (
         <form onSubmit={handleDisable} className="flex flex-col gap-3">
-          <p>İki adımlı doğrulama şu an açık.</p>
+          <p>Two-factor authentication is currently on.</p>
           <label className="flex flex-col gap-1 text-muted">
-            totp kodu
+            totp code
             <input
               type="text"
               value={totpCode}
@@ -154,21 +154,21 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            TOTP&apos;yi kapat
+            turn off TOTP
           </button>
         </form>
       ) : setup ? (
         <form onSubmit={handleEnable} className="flex flex-col gap-3">
           {qr && (
             // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image optimizasyonuna uygun bir uzak/statik kaynak değil.
-            <img src={qr} alt="TOTP QR kodu" className="h-40 w-40" />
+            <img src={qr} alt="TOTP QR code" className="h-40 w-40" />
           )}
           <p className="text-muted">
-            authenticator app&apos;e elle girmek için gizli anahtar:
+            secret key to enter manually into your authenticator app:
           </p>
           <p className="font-mono text-neutral-200 select-all">{setup.secret}</p>
           <label className="flex flex-col gap-1 text-muted">
-            totp kodu
+            totp code
             <input
               type="text"
               value={totpCode}
@@ -185,12 +185,12 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            etkinleştir
+            enable
           </button>
         </form>
       ) : (
         <div className="flex flex-col gap-3">
-          <p>İki adımlı doğrulama şu an kapalı.</p>
+          <p>Two-factor authentication is currently off.</p>
           {error && <p className="text-red-400">{error}</p>}
           <button
             type="button"
@@ -198,7 +198,7 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            kurulumu başlat
+            start setup
           </button>
         </div>
       )}
