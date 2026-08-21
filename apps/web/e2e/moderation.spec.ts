@@ -94,8 +94,13 @@ test("moderator_kuyrugu_acar_icerik_kaldirir_ve_listeden_kaybolur", async ({
     }
     return route.continue();
   });
-  await page.route("**/moderation/reports/*/remove-content", (route) =>
-    route.fulfill({ json: { ok: true } }),
+  let removeContentBody: unknown;
+  await page.route(
+    "**/moderation/reports/*/remove-content",
+    async (route) => {
+      removeContentBody = route.request().postDataJSON();
+      await route.fulfill({ json: { ok: true } });
+    },
   );
 
   await page.getByRole("button", { name: "moderasyon" }).click();
@@ -104,7 +109,10 @@ test("moderator_kuyrugu_acar_icerik_kaldirir_ve_listeden_kaybolur", async ({
   await expect(page.getByText("kötüye kullanım")).toBeVisible();
 
   await page.getByRole("button", { name: "içeriği kaldır" }).click();
+  await page.getByLabel("moderatör sebebi").fill("kural ihlali");
+  await page.getByRole("button", { name: "onayla" }).click();
 
+  expect(removeContentBody).toEqual({ reason: "kural ihlali" });
   await expect(page.getByText("saldırgan içerik")).toHaveCount(0);
   await expect(page.getByText("açık rapor yok")).toBeVisible();
 });
@@ -199,8 +207,13 @@ test("moderator_rapor_satirinda_sustur_ve_susturmayi_kaldir_butonlarini_gorur_ve
   ).toBeVisible();
 
   await page.getByRole("button", { name: "sustur (24 saat)" }).click();
+  await page.getByLabel("moderatör sebebi").fill("kural ihlali");
+  await page.getByRole("button", { name: "onayla" }).click();
 
-  expect(muteRequestBody).toEqual({ durationHours: 24 });
+  expect(muteRequestBody).toEqual({
+    durationHours: 24,
+    reason: "kural ihlali",
+  });
   // Mute rapor durumuna dokunmuyor - satır kaybolmuyor, "içeriği kaldır"
   // hâlâ tıklanabilir kalıyor (rapor yaşam döngüsünden bağımsızlık).
   await expect(page.getByText("saldırgan içerik")).toBeVisible();

@@ -11,6 +11,7 @@ interface Message {
   createdAt: string;
   authorUsername: string | null;
   roomId: string;
+  editedAt: string | null;
 }
 
 interface Props {
@@ -19,13 +20,17 @@ interface Props {
   myProfile: UserProfile | null;
   isMuted: boolean;
   mutedUntil: string | null;
+  muteReason: string | null;
   onMessageEditSubmit: (messageId: string, content: string) => void;
+  onMessageDeleteSubmit: (messageId: string) => void;
   fetchHistoryForMessage: (messageId: string) => Promise<MessageEdit[]>;
   onReportMessage: (messageId: string) => Promise<void>;
   nextCursor: string | null;
   isLoadingOlder: boolean;
   onLoadOlder: () => void;
   sendError: string | null;
+  contentRemovedNotice: string | null;
+  onDismissContentRemovedNotice: () => void;
   activeRoom: Room | null;
   draft: string;
   onDraftChange: (value: string) => void;
@@ -41,13 +46,17 @@ export default function ChatPanel({
   myProfile,
   isMuted,
   mutedUntil,
+  muteReason,
   onMessageEditSubmit,
+  onMessageDeleteSubmit,
   fetchHistoryForMessage,
   onReportMessage,
   nextCursor,
   isLoadingOlder,
   onLoadOlder,
   sendError,
+  contentRemovedNotice,
+  onDismissContentRemovedNotice,
   activeRoom,
   draft,
   onDraftChange,
@@ -99,6 +108,7 @@ export default function ChatPanel({
                   isMuted={isMuted}
                   canViewHistory={canViewHistory}
                   onSubmitEdit={onMessageEditSubmit}
+                  onSubmitDelete={onMessageDeleteSubmit}
                   fetchHistory={fetchHistoryForMessage}
                   onReport={onReportMessage}
                 />
@@ -109,13 +119,27 @@ export default function ChatPanel({
       </section>
 
       {sendError && <p className="text-red-400">{sendError}</p>}
+      {contentRemovedNotice && (
+        <p className="flex items-center gap-2 text-red-400">
+          <span>
+            bir mesajın moderatör tarafından kaldırıldı — {contentRemovedNotice}
+          </span>
+          <button
+            type="button"
+            onClick={onDismissContentRemovedNotice}
+            className="text-muted hover:text-neutral-400"
+          >
+            tamam
+          </button>
+        </p>
+      )}
       {activeRoom && activeRoom.status !== "active" ? (
         <p className="border-t border-neutral-800 pt-2 text-muted">
           bu oda arşivlenmiş, sadece okunabilir
         </p>
       ) : isMuted ? (
         <p className="border-t border-neutral-800 pt-2 text-muted">
-          susturuldun
+          susturuldun{muteReason && ` — ${muteReason}`}
           {mutedUntil &&
             `, ${new Date(mutedUntil).toLocaleString("tr-TR")} tarihine kadar mesaj gönderemez/düzenleyemezsin`}
         </p>
