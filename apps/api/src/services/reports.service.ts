@@ -130,6 +130,7 @@ export class ReportsService {
   async removeContent(
     moderatorId: string,
     reportId: string,
+    reason: string,
   ): Promise<ResolveReportResult> {
     const report = await this.findOpenReportOrThrow(reportId);
     if (!report.messageId) {
@@ -167,6 +168,7 @@ export class ReportsService {
           targetMessageId: report.messageId,
           reportId,
           distinctReporterCountAtResolution,
+          reason,
         },
       });
       return result;

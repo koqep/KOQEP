@@ -332,7 +332,11 @@ describe('ReportsService', () => {
       const service = buildService(prismaMock, {
         removeMessageContent: removeMessageContentMock,
       });
-      const result = await service.removeContent('moderator-1', 'report-1');
+      const result = await service.removeContent(
+        'moderator-1',
+        'report-1',
+        'kural ihlali',
+      );
 
       expect(removeMessageContentMock).toHaveBeenCalledWith(
         expect.anything(),
@@ -355,6 +359,7 @@ describe('ReportsService', () => {
           targetMessageId: 'msg-1',
           reportId: 'report-1',
           distinctReporterCountAtResolution: null,
+          reason: 'kural ihlali',
         },
       });
       expect(result.authorId).toBe('yazar-1');
@@ -379,7 +384,7 @@ describe('ReportsService', () => {
       const service = buildService(prismaMock, {
         removeMessageContent: removeMessageContentMock,
       });
-      await service.removeContent('moderator-1', 'report-1');
+      await service.removeContent('moderator-1', 'report-1', 'kural ihlali');
 
       expect(reportFindManySpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -406,7 +411,7 @@ describe('ReportsService', () => {
       const service = buildService(prismaMock);
 
       await expect(
-        service.removeContent('moderator-1', 'yok-rapor'),
+        service.removeContent('moderator-1', 'yok-rapor', 'kural ihlali'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -422,7 +427,7 @@ describe('ReportsService', () => {
       const service = buildService(prismaMock);
 
       await expect(
-        service.removeContent('moderator-1', 'report-1'),
+        service.removeContent('moderator-1', 'report-1', 'kural ihlali'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -440,7 +445,7 @@ describe('ReportsService', () => {
       const service = buildService(prismaMock);
 
       await expect(
-        service.removeContent('moderator-1', 'report-1'),
+        service.removeContent('moderator-1', 'report-1', 'kural ihlali'),
       ).rejects.toThrow(ConflictException);
     });
   });

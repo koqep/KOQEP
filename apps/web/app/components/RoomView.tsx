@@ -73,6 +73,7 @@ interface Message {
   createdAt: string;
   authorUsername: string | null;
   roomId: string;
+  editedAt: string | null;
 }
 
 interface MessagePage {
@@ -100,6 +101,9 @@ export default function RoomView({
   const [isReady, setIsReady] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [contentRemovedNotice, setContentRemovedNotice] = useState<
+    string | null
+  >(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
@@ -304,16 +308,37 @@ export default function RoomView({
         // M5 Slice B: moderatör mute/unmute uyguladığı ANDA, deneme
         // yapmadan gerçek zamanlı bildirim - myProfile TEK kaynak, ayrı bir
         // state yok.
-        socket.on("moderation:muted", (payload: { mutedUntil: string }) => {
-          if (cancelled) return;
-          setMyProfile((prev) =>
-            prev ? { ...prev, mutedUntil: payload.mutedUntil } : prev,
-          );
-        });
+        socket.on(
+          "moderation:muted",
+          (payload: { mutedUntil: string; reason: string }) => {
+            if (cancelled) return;
+            setMyProfile((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    mutedUntil: payload.mutedUntil,
+                    muteReason: payload.reason,
+                  }
+                : prev,
+            );
+          },
+        );
         socket.on("moderation:unmuted", () => {
           if (cancelled) return;
-          setMyProfile((prev) => (prev ? { ...prev, mutedUntil: null } : prev));
+          setMyProfile((prev) =>
+            prev ? { ...prev, mutedUntil: null, muteReason: null } : prev,
+          );
         });
+        // M7b Slice D2: broadcastMessageUpdate'in (herkes görür) AYRI,
+        // SADECE yazara giden hedefe-özel bildirim - hesap-seviyesinde,
+        // aktif odadan bağımsız (room-switch'te OTOMATİK temizlenmiyor).
+        socket.on(
+          "moderation:content-removed",
+          (payload: { reason: string }) => {
+            if (cancelled) return;
+            setContentRemovedNotice(payload.reason);
+          },
+        );
         // M7a Slice C: moderatör atandığında/kaldırıldığında "moderasyon"
         // butonunun bir sonraki reconnect'e kadar beklemeden anlık
         // görünmesi/kaybolması için - mute/unmute'un AYNI deseni.
@@ -554,6 +579,10 @@ export default function RoomView({
     socketRef.current?.emit("message:edit", { messageId, content });
   }
 
+  function handleMessageDelete(messageId: string) {
+    socketRef.current?.emit("message:delete", { messageId });
+  }
+
   function fetchHistoryForMessage(messageId: string): Promise<MessageEdit[]> {
     if (!activeRoom) return Promise.resolve([]);
     return getMessageEditHistory(accessToken, activeRoom.name, messageId);
@@ -666,13 +695,17 @@ export default function RoomView({
           myProfile={myProfile}
           isMuted={isMuted}
           mutedUntil={myProfile?.mutedUntil ?? null}
+          muteReason={myProfile?.muteReason ?? null}
           onMessageEditSubmit={handleMessageEdit}
+          onMessageDeleteSubmit={handleMessageDelete}
           fetchHistoryForMessage={fetchHistoryForMessage}
           onReportMessage={handleReportMessage}
           nextCursor={nextCursor}
           isLoadingOlder={isLoadingOlder}
           onLoadOlder={() => void handleLoadOlder()}
           sendError={sendError}
+          contentRemovedNotice={contentRemovedNotice}
+          onDismissContentRemovedNotice={() => setContentRemovedNotice(null)}
           activeRoom={activeRoom}
           draft={draft}
           onDraftChange={(value) =>

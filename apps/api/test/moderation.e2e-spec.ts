@@ -242,16 +242,25 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
       authorSocket,
       'message:updated',
     );
+    // M7b Slice D2: broadcastMessageUpdate'in (herkes görür) AYRI, SADECE
+    // yazara giden hedefe-özel bildirim.
+    const contentRemovedPromise = waitForEvent<{ reason: string }>(
+      authorSocket,
+      'moderation:content-removed',
+    );
 
     await request(app.getHttpServer())
       .post(`/moderation/reports/${report.id}/remove-content`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
+      .send({ reason: 'kural ihlali' })
       .expect(201);
 
     const updated = await updatedPromise;
     expect(updated.content).toBe(
       '[Bu mesaj bir moderatör tarafından kaldırıldı.]',
     );
+    const contentRemoved = await contentRemovedPromise;
+    expect(contentRemoved.reason).toBe('kural ihlali');
 
     const resolvedReport = await prisma.report.findUnique({
       where: { id: report.id },
@@ -260,9 +269,11 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
     const auditEntries = await prisma.moderationAuditLog.findMany({
       where: { reportId: report.id },
     });
-    expect(
-      auditEntries.some((entry) => entry.actionType === 'CONTENT_REMOVED'),
-    ).toBe(true);
+    const contentRemovedEntry = auditEntries.find(
+      (entry) => entry.actionType === 'CONTENT_REMOVED',
+    );
+    expect(contentRemovedEntry).toBeTruthy();
+    expect(contentRemovedEntry?.reason).toBe('kural ihlali');
   }, 15000);
 
   it('moderator_raporu_reddedebilir', async () => {
@@ -409,7 +420,7 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${reporter.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(201);
 
     await request(app.getHttpServer())

@@ -121,6 +121,7 @@ describe('Block-user (e2e)', () => {
       level: 0,
       totalXp: 0,
       mutedUntil: null,
+      muteReason: null,
     });
   });
 

@@ -14,7 +14,10 @@ import {
 } from './../src/db/dev-seed.constants';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
 import { joinRoomByName } from './support/room-membership';
-import { MAX_MESSAGE_LENGTH } from './../src/services/messages.service';
+import {
+  MAX_MESSAGE_LENGTH,
+  AUTHOR_DELETED_CONTENT,
+} from './../src/services/messages.service';
 import {
   XP_PER_LEVEL,
   MESSAGE_SENT_XP,
@@ -302,6 +305,8 @@ describe('Messages Gateway (e2e)', () => {
       where: { id: created.id },
     });
     expect(row?.content).toBe(editedContent);
+    // M7b Slice D2: "(düzenlendi)" göstergesinin veri kaynağı.
+    expect(row?.editedAt).not.toBeNull();
 
     const editRows = await prisma.messageEdit.findMany({
       where: { messageId: created.id },
@@ -345,6 +350,128 @@ describe('Messages Gateway (e2e)', () => {
       where: { id: created.id },
     });
     expect(row?.content).toBe(originalContent);
+  }, 10000);
+
+  it('yazar_mesajini_silince_diger_baglanti_gercek_zamanli_placeholder_alir_ve_editedAt_set_ETMEZ', async () => {
+    const sender = connect(accessToken);
+    const receiver = connect(accessToken);
+
+    await Promise.all([
+      waitForEvent(sender, 'ready'),
+      waitForEvent(receiver, 'ready'),
+    ]);
+
+    const originalContent = `silinecek-${randomUUID()}`;
+    const createdPromise = waitForEvent<{ id: string; content: string }>(
+      receiver,
+      'message:new',
+    );
+    sender.emit('message:send', { content: originalContent });
+    const created = await createdPromise;
+    createdMessageIds.push(created.id);
+
+    const updatedPromise = waitForEvent<{
+      id: string;
+      content: string;
+      editedAt: string | null;
+    }>(receiver, 'message:updated');
+    sender.emit('message:delete', { messageId: created.id });
+
+    const updated = await updatedPromise;
+    expect(updated.id).toBe(created.id);
+    expect(updated.content).toBe(AUTHOR_DELETED_CONTENT);
+    expect(updated.editedAt).toBeNull();
+
+    const row = await prisma.message.findUnique({
+      where: { id: created.id },
+    });
+    expect(row?.content).toBe(AUTHOR_DELETED_CONTENT);
+    expect(row?.editedAt).toBeNull();
+
+    const editRows = await prisma.messageEdit.findMany({
+      where: { messageId: created.id },
+    });
+    expect(editRows).toHaveLength(1);
+    expect(editRows[0].previousContent).toBe(originalContent);
+  }, 10000);
+
+  it('baskasinin_mesajini_silme_denemesi_sessizce_yoksayilir', async () => {
+    const sender = connect(accessToken);
+    const createdPromise = waitForEvent<{ id: string; content: string }>(
+      sender,
+      'message:new',
+    );
+    await waitForEvent(sender, 'ready');
+
+    const originalContent = `sahibi-korunacak-silme-${randomUUID()}`;
+    sender.emit('message:send', { content: originalContent });
+    const created = await createdPromise;
+    createdMessageIds.push(created.id);
+
+    const otherToken = await createOtherUserToken();
+    const intruder = connect(otherToken);
+    await waitForEvent(intruder, 'ready');
+
+    const neverUpdated = new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(true), 500);
+      intruder.once('message:updated', () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
+    intruder.emit('message:delete', { messageId: created.id });
+
+    expect(await neverUpdated).toBe(true);
+
+    const row = await prisma.message.findUnique({
+      where: { id: created.id },
+    });
+    expect(row?.content).toBe(originalContent);
+  }, 10000);
+
+  // M7b Slice D2: editMessage'ın mute-reddi TERSİ - silme yeni içerik
+  // eklemiyor, sabit bir placeholder'a değiştiriyor, susturulmuş yazar
+  // kendi mesajını yine de silebilmeli.
+  it('susturulmus_yazar_kendi_mesajini_yine_de_silebilir', async () => {
+    const sender = connect(accessToken);
+    const createdPromise = waitForEvent<{ id: string; content: string }>(
+      sender,
+      'message:new',
+    );
+    await waitForEvent(sender, 'ready');
+
+    const originalContent = `susturulmusken-silinecek-${randomUUID()}`;
+    sender.emit('message:send', { content: originalContent });
+    const created = await createdPromise;
+    createdMessageIds.push(created.id);
+
+    const senderUser = await prisma.message
+      .findUniqueOrThrow({ where: { id: created.id } })
+      .then((m) => m.authorId);
+    if (!senderUser) throw new Error('mesajın yazarı yok');
+    await prisma.user.update({
+      where: { id: senderUser },
+      data: { mutedUntil: new Date(Date.now() + 60 * 60 * 1000) },
+    });
+
+    try {
+      const deleteAck = await new Promise<{ status: string }>((resolve) => {
+        sender.emit('message:delete', { messageId: created.id }, resolve);
+      });
+      expect(deleteAck).toEqual({ status: 'ok' });
+
+      const row = await prisma.message.findUnique({
+        where: { id: created.id },
+      });
+      expect(row?.content).toBe(AUTHOR_DELETED_CONTENT);
+    } finally {
+      // Bu dosyanın PAYLAŞILAN dev kullanıcısı - sonraki testleri
+      // kirletmemek için susturmayı assertion'lar patlasa bile geri al.
+      await prisma.user.update({
+        where: { id: senderUser },
+        data: { mutedUntil: null, muteReason: null },
+      });
+    }
   }, 10000);
 
   it('siniri_asan_hizli_mesaj_gonderimi_kullaniciya_ozel_engellenir', async () => {

@@ -160,7 +160,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     const socket = connectSocket(author.accessToken);
     await waitForEvent(socket, 'ready');
 
-    const mutedPromise = waitForEvent<{ mutedUntil: string }>(
+    const mutedPromise = waitForEvent<{ mutedUntil: string; reason: string }>(
       socket,
       'moderation:muted',
     );
@@ -168,22 +168,26 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post(`/moderation/users/${author.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(201);
     expect(response.body).toHaveProperty('mutedUntil');
 
     const pushed = await mutedPromise;
     expect(pushed.mutedUntil).toBeTruthy();
+    expect(pushed.reason).toBe('kural ihlali');
 
     const dbUser = await prisma.user.findUnique({ where: { id: author.id } });
     expect(dbUser?.mutedUntil).not.toBeNull();
+    expect(dbUser?.muteReason).toBe('kural ihlali');
 
     const auditEntries = await prisma.moderationAuditLog.findMany({
       where: { moderatorId: moderator.id, targetUserId: author.id },
     });
-    expect(
-      auditEntries.some((entry) => entry.actionType === 'MUTE_APPLIED'),
-    ).toBe(true);
+    const muteAppliedEntry = auditEntries.find(
+      (entry) => entry.actionType === 'MUTE_APPLIED',
+    );
+    expect(muteAppliedEntry).toBeTruthy();
+    expect(muteAppliedEntry?.reason).toBe('kural ihlali');
   }, 15000);
 
   it('susturulmus_kullanicinin_gonderimi_ve_duzenlemesi_muted_koduyla_reddedilir', async () => {
@@ -194,7 +198,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${author.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(201);
 
     const socket = connectSocket(author.accessToken);
@@ -227,7 +231,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${author.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(201);
 
     const socket = connectSocket(author.accessToken);
@@ -239,6 +243,11 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
       .set('Authorization', `Bearer ${moderator.accessToken}`)
       .expect(201);
     await unmutedPromise;
+
+    const dbUserAfterUnmute = await prisma.user.findUnique({
+      where: { id: author.id },
+    });
+    expect(dbUserAfterUnmute?.muteReason).toBeNull();
 
     const sendAck = await new Promise<{ status: string }>((resolve) => {
       socket.emit(
@@ -269,7 +278,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${author.id}/mute`)
       .set('Authorization', `Bearer ${nonModerator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(403);
   });
 
@@ -280,13 +289,13 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${author.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 0 })
+      .send({ durationHours: 0, reason: 'kural ihlali' })
       .expect(400);
 
     await request(app.getHttpServer())
       .post(`/moderation/users/${author.id}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 721 })
+      .send({ durationHours: 721, reason: 'kural ihlali' })
       .expect(400);
   });
 
@@ -296,7 +305,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/moderation/users/${randomUUID()}/mute`)
       .set('Authorization', `Bearer ${moderator.accessToken}`)
-      .send({ durationHours: 1 })
+      .send({ durationHours: 1, reason: 'kural ihlali' })
       .expect(404);
   });
 
@@ -312,7 +321,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/moderation/users/${target.id}/mute`)
         .set('Authorization', `Bearer ${moderator.accessToken}`)
-        .send({ durationHours: 1 })
+        .send({ durationHours: 1, reason: 'kural ihlali' })
         .expect(201);
 
       const revokedInvite = await prisma.invite.findUnique({
@@ -337,7 +346,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/moderation/users/${target.id}/mute`)
         .set('Authorization', `Bearer ${moderator.accessToken}`)
-        .send({ durationHours: 1 })
+        .send({ durationHours: 1, reason: 'kural ihlali' })
         .expect(201);
 
       const inviterAfterMute = await prisma.user.findUnique({
@@ -374,7 +383,7 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/moderation/users/${target.id}/mute`)
         .set('Authorization', `Bearer ${moderator.accessToken}`)
-        .send({ durationHours: 1 })
+        .send({ durationHours: 1, reason: 'kural ihlali' })
         .expect(201);
 
       const inviterActionRows = await prisma.moderationAuditLog.findMany({
@@ -402,12 +411,12 @@ describe('Moderasyon: geçici susturma (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/moderation/users/${target.id}/mute`)
         .set('Authorization', `Bearer ${moderator.accessToken}`)
-        .send({ durationHours: 1 })
+        .send({ durationHours: 1, reason: 'kural ihlali' })
         .expect(201);
       await request(app.getHttpServer())
         .post(`/moderation/users/${target.id}/mute`)
         .set('Authorization', `Bearer ${moderator.accessToken}`)
-        .send({ durationHours: 24 })
+        .send({ durationHours: 24, reason: 'kural ihlali 2' })
         .expect(201);
 
       const inviterAudit = await prisma.moderationAuditLog.findMany({

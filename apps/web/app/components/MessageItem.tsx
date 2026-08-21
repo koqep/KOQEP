@@ -12,6 +12,7 @@ interface Message {
   createdAt: string;
   authorUsername: string | null;
   roomId: string;
+  editedAt: string | null;
 }
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
   isMuted: boolean;
   canViewHistory: boolean;
   onSubmitEdit: (messageId: string, content: string) => void;
+  onSubmitDelete: (messageId: string) => void;
   fetchHistory: (messageId: string) => Promise<MessageEdit[]>;
   onReport: (messageId: string) => Promise<void>;
 }
@@ -37,11 +39,13 @@ export default function MessageItem({
   isMuted,
   canViewHistory,
   onSubmitEdit,
+  onSubmitDelete,
   fetchHistory,
   onReport,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<MessageEdit[] | null>(
     null,
@@ -130,6 +134,9 @@ export default function MessageItem({
           <span className="text-muted">{authorLabel}:</span>
           <span className="flex-1">
             <MessageContent content={message.content} />
+            {message.editedAt && (
+              <span className="text-muted"> (düzenlendi)</span>
+            )}
           </span>
           {isMine && !isMuted && (
             <button
@@ -140,6 +147,40 @@ export default function MessageItem({
               düzenle
             </button>
           )}
+          {isMine &&
+            (isConfirmingDelete ? (
+              <>
+                <span className="text-red-400">emin misin?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSubmitDelete(message.id);
+                    setIsConfirmingDelete(false);
+                  }}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  evet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingDelete(false)}
+                  className="text-muted hover:text-neutral-400"
+                >
+                  vazgeç
+                </button>
+              </>
+            ) : (
+              // Mute kontrolü BİLEREK YOK - susturulmuş kullanıcı da kendi
+              // mesajını silebilmeli (silme yeni içerik EKLEMİYOR, sabit bir
+              // placeholder'a değiştiriyor, mute'un koruduğu risk yok).
+              <button
+                type="button"
+                onClick={() => setIsConfirmingDelete(true)}
+                className="text-muted hover:text-red-400"
+              >
+                sil
+              </button>
+            ))}
           {canViewHistory && (
             <button
               type="button"
