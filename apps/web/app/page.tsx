@@ -49,7 +49,7 @@ export default function Home() {
   if (isBootstrapping) {
     return (
       <main className="flex h-dvh items-center justify-center">
-        <p className="text-muted">yükleniyor...</p>
+        <p className="text-muted">loading...</p>
       </main>
     );
   }
