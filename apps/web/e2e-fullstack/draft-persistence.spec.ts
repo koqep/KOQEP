@@ -6,10 +6,10 @@ const DEV_USER_PASSWORD = "dev-local-only-password";
 const DRAFT_STORAGE_PREFIX = "koqep:draft:";
 
 async function loginAsDevUser(page: Page): Promise<void> {
-  await page.getByLabel("e-posta").fill(DEV_USER_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await page.getByLabel("email").fill(DEV_USER_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 }
@@ -55,7 +55,7 @@ test("taslak_oda_degistirince_kaybolmuyor_gonderilince_sadece_aktif_odanin_tasla
   await expect(generalButton).toBeVisible();
   await expect(metaButton).toBeVisible();
 
-  const input = page.getByPlaceholder("mesaj yaz...");
+  const input = page.getByPlaceholder("write a message...");
   const generalDraft = `general-taslak-${Date.now()}`;
   const metaDraft = `meta-taslak-${Date.now()}`;
 
@@ -70,7 +70,7 @@ test("taslak_oda_degistirince_kaybolmuyor_gonderilince_sadece_aktif_odanin_tasla
   await metaButton.click();
   await expect(input).toHaveValue(metaDraft);
 
-  await page.getByRole("button", { name: "gönder" }).click();
+  await page.getByRole("button", { name: "send" }).click();
   await expect(page.getByText(metaDraft)).toBeVisible({ timeout: 10000 });
   await expect(input).toHaveValue("");
 
@@ -86,15 +86,15 @@ test("taslak_localStorage_a_debounce_lu_yaziliyor_cikis_yapinca_tumu_silinir", a
   await page.goto("/");
   await loginAsDevUser(page);
 
-  const input = page.getByPlaceholder("mesaj yaz...");
+  const input = page.getByPlaceholder("write a message...");
   const draft = `localstorage-taslak-${Date.now()}`;
   await input.fill(draft);
 
   await waitForDraftStorageValue(page, draft);
   expect(await getDraftStorageKeys(page)).toHaveLength(1);
 
-  await page.getByRole("button", { name: "çıkış" }).click();
-  await expect(page.getByLabel("e-posta")).toBeVisible();
+  await page.getByRole("button", { name: "log out" }).click();
+  await expect(page.getByLabel("email")).toBeVisible();
 
   expect(await getDraftStorageKeys(page)).toHaveLength(0);
 });

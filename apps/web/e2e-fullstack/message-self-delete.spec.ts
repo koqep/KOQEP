@@ -5,10 +5,10 @@ const DEV_USER_EMAIL = "dev@koqep.local";
 const DEV_USER_PASSWORD = "dev-local-only-password";
 
 async function loginAsDevUser(page: Page): Promise<void> {
-  await page.getByLabel("e-posta").fill(DEV_USER_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await page.getByLabel("email").fill(DEV_USER_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 }
@@ -28,17 +28,17 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
 
   const originalContent = `silinecek-${Date.now()}`;
 
-  const input = pageA.getByPlaceholder("mesaj yaz...");
+  const input = pageA.getByPlaceholder("write a message...");
   await input.fill(originalContent);
-  await pageA.getByRole("button", { name: "gönder" }).click();
+  await pageA.getByRole("button", { name: "send" }).click();
 
   await expect(pageB.getByText(originalContent)).toBeVisible({
     timeout: 10000,
   });
 
   const rowOnA = pageA.locator("li", { hasText: originalContent });
-  await rowOnA.getByRole("button", { name: "sil" }).click();
-  await rowOnA.getByRole("button", { name: "evet" }).click();
+  await rowOnA.getByRole("button", { name: "delete" }).click();
+  await rowOnA.getByRole("button", { name: "yes" }).click();
 
   // message:updated yayını gerçek zamanlı olarak hem gönderen sekmede hem
   // karşı sekmede placeholder'ı göstermeli.
@@ -59,9 +59,9 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   // genelinde DEĞİL bu satıra ÖZGÜ kontrol - paylaşılan dev odasındaki
   // BAŞKA (bu testten bağımsız) düzenlenmiş mesajlar "(düzenlendi)" taşıyor
   // olabilir.
-  await expect(placeholderRowOnA.getByText("(düzenlendi)")).toHaveCount(0);
+  await expect(placeholderRowOnA.getByText("(edited)")).toHaveCount(0);
 
-  await placeholderRowOnA.getByRole("button", { name: "geçmiş" }).click();
+  await placeholderRowOnA.getByRole("button", { name: "history" }).click();
   await expect(pageA.getByText(originalContent)).toBeVisible({
     timeout: 10000,
   });

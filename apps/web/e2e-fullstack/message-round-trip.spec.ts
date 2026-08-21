@@ -7,10 +7,10 @@ const DEV_USER_EMAIL = "dev@koqep.local";
 const DEV_USER_PASSWORD = "dev-local-only-password";
 
 async function loginAsDevUser(page: Page): Promise<void> {
-  await page.getByLabel("e-posta").fill(DEV_USER_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await page.getByLabel("email").fill(DEV_USER_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 }
@@ -30,9 +30,9 @@ test("mesaj_diger_sekmede_gercek_zamanli_gorunur_ve_reload_sonrasi_kalicidir", a
 
   const content = `round-trip-${Date.now()}`;
 
-  const input = pageA.getByPlaceholder("mesaj yaz...");
+  const input = pageA.getByPlaceholder("write a message...");
   await input.fill(content);
-  await pageA.getByRole("button", { name: "gönder" }).click();
+  await pageA.getByRole("button", { name: "send" }).click();
 
   await expect(pageB.getByText(content)).toBeVisible({ timeout: 10000 });
 
@@ -42,10 +42,10 @@ test("mesaj_diger_sekmede_gercek_zamanli_gorunur_ve_reload_sonrasi_kalicidir", a
   // Mesajın hâlâ orada olması gerçekten DB kalıcılığını kanıtlıyor, geçici
   // local state'i değil.
   await pageB.reload();
-  await expect(pageB.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await expect(pageB.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
-  await expect(pageB.getByLabel("e-posta")).toHaveCount(0);
+  await expect(pageB.getByLabel("email")).toHaveCount(0);
   await expect(pageB.getByText(content)).toBeVisible({ timeout: 10000 });
 
   await contextA.close();

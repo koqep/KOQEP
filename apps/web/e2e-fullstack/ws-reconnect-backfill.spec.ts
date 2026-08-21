@@ -7,10 +7,10 @@ const DEV_USER_EMAIL = "dev@koqep.local";
 const DEV_USER_PASSWORD = "dev-local-only-password";
 
 async function loginAsDevUser(page: Page): Promise<void> {
-  await page.getByLabel("e-posta").fill(DEV_USER_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await page.getByLabel("email").fill(DEV_USER_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 }
@@ -36,13 +36,13 @@ test("baglanti_kesilip_geri_gelince_kacirilan_mesaj_reload_gerekmeden_geri_dolar
   // socket.io'nun kopukluğu algılayıp gönder butonunu disabled'a çevirmesini
   // bekle - bu, bağlantının gerçekten kesildiğinin ölçülebilir kanıtı
   // (sabit bir sleep yerine).
-  await expect(pageA.getByRole("button", { name: "gönder" })).toBeDisabled({
+  await expect(pageA.getByRole("button", { name: "send" })).toBeDisabled({
     timeout: 10000,
   });
 
   const content = `reconnect-backfill-${Date.now()}`;
-  await pageB.getByPlaceholder("mesaj yaz...").fill(content);
-  await pageB.getByRole("button", { name: "gönder" }).click();
+  await pageB.getByPlaceholder("write a message...").fill(content);
+  await pageB.getByRole("button", { name: "send" }).click();
   await expect(pageB.getByText(content)).toBeVisible({ timeout: 10000 });
 
   // pageA bağlantısı kesikken bu mesajı hiç görmemiş olmalı.

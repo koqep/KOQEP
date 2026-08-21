@@ -18,18 +18,18 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   const inviterPage = await inviterContext.newPage();
 
   await inviterPage.goto("/");
-  await inviterPage.getByLabel("e-posta").fill(DEV_USER_LEVELUP_EMAIL);
-  await inviterPage.getByLabel("şifre").fill(DEV_USER_LEVELUP_PASSWORD);
-  await inviterPage.getByRole("button", { name: "giriş yap" }).click();
-  await expect(inviterPage.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await inviterPage.getByLabel("email").fill(DEV_USER_LEVELUP_EMAIL);
+  await inviterPage.getByLabel("password").fill(DEV_USER_LEVELUP_PASSWORD);
+  await inviterPage.getByRole("button", { name: "log in" }).click();
+  await expect(inviterPage.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 
   // Seed eşiğin tam bir mesaj öncesine sıfırlıyor - bu tek gerçek mesaj
   // seviye atlatıp aynı transaction'da gerçek bir Invite satırı üretiyor.
-  const input = inviterPage.getByPlaceholder("mesaj yaz...");
+  const input = inviterPage.getByPlaceholder("write a message...");
   await input.fill(`seviye-atlama-${Date.now()}`);
-  await inviterPage.getByRole("button", { name: "gönder" }).click();
+  await inviterPage.getByRole("button", { name: "send" }).click();
   await expect(inviterPage.getByText(`seviye-atlama-`)).toBeVisible({
     timeout: 10000,
   });
@@ -46,26 +46,26 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   const newUserPage = await newUserContext.newPage();
   await newUserPage.goto("/");
   await newUserPage
-    .getByRole("button", { name: "hesabın yok mu? kayıt ol" })
+    .getByRole("button", { name: "don't have an account? sign up" })
     .click();
 
-  await newUserPage.getByLabel("davet kodu").fill(code as string);
+  await newUserPage.getByLabel("invite code").fill(code as string);
   await newUserPage
-    .getByLabel("e-posta")
+    .getByLabel("email")
     .fill(`invited-${Date.now()}@koqep.local`);
-  await newUserPage.getByLabel("kullanıcı adı").fill(`invited${Date.now()}`);
-  await newUserPage.getByLabel("şifre").fill("a-strong-new-password");
+  await newUserPage.getByLabel("username").fill(`invited${Date.now()}`);
+  await newUserPage.getByLabel("password").fill("a-strong-new-password");
   // M6 Slice A: signup formu artık zorunlu bir onay checkbox'ı içeriyor,
-  // işaretlenmeden "kayıt ol" disabled kalıyor.
+  // işaretlenmeden "sign up" disabled kalıyor.
   await newUserPage.getByRole("checkbox").check();
-  await newUserPage.getByRole("button", { name: "kayıt ol" }).click();
+  await newUserPage.getByRole("button", { name: "sign up" }).click();
 
   // Signup artık giriş yapmıyor (M2.5 Slice B) - bu testin kanıtladığı şey
   // "gerçek üretilen kod signup'ta gerçekten işe yarıyor mu", giriş akışı
   // ayrı bir testte (email-verification.spec.ts) kanıtlanıyor.
   await expect(
     newUserPage.getByText(
-      "Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.",
+      "Click the link sent to your email to complete your signup.",
     ),
   ).toBeVisible({ timeout: 15000 });
 
@@ -75,13 +75,13 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   // page.tsx mount'ta sessizce /auth/refresh dener) - tekrar login yerine
   // oturumun hâlâ açık olduğu doğrulanıyor (bkz. e2e/session-persistence.spec.ts).
   await inviterPage.reload();
-  await expect(inviterPage.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await expect(inviterPage.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
-  await expect(inviterPage.getByLabel("e-posta")).toHaveCount(0);
+  await expect(inviterPage.getByLabel("email")).toHaveCount(0);
   await inviterPage.getByRole("button", { name: "invites" }).click();
   await expect(
-    inviterPage.getByRole("listitem").first().getByText("kullanıldı"),
+    inviterPage.getByRole("listitem").first().getByText("used", { exact: true }),
   ).toBeVisible({ timeout: 10000 });
 
   await inviterContext.close();
