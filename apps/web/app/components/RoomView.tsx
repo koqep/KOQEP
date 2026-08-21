@@ -439,28 +439,28 @@ export default function RoomView({
             if (cancelled) return;
             setIsSending(false);
             if (payload?.code === "RATE_LIMITED") {
-              setSendError("Çok hızlı mesaj gönderiyorsun, biraz yavaşla.");
+              setSendError("You're sending messages too fast, slow down.");
             } else if (payload?.code === "MESSAGE_TOO_LONG") {
               setSendError(
-                `Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`,
+                `Message too long (max ${MAX_MESSAGE_LENGTH} characters).`,
               );
             } else if (payload?.code === "ROOM_ARCHIVED") {
               // Yedek yol - composer zaten activeRoom.status'a göre proaktif
               // devre dışı kalıyor, bu sadece WS round-trip'ini bekleyen
               // nadir bir yarış durumu için.
-              setSendError("Bu oda arşivlenmiş, sadece okunabilir.");
+              setSendError("This room is archived, read-only.");
             } else if (payload?.code === "MUTED") {
               // Savunmacı senkronizasyon: yeniden bağlanma sonrası myProfile
               // bayat kalmış olabilir (bootstrap'te bir kez çekiliyor,
               // reconnect'te yenilenmiyor) - ilk gönderim denemesi burada
               // kendi kendine düzelir.
-              setSendError("Susturuldun, şu an mesaj gönderemezsin.");
+              setSendError("You're muted, you can't send messages right now.");
               if (payload.mutedUntil) {
                 const mutedUntil = payload.mutedUntil;
                 setMyProfile((prev) => (prev ? { ...prev, mutedUntil } : prev));
               }
             } else {
-              setSendError("Mesaj gönderilemedi.");
+              setSendError("Message could not be sent.");
             }
           },
         );
@@ -552,7 +552,7 @@ export default function RoomView({
       return;
     }
     if (content.length > MAX_MESSAGE_LENGTH) {
-      setSendError(`Mesaj çok uzun (maksimum ${MAX_MESSAGE_LENGTH} karakter).`);
+      setSendError(`Message too long (max ${MAX_MESSAGE_LENGTH} characters).`);
       return;
     }
 
@@ -569,7 +569,7 @@ export default function RoomView({
         .timeout(8000)
         .emitWithAck("message:send", { content, roomName: activeRoom.name });
     } catch {
-      setSendError("Mesaj gönderilemedi, tekrar dene.");
+      setSendError("Message could not be sent, try again.");
     } finally {
       setIsSending(false);
     }
@@ -589,7 +589,7 @@ export default function RoomView({
   }
 
   function handleReportMessage(messageId: string): Promise<void> {
-    if (!activeRoom) return Promise.reject(new Error("aktif oda yok"));
+    if (!activeRoom) return Promise.reject(new Error("no active room"));
     return reportMessage(accessToken, activeRoom.name, messageId);
   }
 

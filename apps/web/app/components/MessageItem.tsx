@@ -27,7 +27,7 @@ interface Props {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("tr-TR", {
+  return new Date(iso).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -91,13 +91,13 @@ export default function MessageItem({
       const entries = await fetchHistory(message.id);
       setHistoryEntries(entries);
     } catch {
-      setHistoryError("Geçmiş yüklenemedi.");
+      setHistoryError("Could not load history.");
     }
   }
 
   const authorLabel = isMine
-    ? "sen"
-    : (message.authorUsername ?? "silinmiş kullanıcı");
+    ? "you"
+    : (message.authorUsername ?? "deleted user");
 
   return (
     <li className="text-neutral-200">
@@ -108,7 +108,7 @@ export default function MessageItem({
         >
           <input
             type="text"
-            aria-label="mesajı düzenle"
+            aria-label="edit message"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             // eslint-disable-next-line jsx-a11y/no-autofocus -- "düzenle"ye tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
@@ -119,14 +119,14 @@ export default function MessageItem({
             type="submit"
             className="text-muted hover:text-neutral-400"
           >
-            kaydet
+            save
           </button>
           <button
             type="button"
             onClick={() => setIsEditing(false)}
             className="text-muted hover:text-neutral-400"
           >
-            iptal
+            cancel
           </button>
         </form>
       ) : (
@@ -135,7 +135,7 @@ export default function MessageItem({
           <span className="flex-1">
             <MessageContent content={message.content} />
             {message.editedAt && (
-              <span className="text-muted"> (düzenlendi)</span>
+              <span className="text-muted"> (edited)</span>
             )}
           </span>
           {isMine && !isMuted && (
@@ -144,13 +144,13 @@ export default function MessageItem({
               onClick={startEditing}
               className="text-muted hover:text-neutral-400"
             >
-              düzenle
+              edit
             </button>
           )}
           {isMine &&
             (isConfirmingDelete ? (
               <>
-                <span className="text-red-400">emin misin?</span>
+                <span className="text-red-400">are you sure?</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -159,14 +159,14 @@ export default function MessageItem({
                   }}
                   className="text-red-400 hover:text-red-300"
                 >
-                  evet
+                  yes
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsConfirmingDelete(false)}
                   className="text-muted hover:text-neutral-400"
                 >
-                  vazgeç
+                  cancel
                 </button>
               </>
             ) : (
@@ -178,7 +178,7 @@ export default function MessageItem({
                 onClick={() => setIsConfirmingDelete(true)}
                 className="text-muted hover:text-red-400"
               >
-                sil
+                delete
               </button>
             ))}
           {canViewHistory && (
@@ -187,12 +187,12 @@ export default function MessageItem({
               onClick={() => void toggleHistory()}
               className="text-muted hover:text-neutral-400"
             >
-              {isHistoryOpen ? "geçmişi gizle" : "geçmiş"}
+              {isHistoryOpen ? "hide history" : "history"}
             </button>
           )}
           {!isMine &&
             (reportState === "sent" ? (
-              <span className="text-muted">raporlandı</span>
+              <span className="text-muted">reported</span>
             ) : (
               <button
                 type="button"
@@ -201,10 +201,10 @@ export default function MessageItem({
                 className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
               >
                 {reportState === "error"
-                  ? "tekrar dene"
+                  ? "try again"
                   : reportState === "sending"
-                    ? "raporlanıyor..."
-                    : "raporla"}
+                    ? "reporting..."
+                    : "report"}
               </button>
             ))}
         </div>
@@ -215,9 +215,9 @@ export default function MessageItem({
           {historyError ? (
             <p className="text-red-400">{historyError}</p>
           ) : historyEntries === null ? (
-            <p className="text-muted">yükleniyor...</p>
+            <p className="text-muted">loading...</p>
           ) : historyEntries.length === 0 ? (
-            <p className="text-muted">düzenleme geçmişi yok</p>
+            <p className="text-muted">no edit history</p>
           ) : (
             <ul className="space-y-0.5">
               {historyEntries.map((entry, index) => (

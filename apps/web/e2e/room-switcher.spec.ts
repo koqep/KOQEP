@@ -35,9 +35,9 @@ test("oda_degistirince_mesaj_listesi_yeni_odaya_gore_guncellenir", async ({
 
   await page.goto("/");
 
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
   const generalButton = page.getByRole("button", { name: "#general" });
   const metaButton = page.getByRole("button", { name: "#meta" });

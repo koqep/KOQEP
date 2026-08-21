@@ -5,10 +5,10 @@ const DEV_USER_EMAIL = "dev@koqep.local";
 const DEV_USER_PASSWORD = "dev-local-only-password";
 
 async function loginAsDevUser(page: Page): Promise<void> {
-  await page.getByLabel("e-posta").fill(DEV_USER_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await page.getByLabel("email").fill(DEV_USER_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 }
@@ -27,9 +27,9 @@ test("mesaj_sadece_gonderildigi_odada_gorunur_diger_odaya_sizmaz", async ({
   const content = `oda-izolasyon-${Date.now()}`;
 
   // #general aktifken gönder (varsayılan aktif oda).
-  const input = page.getByPlaceholder("mesaj yaz...");
+  const input = page.getByPlaceholder("write a message...");
   await input.fill(content);
-  await page.getByRole("button", { name: "gönder" }).click();
+  await page.getByRole("button", { name: "send" }).click();
   await expect(page.getByText(content)).toBeVisible({ timeout: 10000 });
 
   // #meta'ya geçince görünmemeli - roomId filtrelemesi ve ayrı geçmiş

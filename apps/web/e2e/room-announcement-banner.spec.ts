@@ -8,10 +8,10 @@ async function login(page: import("@playwright/test").Page) {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
 test("oda_duyurusu_varsa_banner_gorunur_ve_icindeki_link_tiklanabilir", async ({
@@ -33,7 +33,7 @@ test("oda_duyurusu_varsa_banner_gorunur_ve_icindeki_link_tiklanabilir", async ({
   );
   await login(page);
 
-  await expect(page.getByText("duyuru:")).toBeVisible();
+  await expect(page.getByText("announcement:")).toBeVisible();
   await expect(page.getByText("bkz.", { exact: false })).toBeVisible();
   const link = page.getByRole("link", { name: "https://koqep.dev/kurallar" });
   await expect(link).toHaveAttribute("href", "https://koqep.dev/kurallar");
@@ -56,5 +56,5 @@ test("oda_duyurusu_yoksa_banner_gorunmez", async ({ page }) => {
   );
   await login(page);
 
-  await expect(page.getByText("duyuru:")).toHaveCount(0);
+  await expect(page.getByText("announcement:")).toHaveCount(0);
 });

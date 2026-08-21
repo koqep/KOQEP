@@ -9,10 +9,10 @@ test("giris_formu_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   await mockAuthRefreshUnavailable(page);
   await page.goto("/");
 
-  await expect(page.getByLabel("e-posta")).toBeInViewport();
-  await expect(page.getByLabel("şifre")).toBeInViewport();
+  await expect(page.getByLabel("email")).toBeInViewport();
+  await expect(page.getByLabel("password")).toBeInViewport();
   await expect(
-    page.getByRole("button", { name: "giriş yap" }),
+    page.getByRole("button", { name: "log in" }),
   ).toBeInViewport();
 });
 
@@ -28,16 +28,16 @@ test("oda_basligi_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 
   await expect(
     page.getByRole("button", { name: "#genel" }),
   ).toBeInViewport();
   await expect(
-    page.getByRole("button", { name: "+ yeni oda" }),
+    page.getByRole("button", { name: "+ new room" }),
   ).toBeInViewport();
-  await expect(page.getByRole("button", { name: "çıkış" })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "log out" })).toBeInViewport();
 });

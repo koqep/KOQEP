@@ -53,13 +53,13 @@ test("daha_eski_mesajlari_yukle_butonu_calisir_ve_tukenince_kaybolur", async ({
   });
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
   await expect(page.getByText("yeni-mesaj")).toBeVisible();
   const loadOlderButton = page.getByRole("button", {
-    name: "daha eski mesajları yükle",
+    name: "load older messages",
   });
   await expect(loadOlderButton).toBeVisible();
   await expect(page.getByText("eski-mesaj")).toHaveCount(0);

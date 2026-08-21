@@ -35,9 +35,9 @@ async function login(
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByText("test mesajı")).toBeVisible();
 }
 
@@ -46,16 +46,16 @@ test("kendi_mesajinda_duzenle_ve_gecmis_butonlari_gorunur_duzenle_formu_dolu_aci
 }) => {
   await login(page, "user", "test");
 
-  await expect(page.getByRole("button", { name: "düzenle" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "geçmiş" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "edit" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "history" })).toBeVisible();
 
-  await page.getByRole("button", { name: "düzenle" }).click();
+  await page.getByRole("button", { name: "edit" }).click();
 
-  await expect(page.getByLabel("mesajı düzenle")).toHaveValue("test mesajı");
+  await expect(page.getByLabel("edit message")).toHaveValue("test mesajı");
 
-  await page.getByRole("button", { name: "iptal" }).click();
+  await page.getByRole("button", { name: "cancel" }).click();
 
-  await expect(page.getByRole("button", { name: "düzenle" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "edit" })).toBeVisible();
 });
 
 test("baskasinin_mesajinda_sirali_kullanici_ne_duzenle_ne_gecmis_gorur", async ({
@@ -63,8 +63,8 @@ test("baskasinin_mesajinda_sirali_kullanici_ne_duzenle_ne_gecmis_gorur", async (
 }) => {
   await login(page, "user", "baskasi");
 
-  await expect(page.getByRole("button", { name: "düzenle" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "geçmiş" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "history" })).toHaveCount(0);
 });
 
 test("baskasinin_mesajinda_moderator_gecmisi_gorur_ama_duzenleyemez", async ({
@@ -72,8 +72,8 @@ test("baskasinin_mesajinda_moderator_gecmisi_gorur_ama_duzenleyemez", async ({
 }) => {
   await login(page, "moderator", "baskasi");
 
-  await expect(page.getByRole("button", { name: "düzenle" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "geçmiş" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "history" })).toBeVisible();
 });
 
 test("editedAt_dolu_mesajda_duzenlendi_gostergesi_gorunur_bosta_gorunmez", async ({
@@ -117,16 +117,16 @@ test("editedAt_dolu_mesajda_duzenlendi_gostergesi_gorunur_bosta_gorunmez", async
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
   await expect(
-    page.getByText("duzenlenmis mesaj (düzenlendi)"),
+    page.getByText("duzenlenmis mesaj (edited)"),
   ).toBeVisible();
   await expect(page.getByText("duzenlenmemis mesaj")).toBeVisible();
   await expect(
-    page.getByText("duzenlenmemis mesaj (düzenlendi)"),
+    page.getByText("duzenlenmemis mesaj (edited)"),
   ).toHaveCount(0);
 });
 
@@ -140,7 +140,7 @@ test("gecmis_butonuna_basinca_onceki_icerik_listelenir", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "geçmiş" }).click();
+  await page.getByRole("button", { name: "history" }).click();
 
   await expect(page.getByText("eski içerik")).toBeVisible();
 });

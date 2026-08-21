@@ -10,10 +10,10 @@ async function loginWithoutTotp(page: import("@playwright/test").Page) {
   await mockRoomEndpoints(page);
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
 async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
@@ -40,24 +40,24 @@ async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
   await mockRoomEndpoints(page);
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await page.getByLabel("totp kodu").fill("123456");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByLabel("totp code").fill("123456");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
 test("totp_kapaliyken_panel_kurulum_baslat_gosterir", async ({ page }) => {
   await loginWithoutTotp(page);
 
-  await page.getByRole("button", { name: "iki adımlı doğrulama" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
 
   await expect(
-    page.getByRole("button", { name: "kurulumu başlat" }),
+    page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "TOTP'yi kapat" }),
+    page.getByRole("button", { name: "turn off TOTP" }),
   ).toHaveCount(0);
 });
 
@@ -75,12 +75,12 @@ test("kurulum_baslatinca_secret_ve_qr_ve_kod_alani_gorunur", async ({
     }),
   );
 
-  await page.getByRole("button", { name: "iki adımlı doğrulama" }).click();
-  await page.getByRole("button", { name: "kurulumu başlat" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "start setup" }).click();
 
   await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
-  await expect(page.getByLabel("totp kodu")).toBeVisible();
-  const qrImage = page.getByAltText("TOTP QR kodu");
+  await expect(page.getByLabel("totp code")).toBeVisible();
+  const qrImage = page.getByAltText("TOTP QR code");
   await expect(qrImage).toBeVisible();
   await expect(qrImage).toHaveAttribute("src", /^data:image\//);
 });
@@ -105,25 +105,25 @@ test("dogru_kodla_etkinlestirince_kurtarma_kodlari_gosterilir_sonra_kapat_formun
     route.fulfill({ json: recoveryCodes }),
   );
 
-  await page.getByRole("button", { name: "iki adımlı doğrulama" }).click();
-  await page.getByRole("button", { name: "kurulumu başlat" }).click();
-  await page.getByLabel("totp kodu").fill("654321");
-  await page.getByRole("button", { name: "etkinleştir" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "start setup" }).click();
+  await page.getByLabel("totp code").fill("654321");
+  await page.getByRole("button", { name: "enable" }).click();
 
   await expect(
-    page.getByText("Bu kodlar bir daha gösterilmeyecek."),
+    page.getByText("These codes won't be shown again."),
   ).toBeVisible();
   for (const code of recoveryCodes) {
     await expect(page.getByText(code)).toBeVisible();
   }
 
-  await page.getByRole("button", { name: "kaydettim" }).click();
+  await page.getByRole("button", { name: "saved it" }).click();
 
   await expect(
-    page.getByRole("button", { name: "TOTP'yi kapat" }),
+    page.getByRole("button", { name: "turn off TOTP" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "kurulumu başlat" }),
+    page.getByRole("button", { name: "start setup" }),
   ).toHaveCount(0);
 });
 
@@ -144,15 +144,15 @@ test("yanlis_kod_hata_gosterir_kurulum_yeniden_baslamaz", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "iki adımlı doğrulama" }).click();
-  await page.getByRole("button", { name: "kurulumu başlat" }).click();
-  await page.getByLabel("totp kodu").fill("000000");
-  await page.getByRole("button", { name: "etkinleştir" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "start setup" }).click();
+  await page.getByLabel("totp code").fill("000000");
+  await page.getByRole("button", { name: "enable" }).click();
 
   await expect(page.getByText("Geçersiz TOTP kodu.")).toBeVisible();
   await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "etkinleştir" }),
+    page.getByRole("button", { name: "enable" }),
   ).toBeVisible();
 });
 
@@ -164,28 +164,28 @@ test("totp_aciksa_panel_dogrudan_kapatma_formuna_gecer_basarili_kapatma_sonrasi_
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "iki adımlı doğrulama" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
 
   await expect(
-    page.getByRole("button", { name: "TOTP'yi kapat" }),
+    page.getByRole("button", { name: "turn off TOTP" }),
   ).toBeVisible();
-  await page.getByLabel("totp kodu").fill("654321");
-  await page.getByRole("button", { name: "TOTP'yi kapat" }).click();
+  await page.getByLabel("totp code").fill("654321");
+  await page.getByRole("button", { name: "turn off TOTP" }).click();
 
   await expect(
-    page.getByRole("button", { name: "kurulumu başlat" }),
+    page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
 });
 
 test("kapat_butonu_sohbet_ekranina_doner", async ({ page }) => {
   await loginWithoutTotp(page);
 
-  await page.getByRole("button", { name: "iki adımlı doğrulama" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
   await expect(
-    page.getByRole("button", { name: "kurulumu başlat" }),
+    page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "kapat" }).click();
+  await page.getByRole("button", { name: "close" }).click();
 
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 });

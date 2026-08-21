@@ -36,9 +36,9 @@ async function login(
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByText("test mesajı")).toBeVisible();
 }
 
@@ -46,7 +46,7 @@ test("moderator_olmayan_moderasyon_butonunu_gormez", async ({ page }) => {
   await login(page, "user", "baskasi");
 
   await expect(
-    page.getByRole("button", { name: "moderasyon" }),
+    page.getByRole("button", { name: "moderation" }),
   ).toHaveCount(0);
 });
 
@@ -54,7 +54,7 @@ test("kendi_mesajinda_raporla_butonu_gorunmez_baskasinin_mesajinda_gorunur", asy
   page,
 }) => {
   await login(page, "user", "test");
-  await expect(page.getByRole("button", { name: "raporla" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "report" })).toHaveCount(0);
 });
 
 test("baskasinin_mesajini_raporlayinca_onay_gosterir", async ({ page }) => {
@@ -65,9 +65,9 @@ test("baskasinin_mesajini_raporlayinca_onay_gosterir", async ({ page }) => {
     await route.fulfill({ json: { ok: true } });
   });
 
-  await page.getByRole("button", { name: "raporla" }).click();
+  await page.getByRole("button", { name: "report" }).click();
 
-  await expect(page.getByText("raporlandı")).toBeVisible();
+  await expect(page.getByText("reported")).toBeVisible();
   // reason boşsa gövde hiç gönderilmiyor (lib/api.ts'in reportMessage'ı) -
   // apps/api tarafında bu tam da dto undefined olduğunda 500 atan gerçek
   // bir bug'ı ortaya çıkarmıştı (bkz. messages.controller.ts).
@@ -103,18 +103,18 @@ test("moderator_kuyrugu_acar_icerik_kaldirir_ve_listeden_kaybolur", async ({
     },
   );
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
   await expect(page.getByText("saldırgan içerik")).toBeVisible();
   await expect(page.getByText("kötüye kullanım")).toBeVisible();
 
-  await page.getByRole("button", { name: "içeriği kaldır" }).click();
-  await page.getByLabel("moderatör sebebi").fill("kural ihlali");
-  await page.getByRole("button", { name: "onayla" }).click();
+  await page.getByRole("button", { name: "remove content" }).click();
+  await page.getByLabel("moderator reason").fill("kural ihlali");
+  await page.getByRole("button", { name: "confirm" }).click();
 
   expect(removeContentBody).toEqual({ reason: "kural ihlali" });
   await expect(page.getByText("saldırgan içerik")).toHaveCount(0);
-  await expect(page.getByText("açık rapor yok")).toBeVisible();
+  await expect(page.getByText("no open reports")).toBeVisible();
 });
 
 test("moderator_raporu_reddedebilir", async ({ page }) => {
@@ -139,12 +139,12 @@ test("moderator_raporu_reddedebilir", async ({ page }) => {
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
   await expect(page.getByText("masum içerik")).toBeVisible();
 
-  await page.getByRole("button", { name: "reddet" }).click();
+  await page.getByRole("button", { name: "dismiss" }).click();
 
-  await expect(page.getByText("açık rapor yok")).toBeVisible();
+  await expect(page.getByText("no open reports")).toBeVisible();
 });
 
 test("acik_rapor_yoksa_bos_durum_gosterir", async ({ page }) => {
@@ -153,9 +153,9 @@ test("acik_rapor_yoksa_bos_durum_gosterir", async ({ page }) => {
     route.fulfill({ json: [] }),
   );
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  await expect(page.getByText("açık rapor yok")).toBeVisible();
+  await expect(page.getByText("no open reports")).toBeVisible();
 });
 
 test("susturulmus_kullanici_composer_devre_disi_ve_bildirim_gorur_kendi_mesajinda_duzenle_butonu_yok", async ({
@@ -164,11 +164,11 @@ test("susturulmus_kullanici_composer_devre_disi_ve_bildirim_gorur_kendi_mesajind
   const mutedUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   await login(page, "user", "test", mutedUntil);
 
-  await expect(page.getByText("susturuldun", { exact: false })).toBeVisible();
+  await expect(page.getByText("you're muted", { exact: false })).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "mesaj yaz..." }),
+    page.getByRole("textbox", { name: "write a message..." }),
   ).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "düzenle" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
 });
 
 test("moderator_rapor_satirinda_sustur_ve_susturmayi_kaldir_butonlarini_gorur_ve_dogru_kullaniciyi_hedefler", async ({
@@ -198,17 +198,17 @@ test("moderator_rapor_satirinda_sustur_ve_susturmayi_kaldir_butonlarini_gorur_ve
     await route.fulfill({ json: { mutedUntil: new Date().toISOString() } });
   });
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
   await expect(
-    page.getByRole("button", { name: "sustur (24 saat)" }),
+    page.getByRole("button", { name: "mute (24h)" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "susturmayı kaldır" }),
+    page.getByRole("button", { name: "unmute" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "sustur (24 saat)" }).click();
-  await page.getByLabel("moderatör sebebi").fill("kural ihlali");
-  await page.getByRole("button", { name: "onayla" }).click();
+  await page.getByRole("button", { name: "mute (24h)" }).click();
+  await page.getByLabel("moderator reason").fill("kural ihlali");
+  await page.getByRole("button", { name: "confirm" }).click();
 
   expect(muteRequestBody).toEqual({
     durationHours: 24,
@@ -238,11 +238,11 @@ test("silinmis_yazarli_raporda_sustur_butonlari_gorunmez", async ({
     }),
   );
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  await expect(page.getByRole("button", { name: /^sustur/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^mute/ })).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "susturmayı kaldır" }),
+    page.getByRole("button", { name: "unmute" }),
   ).toHaveCount(0);
 });
 
@@ -265,10 +265,10 @@ test("coklu_rapor_flagli_raporda_uyari_metni_gorunur", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
   await expect(
-    page.getByText("[çoklu rapor — 3 farklı kullanıcı]"),
+    page.getByText("[multiple reports — 3 different users]"),
   ).toBeVisible();
 });
 
@@ -291,9 +291,9 @@ test("flagli_olmayan_raporda_uyari_metni_gorunmez", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "moderasyon" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
 
-  await expect(page.getByText("çoklu rapor", { exact: false })).toHaveCount(
+  await expect(page.getByText("multiple reports", { exact: false })).toHaveCount(
     0,
   );
 });

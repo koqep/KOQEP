@@ -3,8 +3,8 @@ import { test, expect } from "@playwright/test";
 test("token_yoksa_gecersiz_baglanti_mesaji_gosterir", async ({ page }) => {
   await page.goto("/reset-password");
 
-  await expect(page.getByText("Geçersiz bağlantı.")).toBeVisible();
-  await expect(page.getByLabel("yeni şifre")).toHaveCount(0);
+  await expect(page.getByText("Invalid link.")).toBeVisible();
+  await expect(page.getByLabel("new password")).toHaveCount(0);
 });
 
 test("gecerli_token_ile_sifre_guncellenince_basari_mesaji_gosterir", async ({
@@ -15,11 +15,11 @@ test("gecerli_token_ile_sifre_guncellenince_basari_mesaji_gosterir", async ({
   );
 
   await page.goto("/reset-password?token=fake-token");
-  await page.getByLabel("yeni şifre").fill("yeni-guclu-sifre");
-  await page.getByRole("button", { name: "şifreyi güncelle" }).click();
+  await page.getByLabel("new password").fill("yeni-guclu-sifre");
+  await page.getByRole("button", { name: "update password" }).click();
 
-  await expect(page.getByText("Şifren güncellendi.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "girişe dön" })).toBeVisible();
+  await expect(page.getByText("Your password has been updated.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "back to login" })).toBeVisible();
 });
 
 test("gecersiz_token_hata_mesajini_gosterir", async ({ page }) => {
@@ -31,8 +31,8 @@ test("gecersiz_token_hata_mesajini_gosterir", async ({ page }) => {
   );
 
   await page.goto("/reset-password?token=expired-token");
-  await page.getByLabel("yeni şifre").fill("yeni-guclu-sifre");
-  await page.getByRole("button", { name: "şifreyi güncelle" }).click();
+  await page.getByLabel("new password").fill("yeni-guclu-sifre");
+  await page.getByRole("button", { name: "update password" }).click();
 
   await expect(
     page.getByText("Bağlantı geçersiz ya da süresi dolmuş."),

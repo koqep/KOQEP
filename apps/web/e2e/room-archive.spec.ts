@@ -21,24 +21,24 @@ test("arsivi_goster_toggle_ile_arsivlenmis_oda_gorunur_ve_salt_okunur_composer_g
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "#eski-oda" }),
   ).not.toBeVisible();
 
-  await page.getByRole("button", { name: "arşivi göster" }).click();
+  await page.getByRole("button", { name: "show archived" }).click();
 
   const archivedButton = page.getByRole("button", {
-    name: "#eski-oda (arşiv)",
+    name: "#eski-oda (archived)",
   });
   await expect(archivedButton).toBeVisible();
 
   await archivedButton.click();
 
-  await expect(page.getByText("bu oda arşivlenmiş, sadece okunabilir")).toBeVisible();
-  await expect(page.getByPlaceholder("mesaj yaz...")).not.toBeVisible();
+  await expect(page.getByText("this room is archived, read-only")).toBeVisible();
+  await expect(page.getByPlaceholder("write a message...")).not.toBeVisible();
 });

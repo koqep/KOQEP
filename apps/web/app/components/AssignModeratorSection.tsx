@@ -40,7 +40,7 @@ export default function AssignModeratorSection({ accessToken }: Props) {
         totpRequired ? totpCode : undefined,
       );
       setAssignSuccess(
-        result.alreadyModerator ? "zaten moderatördü" : "moderatör atandı",
+        result.alreadyModerator ? "already a moderator" : "moderator assigned",
       );
       setAssignEmail("");
       setPassword("");
@@ -53,7 +53,7 @@ export default function AssignModeratorSection({ accessToken }: Props) {
         setAssignError(
           err instanceof ApiError
             ? err.message
-            : "Bağlantı hatası. Tekrar dene.",
+            : "Connection error. Try again.",
         );
       }
     } finally {
@@ -70,13 +70,13 @@ export default function AssignModeratorSection({ accessToken }: Props) {
       const result = await revokeModerator(accessToken, revokeEmail);
       setRevokeSuccess(
         result.wasNotModerator
-          ? "zaten moderatör değildi"
-          : "moderatör yetkisi kaldırıldı",
+          ? "was not a moderator"
+          : "moderator role revoked",
       );
       setRevokeEmail("");
     } catch (err) {
       setRevokeError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setIsRevoking(false);
@@ -86,13 +86,13 @@ export default function AssignModeratorSection({ accessToken }: Props) {
   return (
     <section className="mt-8 border-t border-neutral-800 pt-4">
       <h3 className="mb-4 text-neutral-400">
-        <span className="text-muted">#</span> moderatörler
+        <span className="text-muted">#</span> moderators
       </h3>
 
       <form onSubmit={handleAssign} className="mb-6 flex flex-col gap-3">
-        <p className="text-muted">moderatör ata</p>
+        <p className="text-muted">assign moderator</p>
         <label className="flex flex-col gap-1 text-muted">
-          e-posta
+          email
           <input
             type="email"
             value={assignEmail}
@@ -102,7 +102,7 @@ export default function AssignModeratorSection({ accessToken }: Props) {
           />
         </label>
         <label className="flex flex-col gap-1 text-muted">
-          kendi şifren
+          your password
           <input
             type="password"
             value={password}
@@ -113,7 +113,7 @@ export default function AssignModeratorSection({ accessToken }: Props) {
         </label>
         {totpRequired && (
           <label className="flex flex-col gap-1 text-muted">
-            totp kodu
+            totp code
             <input
               type="text"
               value={totpCode}
@@ -132,14 +132,14 @@ export default function AssignModeratorSection({ accessToken }: Props) {
           disabled={isAssigning}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          ata
+          assign
         </button>
       </form>
 
       <form onSubmit={handleRevoke} className="flex flex-col gap-3">
-        <p className="text-muted">moderatör yetkisini kaldır</p>
+        <p className="text-muted">revoke moderator</p>
         <label className="flex flex-col gap-1 text-muted">
-          e-posta
+          email
           <input
             type="email"
             value={revokeEmail}
@@ -155,7 +155,7 @@ export default function AssignModeratorSection({ accessToken }: Props) {
           disabled={isRevoking}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          kaldır
+          revoke
         </button>
       </form>
     </section>

@@ -26,7 +26,7 @@ export default function ResetPasswordView() {
       setSuccess(true);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Bağlantı hatası. Tekrar dene.",
+        err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -36,9 +36,9 @@ export default function ResetPasswordView() {
   if (!token) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">Geçersiz bağlantı.</p>
+        <p className="text-neutral-400">Invalid link.</p>
         <Link href="/" className="mt-4 text-muted hover:text-neutral-400">
-          girişe dön
+          back to login
         </Link>
       </main>
     );
@@ -47,9 +47,9 @@ export default function ResetPasswordView() {
   if (success) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">Şifren güncellendi.</p>
+        <p className="text-neutral-400">Your password has been updated.</p>
         <Link href="/" className="mt-4 text-muted hover:text-neutral-400">
-          girişe dön
+          back to login
         </Link>
       </main>
     );
@@ -58,11 +58,11 @@ export default function ResetPasswordView() {
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
       <h1 className="mb-6 text-neutral-400">
-        <span className="text-muted">#</span> yeni şifre
+        <span className="text-muted">#</span> new password
       </h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
-          yeni şifre
+          new password
           <input
             type="password"
             value={newPassword}
@@ -79,7 +79,7 @@ export default function ResetPasswordView() {
           disabled={isSubmitting}
           className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          şifreyi güncelle
+          update password
         </button>
       </form>
     </main>

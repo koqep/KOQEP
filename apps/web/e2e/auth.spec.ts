@@ -19,53 +19,53 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
   );
 
   await page.goto("/");
-  await page.getByRole("button", { name: "hesabın yok mu? kayıt ol" }).click();
+  await page.getByRole("button", { name: "don't have an account? sign up" }).click();
 
-  await page.getByLabel("davet kodu").fill("DEV-INVITE-1");
-  await page.getByLabel("e-posta").fill("yeni@koqep.local");
-  await page.getByLabel("kullanıcı adı").fill("yenikullanici");
-  await page.getByLabel("şifre").fill("a-strong-password");
+  await page.getByLabel("invite code").fill("DEV-INVITE-1");
+  await page.getByLabel("email").fill("yeni@koqep.local");
+  await page.getByLabel("username").fill("yenikullanici");
+  await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "kayıt ol" }).click();
+  await page.getByRole("button", { name: "sign up" }).click();
 
   // Signup artık giriş yapmıyor (M2.5 Slice B) - e-postayı doğrulaman
   // gerektiğini söyleyen nötr bir mesaj görünür, sohbet ekranına geçmez.
   await expect(
     page.getByText(
-      "Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.",
+      "Click the link sent to your email to complete your signup.",
     ),
   ).toBeVisible();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toHaveCount(0);
+  await expect(page.getByPlaceholder("write a message...")).toHaveCount(0);
 });
 
 test("onay_kutusu_isaretlenmeden_kayit_butonu_devre_disi_kalir", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "hesabın yok mu? kayıt ol" }).click();
+  await page.getByRole("button", { name: "don't have an account? sign up" }).click();
 
-  await page.getByLabel("davet kodu").fill("DEV-INVITE-1");
-  await page.getByLabel("e-posta").fill("yeni@koqep.local");
-  await page.getByLabel("kullanıcı adı").fill("yenikullanici");
-  await page.getByLabel("şifre").fill("a-strong-password");
+  await page.getByLabel("invite code").fill("DEV-INVITE-1");
+  await page.getByLabel("email").fill("yeni@koqep.local");
+  await page.getByLabel("username").fill("yenikullanici");
+  await page.getByLabel("password").fill("a-strong-password");
 
-  await expect(page.getByRole("button", { name: "kayıt ol" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "sign up" })).toBeDisabled();
   await page.getByRole("checkbox").check();
-  await expect(page.getByRole("button", { name: "kayıt ol" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "sign up" })).toBeEnabled();
 });
 
 test("kayit_ekraninda_kullanim_sartlari_ve_gizlilik_linkleri_dogru_hedefe_gider", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "hesabın yok mu? kayıt ol" }).click();
+  await page.getByRole("button", { name: "don't have an account? sign up" }).click();
 
-  await expect(page.getByRole("link", { name: "Kullanım Şartları" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
     "href",
     "/terms",
   );
   await expect(
-    page.getByRole("link", { name: "Gizlilik Politikası" }),
+    page.getByRole("link", { name: "Privacy Policy" }),
   ).toHaveAttribute("href", "/privacy");
 });
 
@@ -81,9 +81,9 @@ test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("dogrulanmamis@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("dogrulanmamis@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
   await expect(
     page.getByText("E-postanı doğrulaman gerekiyor."),
@@ -104,12 +104,12 @@ test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("yanlis-sifre");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("yanlis-sifre");
+  await page.getByRole("button", { name: "log in" }).click();
 
   await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible();
-  await expect(page.getByLabel("totp kodu")).toHaveCount(0);
+  await expect(page.getByLabel("totp code")).toHaveCount(0);
 });
 
 test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
@@ -137,16 +137,16 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   await mockRoomEndpoints(page);
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
-  const totpField = page.getByLabel("totp kodu");
+  const totpField = page.getByLabel("totp code");
   await expect(totpField).toBeVisible();
   await totpField.fill("123456");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByRole("button", { name: "log in" }).click();
 
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
   expect(loginCallCount).toBe(2);
 });
 
@@ -156,16 +156,16 @@ test("sifremi_unuttum_gonderince_notr_mesaj_gosterir", async ({ page }) => {
   );
 
   await page.goto("/");
-  await page.getByRole("button", { name: "şifreni mi unuttun?" }).click();
+  await page.getByRole("button", { name: "forgot your password?" }).click();
 
-  await expect(page.getByLabel("şifre")).toHaveCount(0);
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByRole("button", { name: "gönder" }).click();
+  await expect(page.getByLabel("password")).toHaveCount(0);
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByRole("button", { name: "send" }).click();
 
   await expect(
-    page.getByText("Bu e-posta kayıtlıysa bir sıfırlama bağlantısı gönderildi."),
+    page.getByText("If this email is registered, a reset link has been sent."),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "girişe dön" }).click();
-  await expect(page.getByRole("button", { name: "giriş yap" })).toBeVisible();
+  await page.getByRole("button", { name: "back to login" }).click();
+  await expect(page.getByRole("button", { name: "log in" })).toBeVisible();
 });

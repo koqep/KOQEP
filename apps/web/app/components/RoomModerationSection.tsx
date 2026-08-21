@@ -69,7 +69,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
       replaceInList(updated);
       setRenamingId(null);
     } catch {
-      setError("Oda yeniden adlandırılamadı, tekrar dene.");
+      setError("Could not rename room, try again.");
     } finally {
       setPendingId(null);
     }
@@ -97,7 +97,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
       replaceInList(updated);
       setAnnouncingId(null);
     } catch {
-      setError("Duyuru kaydedilemedi, tekrar dene.");
+      setError("Could not save announcement, try again.");
     } finally {
       setPendingId(null);
     }
@@ -110,7 +110,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
       const updated = await setRoomAnnouncement(accessToken, room.id, null);
       replaceInList(updated);
     } catch {
-      setError("Duyuru kaldırılamadı, tekrar dene.");
+      setError("Could not remove announcement, try again.");
     } finally {
       setPendingId(null);
     }
@@ -123,7 +123,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
       const updated = await archiveRoom(accessToken, room.id);
       replaceInList(updated);
     } catch {
-      setError("Oda arşivlenemedi, tekrar dene.");
+      setError("Could not archive room, try again.");
     } finally {
       setPendingId(null);
     }
@@ -137,7 +137,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
       setRooms((prev) => (prev ?? []).filter((r) => r.id !== room.id));
       setConfirmingDeleteId(null);
     } catch {
-      setError("Oda silinemedi, tekrar dene.");
+      setError("Could not delete room, try again.");
     } finally {
       setPendingId(null);
     }
@@ -146,15 +146,15 @@ export default function RoomModerationSection({ accessToken }: Props) {
   return (
     <section className="mt-8 border-t border-neutral-800 pt-4">
       <h3 className="mb-4 text-neutral-400">
-        <span className="text-muted">#</span> odalar
+        <span className="text-muted">#</span> rooms
       </h3>
 
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {rooms === null ? (
-        <p className="text-neutral-400">yükleniyor...</p>
+        <p className="text-neutral-400">loading...</p>
       ) : rooms.length === 0 ? (
-        <p className="text-neutral-400">oda yok</p>
+        <p className="text-neutral-400">no rooms</p>
       ) : (
         <ul className="space-y-4">
           {rooms.map((room) => (
@@ -166,7 +166,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                 >
                   <input
                     type="text"
-                    aria-label="oda ismini düzenle"
+                    aria-label="edit room name"
                     value={renameDraft}
                     onChange={(event) => setRenameDraft(event.target.value)}
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- "yeniden adlandır"a tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
@@ -178,14 +178,14 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     disabled={pendingId === room.id}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    kaydet
+                    save
                   </button>
                   <button
                     type="button"
                     onClick={() => setRenamingId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    iptal
+                    cancel
                   </button>
                 </form>
               ) : (
@@ -202,7 +202,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                   className="mb-2 flex items-start gap-2"
                 >
                   <textarea
-                    aria-label="oda duyurusunu düzenle"
+                    aria-label="edit room announcement"
                     value={announcementDraft}
                     onChange={(event) =>
                       setAnnouncementDraft(event.target.value)
@@ -220,19 +220,19 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     disabled={pendingId === room.id}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    kaydet
+                    save
                   </button>
                   <button
                     type="button"
                     onClick={() => setAnnouncingId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    iptal
+                    cancel
                   </button>
                 </form>
               ) : room.announcement ? (
                 <p className="mb-2 text-neutral-400">
-                  <span className="text-muted">duyuru:</span>{" "}
+                  <span className="text-muted">announcement:</span>{" "}
                   {room.announcement}{" "}
                   <button
                     type="button"
@@ -240,7 +240,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     onClick={() => void clearAnnouncement(room)}
                     className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                   >
-                    duyuruyu kaldır
+                    remove announcement
                   </button>
                 </p>
               ) : (
@@ -251,7 +251,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     onClick={() => startAnnouncing(room)}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    duyuru ekle
+                    add announcement
                   </button>
                 </p>
               )}
@@ -259,7 +259,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
               {confirmingDeleteId === room.id ? (
                 <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
                   <span className="text-red-400">
-                    emin misin? bu kalıcı, mesajlar da gider
+                    are you sure? this is permanent, messages go too
                   </span>
                   <button
                     type="button"
@@ -267,14 +267,14 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     onClick={() => void confirmDelete(room)}
                     className="text-red-400 hover:text-red-300 disabled:cursor-not-allowed"
                   >
-                    evet, sil
+                    yes, delete
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmingDeleteId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    vazgeç
+                    cancel
                   </button>
                 </div>
               ) : (
@@ -286,7 +286,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                       onClick={() => startRenaming(room)}
                       className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                     >
-                      yeniden adlandır
+                      rename
                     </button>
                     {room.status === "active" && (
                       <button
@@ -295,7 +295,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                         onClick={() => void handleArchive(room)}
                         className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                       >
-                        arşivle
+                        archive
                       </button>
                     )}
                     {room.status === "archived" && (
@@ -305,7 +305,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                         onClick={() => setConfirmingDeleteId(room.id)}
                         className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                       >
-                        sil
+                        delete
                       </button>
                     )}
                   </div>

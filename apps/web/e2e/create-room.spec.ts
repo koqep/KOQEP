@@ -59,16 +59,16 @@ test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
 
   await page.goto("/");
 
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
   await expect(page.getByText("genel odasindaki mesaj")).toBeVisible();
 
-  await page.getByRole("button", { name: "+ yeni oda" }).click();
-  await page.getByLabel("oda adı").fill("elden-ring");
-  await page.getByLabel("açıklama (opsiyonel)").fill("Elden Ring tartışması");
-  await page.getByRole("button", { name: "oluştur" }).click();
+  await page.getByRole("button", { name: "+ new room" }).click();
+  await page.getByLabel("room name").fill("elden-ring");
+  await page.getByLabel("description (optional)").fill("Elden Ring tartışması");
+  await page.getByRole("button", { name: "create" }).click();
 
   const newRoomButton = page.getByRole("button", { name: "#elden-ring" });
   await expect(newRoomButton).toBeVisible();
@@ -100,15 +100,15 @@ test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
   );
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
 
-  await page.getByRole("button", { name: "+ yeni oda" }).click();
-  await page.getByLabel("oda adı").fill("baska-oda");
-  await page.getByRole("button", { name: "oluştur" }).click();
+  await page.getByRole("button", { name: "+ new room" }).click();
+  await page.getByLabel("room name").fill("baska-oda");
+  await page.getByRole("button", { name: "create" }).click();
 
   await expect(
-    page.getByText("Günde en fazla 1 oda oluşturabilirsin. Daha sonra tekrar dene."),
+    page.getByText("You can create at most 1 room per day. Try again later."),
   ).toBeVisible();
 });

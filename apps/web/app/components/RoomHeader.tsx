@@ -66,7 +66,7 @@ export default function RoomHeader({
                 onClick={() => onRoomSwitch(r)}
                 title={
                   (r.description ? `${r.description} — ` : "") +
-                  `son aktivite: ${formatRelativeActivity(r.lastActivityAt)}`
+                  `last active: ${formatRelativeActivity(r.lastActivityAt)}`
                 }
                 className={
                   r.id === activeRoom?.id
@@ -76,13 +76,13 @@ export default function RoomHeader({
               >
                 <span className="text-muted">#</span>
                 {r.name}
-                {r.status !== "active" && " (arşiv)"}
+                {r.status !== "active" && " (archived)"}
               </button>
               {!CORE_ROOM_NAMES.includes(r.name) && (
                 <button
                   type="button"
                   onClick={() => onLeaveRoom(r)}
-                  title="odadan ayrıl"
+                  title="leave room"
                   className="text-muted hover:text-red-400"
                 >
                   ×
@@ -96,21 +96,21 @@ export default function RoomHeader({
           onClick={onCreateRoomClick}
           className="text-muted hover:text-neutral-400"
         >
-          + yeni oda
+          + new room
         </button>
         <button
           type="button"
           onClick={onDiscoverRoomsClick}
           className="text-muted hover:text-neutral-400"
         >
-          keşfet
+          discover
         </button>
         <button
           type="button"
           onClick={onToggleShowArchived}
           className="text-muted hover:text-neutral-400"
         >
-          {showArchived ? "arşivi gizle" : "arşivi göster"}
+          {showArchived ? "hide archived" : "show archived"}
         </button>
       </nav>
       <div className="flex flex-wrap items-center gap-4">
@@ -119,14 +119,14 @@ export default function RoomHeader({
           onClick={onOpenTotp}
           className="text-muted hover:text-neutral-400"
         >
-          iki adımlı doğrulama
+          two-factor authentication
         </button>
         <button
           type="button"
           onClick={onOpenBlocked}
           className="text-muted hover:text-neutral-400"
         >
-          engellenenler
+          blocked
         </button>
         <button
           type="button"
@@ -136,10 +136,10 @@ export default function RoomHeader({
           invites
         </button>
         <a
-          href={`mailto:${FEEDBACK_EMAIL}?subject=KOQEP%20geri%20bildirim`}
+          href={`mailto:${FEEDBACK_EMAIL}?subject=KOQEP%20feedback`}
           className="text-muted hover:text-neutral-400"
         >
-          geri bildirim
+          feedback
         </a>
         {isModerator && (
           <button
@@ -147,7 +147,7 @@ export default function RoomHeader({
             onClick={onOpenModeration}
             className="text-muted hover:text-neutral-400"
           >
-            moderasyon
+            moderation
           </button>
         )}
         <button
@@ -155,14 +155,14 @@ export default function RoomHeader({
           onClick={onOpenDeleteAccount}
           className="text-muted hover:text-red-400"
         >
-          hesabı sil
+          delete account
         </button>
         <button
           type="button"
           onClick={onLogout}
           className="text-muted hover:text-neutral-400"
         >
-          çıkış
+          log out
         </button>
       </div>
     </header>

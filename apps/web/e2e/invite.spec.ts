@@ -6,10 +6,10 @@ async function login(page: import("@playwright/test").Page) {
   await mockRoomEndpoints(page);
 
   await page.goto("/");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
 test("henuz_kazanilmis_davet_yoksa_aciklayici_bos_durum_gosterir", async ({
@@ -21,7 +21,7 @@ test("henuz_kazanilmis_davet_yoksa_aciklayici_bos_durum_gosterir", async ({
   await page.getByRole("button", { name: "invites" }).click();
 
   await expect(
-    page.getByText("henüz kazanılmış bir davetin yok"),
+    page.getByText("you haven't earned any invites yet"),
   ).toBeVisible();
 });
 
@@ -57,9 +57,9 @@ test("kazanilan_davetleri_kod_ve_durumuyla_listeler", async ({ page }) => {
   await expect(page.getByText("FRESH-CODE")).toBeVisible();
   await expect(page.getByText("USED-CODE")).toBeVisible();
   await expect(page.getByText("REVOKED-CODE")).toBeVisible();
-  await expect(page.getByText("kullanılabilir")).toBeVisible();
-  await expect(page.getByText("kullanıldı")).toBeVisible();
-  await expect(page.getByText("iptal edildi")).toBeVisible();
+  await expect(page.getByText("available", { exact: true })).toBeVisible();
+  await expect(page.getByText("used", { exact: true })).toBeVisible();
+  await expect(page.getByText("revoked", { exact: true })).toBeVisible();
 });
 
 test("davetci_hesap_verebilirligi_aciklama_satirini_gosterir", async ({
@@ -71,6 +71,6 @@ test("davetci_hesap_verebilirligi_aciklama_satirini_gosterir", async ({
   await page.getByRole("button", { name: "invites" }).click();
 
   await expect(
-    page.getByText("kullanılmamış bir davetin iptal edilir"),
+    page.getByText("one of your unused invites gets revoked"),
   ).toBeVisible();
 });

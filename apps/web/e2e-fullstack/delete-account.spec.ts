@@ -8,10 +8,10 @@ const DEV_USER_2_EMAIL = "dev2@koqep.local";
 const DEV_USER_2_PASSWORD = "dev-local-only-password-2";
 
 async function loginAsDevUser2(page: Page): Promise<void> {
-  await page.getByLabel("e-posta").fill(DEV_USER_2_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_2_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeEnabled({
+  await page.getByLabel("email").fill(DEV_USER_2_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_2_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeEnabled({
     timeout: 15000,
   });
 }
@@ -22,19 +22,19 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur", async ({
   await page.goto("/");
   await loginAsDevUser2(page);
 
-  await page.getByRole("button", { name: "hesabı sil" }).click();
+  await page.getByRole("button", { name: "delete account" }).click();
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill(DEV_USER_2_PASSWORD);
   await page
     .getByRole("button", { name: "permanently delete my account" })
     .click();
 
-  await expect(page.getByLabel("e-posta")).toBeVisible({ timeout: 15000 });
-  await expect(page.getByPlaceholder("mesaj yaz...")).toHaveCount(0);
+  await expect(page.getByLabel("email")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByPlaceholder("write a message...")).toHaveCount(0);
 
-  await page.getByLabel("e-posta").fill(DEV_USER_2_EMAIL);
-  await page.getByLabel("şifre").fill(DEV_USER_2_PASSWORD);
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByLabel("email").fill(DEV_USER_2_EMAIL);
+  await page.getByLabel("password").fill(DEV_USER_2_PASSWORD);
+  await page.getByRole("button", { name: "log in" }).click();
 
   await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible({
     timeout: 15000,
