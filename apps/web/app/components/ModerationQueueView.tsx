@@ -88,8 +88,8 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
     } catch {
       setError(
         kind === "mute"
-          ? "Kullanıcı susturulamadı, tekrar dene."
-          : "İçerik kaldırılamadı, tekrar dene.",
+          ? "Could not mute user, try again."
+          : "Could not remove content, try again.",
       );
     } finally {
       setPendingId(null);
@@ -103,7 +103,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
       await dismissReport(accessToken, reportId);
       removeFromQueue(reportId);
     } catch {
-      setError("Rapor reddedilemedi, tekrar dene.");
+      setError("Could not dismiss report, try again.");
     } finally {
       setPendingId(null);
     }
@@ -120,7 +120,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
     try {
       await unmuteUser(accessToken, reportedUserId);
     } catch {
-      setError("Susturma kaldırılamadı, tekrar dene.");
+      setError("Could not unmute, try again.");
     } finally {
       setPendingId(null);
     }
@@ -130,7 +130,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> moderasyon
+          <span className="text-muted">#</span> moderation
         </h2>
         <button
           type="button"
@@ -144,9 +144,9 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {reports === null ? (
-        <p>yükleniyor...</p>
+        <p>loading...</p>
       ) : reports.length === 0 ? (
-        <p>açık rapor yok</p>
+        <p>no open reports</p>
       ) : (
         <ul className="space-y-4">
           {reports.map((report) => {
@@ -158,12 +158,12 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
             >
               {report.isFlagged && (
                 <p className="mb-1 text-red-400">
-                  [çoklu rapor — {report.distinctReporterCount} farklı
-                  kullanıcı]
+                  [multiple reports — {report.distinctReporterCount} different
+                  users]
                 </p>
               )}
               <p className="mb-1 text-muted">
-                {report.reportedUsername ?? "silinmiş kullanıcı"}
+                {report.reportedUsername ?? "deleted user"}
                 {report.reason && (
                   <span className="text-muted"> — {report.reason}</span>
                 )}
@@ -178,10 +178,10 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                 >
                   <input
                     type="text"
-                    aria-label="moderatör sebebi"
+                    aria-label="moderator reason"
                     value={reasonDraft}
                     onChange={(event) => setReasonDraft(event.target.value)}
-                    placeholder="sebep..."
+                    placeholder="reason..."
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- "sustur"/"içeriği kaldır"a tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
                     autoFocus
                     className={`flex-1 ${inputClassName}`}
@@ -193,14 +193,14 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                     }
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    onayla
+                    confirm
                   </button>
                   <button
                     type="button"
                     onClick={() => setPendingReasonAction(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    iptal
+                    cancel
                   </button>
                 </form>
               ) : (
@@ -215,7 +215,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                         }
                         className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                       >
-                        sustur ({MUTE_DURATION_HOURS} saat)
+                        mute ({MUTE_DURATION_HOURS}h)
                       </button>
                       <button
                         type="button"
@@ -225,7 +225,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                         }
                         className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                       >
-                        susturmayı kaldır
+                        unmute
                       </button>
                     </>
                   )}
@@ -235,7 +235,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                     onClick={() => startReasonAction(report.id, "remove")}
                     className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                   >
-                    içeriği kaldır
+                    remove content
                   </button>
                   <button
                     type="button"
@@ -243,7 +243,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
                     onClick={() => void handleDismiss(report.id)}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    reddet
+                    dismiss
                   </button>
                 </div>
               )}

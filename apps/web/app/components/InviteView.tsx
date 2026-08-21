@@ -43,17 +43,17 @@ export default function InviteView({ accessToken, onClose }: Props) {
       </div>
 
       <p className="mb-4 text-muted">
-        davet ettiğin biri moderasyona uğrarsa (susturulursa) kullanılmamış
-        bir davetin iptal edilir; hiç kullanılmamış daveti kalmamışsa bir
-        sonraki kazanacağın davetin düşer.
+        if someone you invited gets moderated (muted), one of your unused
+        invites gets revoked; if you have no unused invites left, your next
+        earned invite is deducted instead.
       </p>
 
       {invites === null ? (
-        <p>yükleniyor...</p>
+        <p>loading...</p>
       ) : invites.length === 0 ? (
         <p>
-          henüz kazanılmış bir davetin yok — mesaj gönderip seviye atladıkça
-          burada görünecek.
+          you haven&apos;t earned any invites yet — they&apos;ll show up here
+          as you send messages and level up.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -67,10 +67,10 @@ export default function InviteView({ accessToken, onClose }: Props) {
               </span>
               <span className="text-muted">
                 {invite.usedAt
-                  ? "kullanıldı"
+                  ? "used"
                   : invite.revokedAt
-                    ? "iptal edildi"
-                    : "kullanılabilir"}
+                    ? "revoked"
+                    : "available"}
               </span>
             </li>
           ))}
