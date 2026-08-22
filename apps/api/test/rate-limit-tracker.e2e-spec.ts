@@ -34,6 +34,7 @@ class ThrottleTestController {
         }) =>
           getRealClientIp(
             req.headers?.['x-forwarded-for'],
+            req.headers?.['cf-connecting-ip'],
             req.socket?.remoteAddress,
           ),
       },
