@@ -15,7 +15,7 @@
 
 ## Şu an üzerinde çalışılan
 - **Görev:** M6c Slice C'nin (`m6c/slice-c-automated-pii-scan-backfill`) VE M6b Slice A'nın (`m6b/slice-a-proxy-ip-verification`, düzeltme turu dahil) push'u kullanıcının onayında.
-- **Sonraki adım:** M6b Slice A doğrulandı, merge edilebilir — geçici `[M6B-XFF-VERIFY]` log'u main.ts'te duruyor ama kaldırılması ZORUNLU DEĞİL (isteğe bağlı, founder isterse). M6b Slice B-G (TrafficLog şeması, middleware, cron vb.) artık başlayabilir. Senaryo A/B (nitelikli zaman damgası) kararı hâlâ bekliyor. D1 (rate limit) Faz 1 gerçek trafiğini bekliyor.
+- **Sonraki adım:** M6b Slice A doğrulandı, merge edilebilir — geçici `[M6B-XFF-VERIFY]` log'u main.ts'ten kaldırıldı (temizlik commit'i). M6b Slice B-G (TrafficLog şeması, middleware, cron vb.) artık başlayabilir. Senaryo A/B (nitelikli zaman damgası) kararı hâlâ bekliyor. D1 (rate limit) Faz 1 gerçek trafiğini bekliyor.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
