@@ -253,6 +253,79 @@ describe('Account deletion (e2e)', () => {
     );
   });
 
+  // M6c Slice C: redactMessageContent HİÇ gönderilmese/false olsa bile,
+  // yapısal PII (e-posta/telefon) taşıyan satırlar OTOMATİK redakte edilir -
+  // temiz içerik DOKUNULMADAN kalır. Message/MessageEdit/Report'un HER biri
+  // KENDİ metnine göre bağımsız değerlendirilir.
+  it('redactMessageContent_gonderilmezken_yapisal_pii_iceren_satirlar_otomatik_redakte_edilir_temiz_olanlar_kalir', async () => {
+    const user = await createTestUser();
+    const otherUser = await createTestUser();
+    const room = await prisma.room.upsert({
+      where: { name: CORE_ROOM_NAMES[0] },
+      update: {},
+      create: { name: CORE_ROOM_NAMES[0] },
+    });
+    const dirtyMessage = await prisma.message.create({
+      data: {
+        roomId: room.id,
+        authorId: user.id,
+        content: 'ulaşmak için ahmet@ornek.com',
+      },
+    });
+    const cleanMessage = await prisma.message.create({
+      data: { roomId: room.id, authorId: user.id, content: 'sıradan mesaj' },
+    });
+    // Güncel mesaj temiz ama düzenleme geçmişi kirli - bağımsız
+    // değerlendirmenin kanıtı.
+    const dirtyEdit = await prisma.messageEdit.create({
+      data: {
+        messageId: cleanMessage.id,
+        previousContent: '0555 123 45 67 den ara',
+      },
+    });
+    const dirtyReport = await prisma.report.create({
+      data: {
+        messageId: cleanMessage.id,
+        reporterId: otherUser.id,
+        reportedUserId: user.id,
+        reportedContent: 'iletisim@ornek.com',
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/delete-account')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ password: user.password })
+      .expect(201)
+      .expect({ ok: true });
+
+    const redactedDirty = await prisma.message.findUnique({
+      where: { id: dirtyMessage.id },
+    });
+    expect(redactedDirty?.content).toBe(
+      '[Bu mesaj yazarı tarafından silindi.]',
+    );
+
+    const untouchedClean = await prisma.message.findUnique({
+      where: { id: cleanMessage.id },
+    });
+    expect(untouchedClean?.content).toBe('sıradan mesaj');
+
+    const redactedEdit = await prisma.messageEdit.findUnique({
+      where: { id: dirtyEdit.id },
+    });
+    expect(redactedEdit?.previousContent).toBe(
+      '[Bu mesaj yazarı tarafından silindi.]',
+    );
+
+    const redactedReport = await prisma.report.findUnique({
+      where: { id: dirtyReport.id },
+    });
+    expect(redactedReport?.reportedContent).toBe(
+      '[Bu mesaj yazarı tarafından silindi.]',
+    );
+  });
+
   it('reddeder_ikinci_cagriyi_401le_500_degil', async () => {
     const user = await createTestUser();
 
