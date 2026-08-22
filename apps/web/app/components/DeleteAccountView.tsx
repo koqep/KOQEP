@@ -20,6 +20,10 @@ export default function DeleteAccountView({
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
+  // M6c Slice B (ADR-0005 Addendum #2): varsayılan AÇIK - kullanıcı ne
+  // yazdığını bilen tek taraf, otomatik taramanın (Slice C) kaçıracağı
+  // bağlamsal kimlik ifşasını kapatan asıl mekanizma bu.
+  const [redactMessageContent, setRedactMessageContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const headingRef = useFocusOnMount<HTMLHeadingElement>();
@@ -33,6 +37,7 @@ export default function DeleteAccountView({
         accessToken,
         password,
         totpRequired ? totpCode : undefined,
+        redactMessageContent,
       );
       onDeleted();
     } catch (err) {
@@ -67,10 +72,21 @@ export default function DeleteAccountView({
 
       {confirming ? (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <p className="text-red-400">
-            This is permanent. Your messages stay visible to others but will
-            no longer show your username.
-          </p>
+          <p className="text-red-400">This is permanent.</p>
+          <label className="flex items-start gap-2 text-muted">
+            <input
+              type="checkbox"
+              checked={redactMessageContent}
+              onChange={(event) =>
+                setRedactMessageContent(event.target.checked)
+              }
+              className="mt-1"
+            />
+            <span>
+              also remove my message content (recommended) — unchecked, your
+              messages stay visible to others, only your username is removed
+            </span>
+          </label>
           <label className="flex flex-col gap-1 text-muted">
             current password
             <input
@@ -108,9 +124,8 @@ export default function DeleteAccountView({
         <div className="flex flex-col gap-3">
           <p>
             Deleting your account is permanent and cannot be undone. Your
-            email, username, and password are removed entirely. Messages you
-            sent stay in place for other users but are no longer linked to
-            you.
+            email, username, and password are removed entirely. You&apos;ll
+            be able to choose whether your message content is also removed.
           </p>
           <button
             type="button"

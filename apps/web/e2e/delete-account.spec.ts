@@ -76,3 +76,55 @@ test("basarili_silme_giris_ekranina_doner", async ({ page }) => {
   await expect(page.getByLabel("email")).toBeVisible();
   await expect(page.getByPlaceholder("write a message...")).toHaveCount(0);
 });
+
+// M6c Slice B (ADR-0005 Addendum #2): checkbox varsayılan işaretli geliyor,
+// istekle birlikte redactMessageContent:true gönderiliyor.
+test("mesaj_icerigini_kaldir_kutusu_varsayilan_isaretli_ve_istekte_true_gonderilir", async ({
+  page,
+}) => {
+  await login(page);
+  let requestBody: unknown;
+  await page.route("**/auth/delete-account", async (route) => {
+    requestBody = route.request().postDataJSON();
+    await route.fulfill({ json: { ok: true } });
+  });
+
+  await page.getByRole("button", { name: "delete account" }).click();
+  await page.getByRole("button", { name: "delete my account" }).click();
+  await expect(page.getByRole("checkbox")).toBeChecked();
+  await page.getByLabel("current password").fill("a-strong-password");
+  await page
+    .getByRole("button", { name: "permanently delete my account" })
+    .click();
+
+  await expect(page.getByLabel("email")).toBeVisible();
+  expect(
+    (requestBody as { redactMessageContent?: boolean })
+      .redactMessageContent,
+  ).toBe(true);
+});
+
+test("mesaj_icerigini_kaldir_kutusu_isareti_kaldirilinca_istekte_false_gonderilir", async ({
+  page,
+}) => {
+  await login(page);
+  let requestBody: unknown;
+  await page.route("**/auth/delete-account", async (route) => {
+    requestBody = route.request().postDataJSON();
+    await route.fulfill({ json: { ok: true } });
+  });
+
+  await page.getByRole("button", { name: "delete account" }).click();
+  await page.getByRole("button", { name: "delete my account" }).click();
+  await page.getByRole("checkbox").uncheck();
+  await page.getByLabel("current password").fill("a-strong-password");
+  await page
+    .getByRole("button", { name: "permanently delete my account" })
+    .click();
+
+  await expect(page.getByLabel("email")).toBeVisible();
+  expect(
+    (requestBody as { redactMessageContent?: boolean })
+      .redactMessageContent,
+  ).toBe(false);
+});

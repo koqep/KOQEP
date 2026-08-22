@@ -98,6 +98,7 @@ export class AuthController {
       req.user.sub,
       dto.password,
       dto.totpCode,
+      dto.redactMessageContent,
     );
     return { ok: true };
   }
