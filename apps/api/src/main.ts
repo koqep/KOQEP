@@ -20,17 +20,19 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
-  // GEÇİCİ — M6b Slice A doğrulaması. Render'ın X-Forwarded-For'a gerçek
-  // istemci IP'sini BAŞA mı SONA mı eklediğini production'da kanıtlamak
-  // için (docs/milestones/M6b-traffic-log-5651.md'nin founder-task
-  // listesi). Founder onayı gelince BİR SONRAKİ küçük commit'te
-  // kaldırılacak - /health ile sınırlı, gerçek kullanıcı trafiğinde IP
-  // loglamıyor.
+  // GEÇİCİ — M6b Slice A doğrulaması. Render'ın X-Forwarded-For davranışı
+  // ilk turda doğrulandı (sağdan sona ekleme, Cloudflare gerçekten araya
+  // giriyor - client-ip.util.ts'in kendi yorumuna bakın). Bu log artık
+  // SADECE isteğe bağlı bir son teyit için duruyor - cf-connecting-ip'nin
+  // gerçekten gelip gelmediğini + değerinin gerçek IP'yle eşleştiğini
+  // gözle kontrol etmek isteyen founder için. Algoritmanın DOĞRULUĞU buna
+  // bağlı DEĞİL. Kaldırma kararı founder'a bırakıldı, zorunlu değil.
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path === '/health') {
-      const xff = req.headers['x-forwarded-for'];
+      const toDisplay = (value: string | string[] | undefined): string =>
+        Array.isArray(value) ? value.join(',') : (value ?? '');
       console.log(
-        `[M6B-XFF-VERIFY] xff="${Array.isArray(xff) ? xff.join(',') : (xff ?? '')}" remoteAddress="${req.socket.remoteAddress ?? ''}"`,
+        `[M6B-XFF-VERIFY] xff="${toDisplay(req.headers['x-forwarded-for'])}" cfConnectingIp="${toDisplay(req.headers['cf-connecting-ip'])}" remoteAddress="${req.socket.remoteAddress ?? ''}"`,
       );
     }
     next();

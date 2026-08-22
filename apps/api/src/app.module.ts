@@ -78,6 +78,7 @@ const DEFAULT_RATE_LIMIT = 100;
         }) =>
           getRealClientIp(
             req.headers?.['x-forwarded-for'],
+            req.headers?.['cf-connecting-ip'],
             req.socket?.remoteAddress,
           ),
       },
