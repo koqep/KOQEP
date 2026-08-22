@@ -34,6 +34,7 @@ import { RoomModerationService } from './services/room-moderation.service';
 import { ModeratorRoleService } from './services/moderator-role.service';
 import { PasswordPolicyService } from './services/password-policy.service';
 import { SocketRegistryService } from './services/socket-registry.service';
+import { getRealClientIp } from './services/client-ip.util';
 import { PrismaModule } from './db/prisma.module';
 
 const ACCESS_TOKEN_TTL = '15m';
@@ -66,6 +67,19 @@ const DEFAULT_RATE_LIMIT = 100;
         name: 'default',
         ttl: DEFAULT_RATE_LIMIT_TTL_MS,
         limit: DEFAULT_RATE_LIMIT,
+        // M6b Slice A: trust proxy hiç ayarlı değildi - varsayılan req.ip
+        // Render'ın kendi LB'sinin (tek) IP'sini görüyordu, yani bu global
+        // limit fiilen TÜM istemciler için PAYLAŞILAN tek bir havuz gibi
+        // davranıyor olabilirdi. getRealClientIp Render'ın X-Forwarded-For
+        // deseninden gerçek istemci IP'sini okuyor (client-ip.util.ts).
+        getTracker: (req: {
+          headers?: Record<string, string | string[] | undefined>;
+          socket?: { remoteAddress?: string };
+        }) =>
+          getRealClientIp(
+            req.headers?.['x-forwarded-for'],
+            req.socket?.remoteAddress,
+          ),
       },
     ]),
     PrismaModule,

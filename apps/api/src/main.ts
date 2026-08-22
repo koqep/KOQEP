@@ -3,6 +3,7 @@ import './instrument';
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { getAllowedOrigins } from './allowed-origins';
 
@@ -19,6 +20,21 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
+  // GEÇİCİ — M6b Slice A doğrulaması. Render'ın X-Forwarded-For'a gerçek
+  // istemci IP'sini BAŞA mı SONA mı eklediğini production'da kanıtlamak
+  // için (docs/milestones/M6b-traffic-log-5651.md'nin founder-task
+  // listesi). Founder onayı gelince BİR SONRAKİ küçük commit'te
+  // kaldırılacak - /health ile sınırlı, gerçek kullanıcı trafiğinde IP
+  // loglamıyor.
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/health') {
+      const xff = req.headers['x-forwarded-for'];
+      console.log(
+        `[M6B-XFF-VERIFY] xff="${Array.isArray(xff) ? xff.join(',') : (xff ?? '')}" remoteAddress="${req.socket.remoteAddress ?? ''}"`,
+      );
+    }
+    next();
+  });
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();
