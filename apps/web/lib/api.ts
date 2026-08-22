@@ -241,10 +241,12 @@ export async function deleteAccount(
   accessToken: string,
   password: string,
   totpCode?: string,
+  redactMessageContent?: boolean,
 ): Promise<void> {
   await authedPostJson("/auth/delete-account", accessToken, {
     password,
     totpCode,
+    redactMessageContent,
   });
 }
 
