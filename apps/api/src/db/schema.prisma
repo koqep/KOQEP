@@ -88,6 +88,7 @@ model User {
   reportsResolved         Report[]                 @relation("ReportResolver")
   moderationActions       ModerationAuditLog[]     @relation("ModerationActor")
   moderationTargetActions ModerationAuditLog[]     @relation("ModerationTargetUser")
+  trafficLogs             TrafficLog[]
 }
 
 model Invite {
@@ -378,4 +379,43 @@ model ModerationAuditLog {
   targetInvite   Invite? @relation(fields: [targetInviteId], references: [id], onDelete: SetNull)
 
   @@index([moderatorId])
+}
+
+// M6b Slice B (5651 trafik bilgisi saklama, 18 ay - avukat cevabı
+// 2026-08-21): docs/milestones/M6b-traffic-log-5651.md.
+model TrafficLog {
+  id String @id @default(uuid())
+
+  // Plain string, ReputationEvent.actionType/ModerationAuditLog.actionType
+  // (ADR-0004 ilkesi) ile aynı - yeni hizmet türü migration istemesin.
+  // Slice C: 'REST'. Slice D: 'WS_CONNECTION_START' / 'WS_CONNECTION_END'.
+  serviceType String
+  ipAddress   String
+
+  // REST: interceptor yanıt tamamlandığında TEK satırda ikisini de yazar
+  // (istek anlık, ayrı satırlara bölünmesi gerekmiyor). WS_CONNECTION_START:
+  // sadece startedAt. WS_CONNECTION_END: sadece endedAt. İkisi de nullable -
+  // append-only kararı (Slice A'nın Plan notları) bir satırı sonradan
+  // UPDATE ETMEYİ yasaklıyor, bu yüzden WS'in iki ucu iki AYRI satır.
+  startedAt DateTime?
+  endedAt   DateTime?
+
+  // WS_CONNECTION_START/END satırlarını AYNI oturuma bağlar (REST'te null) -
+  // Slice D bunu gateway'in kendi connection-id'siyle doldurur.
+  connectionId String?
+
+  bytesTransferred Int?
+
+  // Bütünlük hash'i - AC "her satır taşır" diyor, bu yüzden NOT NULL.
+  // sha256Hex (crypto.util.ts, zaten var) yazma anında çağrılır.
+  integrityHash String
+
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([connectionId])
 }
