@@ -1,10 +1,12 @@
 # M6c — Mesaj İçeriği Anonimleştirme Denetimi
 
+**M6c'nin TÜM kod dilimleri (A/B/C) TAMAMLANDI (2026-08-22) — bu milestone kod tarafında KAPANDI.** Kalan tek şey founder'ın kendi eliyle yapacağı iki iş (aşağıya bakın: gizlilik politikası metni, "makul çaba" çerçevesinin avukata ayrıca onaylatılması) — kod değil, milestone'un kendisini açık tutmuyor.
+
 *M6b'nin kardeşi — aynı avukat/KVKK sürecinden çıktı ama farklı teknik yüzey: M6b YENİ bir tablo (`TrafficLog`, 5651) etrafında, bu dosya MEVCUT `Message`/`MessageEdit`/`Report`/`deleteAccount()` akışının bir boşluğu etrafında. Sıfır kod-yüzeyi çakışması, farklı aciliyet profili (bu iş geçmişte silinmiş hesapların BUGÜN açıkta duran içeriğiyle ilgili) — bu yüzden M6b'ye eklenmedi, ayrı dosya açıldı.*
 
 **Goal:** ADR-0005'in anonimleştirme yaklaşımının avukatın ikinci cevabında netleşen gerçek standardını ("kim görebiliyor değil, kişi yeniden belirlenebiliyor mu", satır bazında değerlendirilir) karşılayacak bir mekanizma kurmak — bugün `deleteAccount()` sadece `authorId`'yi null'lıyor, mesajın kendi METNİNE hiç dokunmuyor.
 
-**Demo:** Bir kullanıcı hesabını silerken "mesaj içeriğim de kaldırılsın mı?" seçeneğini (varsayılan açık) görüyor, işaretli bırakırsa mesajları/düzenleme geçmişi/rapor snapshot'ları redakte ediliyor; işaretini kaldırsa bile e-posta/telefon/URL gibi yapısal kimlik bilgileri otomatik yakalanıp redakte ediliyor; founder'a "eski bir mesajımda kimliğim geçiyor" talebi gelirse `docs/RUNBOOK.md`'nin belgelediği manuel prosedürle kaldırabiliyor; ve geçmişte silinmiş hesapların içeriği de bir backfill ile aynı taramadan geçmiş oluyor.
+**Demo:** Bir kullanıcı hesabını silerken "mesaj içeriğim de kaldırılsın mı?" seçeneğini (varsayılan açık) görüyor, işaretli bırakırsa mesajları/düzenleme geçmişi/rapor snapshot'ları redakte ediliyor; işaretini kaldırsa bile e-posta/telefon gibi yapısal kimlik bilgileri otomatik yakalanıp redakte ediliyor; founder'a "eski bir mesajımda kimliğim geçiyor" talebi gelirse `docs/RUNBOOK.md`'nin belgelediği manuel prosedürle kaldırabiliyor; ve geçmişte silinmiş hesapların içeriği de bir backfill ile aynı taramadan geçmiş oluyor.
 
 **Estimated hours:** ~21-32 saat (üç dilim birlikte, +%20-25 tampon dahil). Detaylı kapsam gözden geçirmesi: aşağıdaki "Plan notları" bölümü.
 
@@ -12,19 +14,20 @@
 - Genel içerik moderasyonu / mesaj GÖNDERİRKEN PII taraması — bu dilim SADECE hesap silme anına ve geçmişe dönük backfill'e odaklı, canlı mesajlaşmayı proaktif taramak/engellemek ayrı, çok daha büyük bir kapsam (içerik moderasyonu felsefesiyle de gerilir — kullanıcıların ne yazdığını platform gerçek zamanlı denetlemiyor, bilinçli bir tasarım kararı).
 - %100 otomatik PII tespiti — serbest metinde bağlamsal kimlik ifşasını (isim geçmeden birini tanımlayan bir ayrıntı gibi) güvenilir yakalayan bir sistem yok, bu dilim bunu iddia etmiyor. Üç bileşen BİRLİKTE "makul çaba" savunması oluşturuyor, garanti değil.
 - `Message.content`'in TAMAMEN otomatik/varsayılan olarak temizlenmesi — bu, ADR-0005'in orijinal "thread coherence" gerekçesini (başkalarının yanıtladığı bir mesajı sessizce bozma) geçersiz kılar; bunun yerine KULLANICININ kendi seçimi (Slice B) + dar otomatik güvenlik ağı (Slice C) tercih edildi.
+- **URL deseni Slice C'nin otomatik taramasına DAHİL EDİLMEDİ (kullanıcı onayıyla, implementasyon turunda).** `MessageContent.tsx` (M7b Slice E) çıplak URL'leri bilerek tıklanabilir link olarak render ediyor — link paylaşmak platformda normal, beklenen bir davranış. "URL içeren her mesajı redakte et" kuralı sıradan bir haber linkini de kişisel bir profil linkini de aynı şekilde (ve çok daha sık ilkini) vururdu, false-positive maliyeti kabul edilemez yüksek olurdu. Tarama sadece e-posta+telefon deseniyle sınırlı.
 
 ## Acceptance criteria
 - [x] Hesap silme akışında kullanıcı "mesaj içeriğimi de kaldır" seçeneğini görüyor, varsayılan İŞARETLİ. *(2026-08-21, Slice B.)*
 - [x] Seçenek işaretliyken `Message.content`/`MessageEdit.previousContent`/`Report.reportedContent` (bu kullanıcıya ait olanlar) `user.delete()`'TEN ÖNCE, aynı transaction içinde redakte ediliyor — `authorId` null'a düşmeden önce hangi satırların bu kullanıcıya ait olduğu doğru tespit ediliyor. *(2026-08-21, Slice B.)*
-- [ ] Seçenek İŞARETSİZ bırakılsa bile, yapısal PII (e-posta/telefon/URL deseni) otomatik taranıp redakte ediliyor — kullanıcının geniş tercihinden bağımsız, her zaman açık bir dar güvenlik ağı.
-- [ ] `docs/RUNBOOK.md`'de belgelenmiş bir manuel talep/takedown prosedürü var — mevcut `FEEDBACK_EMAIL` kanalı bu taleplerin de adresi olarak açıkça belirtilmiş.
-- [ ] **Backfill:** `deleteAccount()`'ın canlıya çıktığı günden bu yana zaten silinmiş hesaplara ait (`authorId`/`reportedUserId` bugün zaten null olan) mesajlar/edit'ler/rapor snapshot'ları da aynı yapısal-PII taramasından geçirilmiş.
-- [ ] `docs/decisions/ADR-0005-data-retention-anonymize.md`, `docs/THREAT-MODEL.md` row 8 gerçek kod davranışını yansıtacak şekilde güncel (bu dosyanın kapsam-gözden-geçirme turu bu güncellemelerin bir kısmını ZATEN yaptı — bkz. Plan notları).
+- [x] Seçenek İŞARETSİZ bırakılsa bile, yapısal PII (e-posta/telefon deseni — URL kullanıcı onayıyla kapsam dışı bırakıldı) otomatik taranıp redakte ediliyor — kullanıcının geniş tercihinden bağımsız, her zaman açık bir dar güvenlik ağı. *(2026-08-22, Slice C.)*
+- [x] `docs/RUNBOOK.md`'de belgelenmiş bir manuel talep/takedown prosedürü var — mevcut `FEEDBACK_EMAIL` kanalı bu taleplerin de adresi olarak açıkça belirtilmiş. *(2026-08-21, Slice A — §3.8.)*
+- [x] **Backfill:** `deleteAccount()`'ın canlıya çıktığı günden bu yana zaten silinmiş hesaplara ait (`authorId`/`reportedUserId` bugün zaten null olan) mesajlar/edit'ler/rapor snapshot'ları da aynı yapısal-PII taramasından geçirilmiş. *(2026-08-22, Slice C — `backfill-message-content-pii.ts`, `render.yaml`+`ci.yml`'ye bağlandı.)*
+- [x] `docs/decisions/ADR-0005-data-retention-anonymize.md`, `docs/THREAT-MODEL.md` row 8 gerçek kod davranışını yansıtacak şekilde güncel. *(Kapsam-gözden-geçirme turunda + bu dosyanın kendi Plan notları'nda ele alındı.)*
 
 ## Tasks — kod dilimleri (Claude uygular, her biri kendi plan-modu turu)
 - [x] **Slice A — Manuel talep kanalı.** TAMAMLANDI (2026-08-21). ~1-2 saat, neredeyse tamamen doküman. `docs/RUNBOOK.md`'ye yeni §3.8: bir kullanıcı hesap-silme-sonrası kalan kimliklendirici içerik için talepte bulunduğunda `Message.content`/`MessageEdit.previousContent`/`Report.reportedContent`'i hedef mesaj(lar) için manuel `UPDATE` ile redakte eden SQL (§3.5'in — moderatör içerik geri alma — birebir emsali, ters yönde). Mevcut `FEEDBACK_EMAIL` (`RoomHeader.tsx`, `docs/BACKLOG.md` A19) bu talepler için de AÇIKÇA belirtilir, yeni kanal icat edilmedi.
 - [x] **Slice B — Hesap silme anında kullanıcı seçimi.** TAMAMLANDI (2026-08-21). ~7.5-10.5 saat. `DeleteAccountDto.redactMessageContent?: boolean`, `AuthService.deleteAccount` artık `$transaction` içinde (`authorId`/`reportedUserId` hâlâ doluyken, `user.delete()`'TEN ÖNCE) `Message.content`+`MessageEdit.previousContent`+`Report.reportedContent`'i redakte ediyor. `DeleteAccountView.tsx`'e checkbox (varsayılan `checked=true`). Placeholder mevcut `AUTHOR_DELETED_CONTENT` (`messages.service.ts:34`) — Slice A'nın RUNBOOK §3.8'iyle tutarlı.
-- [ ] **Slice C — Otomatik yapısal-PII taraması + backfill.** ~9-13 saat. Yeni `content-redaction.util.ts` (`content-validation.util.ts`'in yanına, e-posta/telefon/URL regex, yeni bağımlılık yok) — Slice B'nin akışına HER HALÜKARDA (kullanıcı "hayır" dese bile) entegre edilir. Ayrı bir **backfill script** (`backfill-totp-secrets.ts`'in deseni, idempotent) TÜM mevcut `authorId IS NULL` mesajları + ilgili satırları tarar — geçmişte silinmiş hesapların bugün açıkta duran riskini kapatan tek parça.
+- [x] **Slice C — Otomatik yapısal-PII taraması + backfill.** TAMAMLANDI (2026-08-22). ~9-13 saat. Yeni `content-redaction.util.ts` (`content-validation.util.ts`'in yanına, e-posta+telefon regex — URL kullanıcı onayıyla kapsam dışı, yeni bağımlılık yok) — `AuthService.deleteAccount`'a, `redactMessageContent` false/belirtilmemişken devreye giren bir dal olarak entegre edildi (Message/MessageEdit/Report'un HER biri KENDİ metnine göre BAĞIMSIZ değerlendiriliyor). Yeni **backfill script** `backfill-message-content-pii.ts` (`backfill-totp-secrets.ts`'in deseni, idempotent) TÜM mevcut `authorId IS NULL` satırları tarar — `package.json`/`render.yaml`/`ci.yml`'ye bağlandı.
 
 ## Tasks — founder'ın kendi eliyle yapacağı işler
 - [ ] Gizlilik politikasının gerçek hukuki metnine (M6 AC #1, hâlâ bekliyor) manuel takedown kanalının (Slice A) açıkça belirtilmesi.
@@ -72,7 +75,27 @@ Plan-modu turu `Read`/`Grep` ile araştırıldı — `auth.service.ts`'in `delet
 
 **Doğrulama:** `apps/api` lint/typecheck/build + 258 birim (`prisma.service.spec.ts`'in yerelde-Postgres-gerektiren 2 testi HARİÇ, ortam kısıtı, bu dalla ilgisiz) + 139 e2e (iki koşu, temiz seed sonrası, flakiness yok). `apps/web` lint/typecheck/build + 94 Playwright (mocked) + 9 Playwright (fullstack, temiz seed+backfill sonrası). Dal `m6c/slice-b-user-choice-redaction`, push kullanıcının onayına kalıyor.
 
+### Slice C — Otomatik yapısal-PII taraması + backfill (2026-08-22, tamamlandı — M6c'nin son dilimi)
+Plan-modu turu `Read`/`Grep` ile araştırıldı — `content-validation.util.ts` (zalgo koruması, yardımcı fonksiyon deseni), `backfill-totp-secrets.ts`+`totp-backfill.e2e-spec.ts` (backfill script+test deseni), `MessageContent.tsx`'in linkify'ı.
+
+**Gerçek bir kapsam çelişkisi bulundu ve kullanıcıya soruldu (`AskUserQuestion`), implementasyona geçmeden:** ilk plan e-posta/telefon/URL üçlüsünü tarayacaktı, ama `MessageContent.tsx` (M7b Slice E) çıplak URL'leri BİLEREK tıklanabilir link olarak render ediyor — link paylaşmak platformda normal, beklenen bir davranış. "URL içeren her mesajı redakte et" kuralı sıradan bir haber linkini de kişisel bir profil linkini de aynı şekilde (çok daha sık ilkini) vururdu, gerçek false-positive maliyeti kabul edilemez yüksekti. Kullanıcı URL'yi kapsam dışı bırakma önerisini onayladı — tarama SADECE e-posta+telefon.
+
+**Telefon regex'inde bilinçli bir sıkılaştırma:** ilk taslak `0?5\d{2}...` (baştaki `0` OPSİYONEL) yazıyordu — bu, `+90`/`0` öneki olmayan HERHANGİ bir 10 haneli, 5 ile başlayan sayı dizisini (bir referans/sipariş numarası gibi) yanlış-pozitif olarak yakalardı. Kendi test yazarken fark edildi, `0`/`+90` önekini ZORUNLU kılacak şekilde düzeltildi (`content-redaction.util.spec.ts`'in "yanlış-pozitif ÜRETMEMELİ" bloğu bunu açıkça test ediyor).
+
+**Tasarım kararı — Message/MessageEdit/Report'un BAĞIMSIZ değerlendirilmesi:** Slice B'nin blanket-redaksiyonundan farklı olarak, dar tarama her satırı KENDİ metnine göre kontrol ediyor — bir mesajın güncel içeriği temiz ama eski bir `MessageEdit` kaydı e-posta içeriyorsa, SADECE o `MessageEdit` satırı redakte ediliyor, mesajın kendisi dokunulmadan kalıyor. Bu, avukatın "satır bazlı değerlendirme" standardının doğrudan uygulanması.
+
+**Backfill'in wiring'i:** `package.json`'a `db:backfill-message-content-pii`, `render.yaml`'ın `preDeployCommand`'ına VE `.github/workflows/ci.yml`'nin İKİ job'ına (mevcut backfill'lerin yanına) eklendi — yeni bir deploy adımı unutulmadı.
+
+**Gözlemlenen ama bu turda düzeltilmeyen bir şey:** `auth.service.ts` bu dilimle birlikte ~726 satıra çıktı, CLAUDE.md'nin "400 satırı geçtiyse bölünmesi konuşulur" eşiğinin epey üzerinde — dosya Slice B'den ÖNCE de zaten bu eşiği aşmıştı (signup/login/password-reset/TOTP akışlarının hepsi burada), bu dilimin kapsamı DEĞİL, ayrıca not düşülüyor. Bölme kararı founder'a bırakılıyor.
+
+**Gerçek saat:** milestone tahmini 9-13h idi, gerçek harcama alt ucuna yakın (util+testleri ~1.5h, URL kapsam sorusu+telefon regex düzeltmesi ~1h, `deleteAccount` entegrasyonu ~1.5h, backend testleri (birim+e2e, restructuring dahil) ~2h, backfill script+e2e testi ~1.5h, CI/render.yaml wiring ~0.5h, dokümantasyon ~1h).
+
+**Doğrulama:** `apps/api` lint/typecheck/build + 277 birim + 141 e2e (iki koşu, temiz seed+TÜM backfill zinciri sonrası, flakiness yok). Bu dilim frontend'e dokunmadı, `apps/web` testleri çalıştırılmadı (planın kendi kapsam notu). Dal `m6c/slice-c-automated-pii-scan-backfill`, push kullanıcının onayına kalıyor.
+
+**M6c'nin tüm dilimleri (A/B/C) TAMAMLANDI — bu milestone kod tarafında KAPANDI.**
+
 ## Risks
-- Slice C'nin regex taraması yanlış-negatif üretebilir (bağlamsal/yaratıcı kimlik ifşası yakalanamaz) — bu dosya "garanti" değil "makul çaba" iddia ediyor, ADR-0005 Addendum #2'de açıkça yazılı; avukatla bu çerçevenin kendisi ayrıca doğrulanmadı (founder işi).
-- Backfill'in kapsamı (TÜM geçmiş `authorId IS NULL` satırları) mevcut veri hacmine göre uzun sürebilir — Slice C'nin implementasyon turunda gerçek satır sayısı ölçülmeli, `backfill-totp-secrets.ts`'in idempotent deseni bunun için zaten uygun.
-- Slice B'nin varsayılan-AÇIK checkbox'ı, kullanıcıların "thread coherence" bozulmasını (kendi mesajlarının context'ten kaybolması) fark etmeden kabul etmesine yol açabilir — UI metninin bunu net anlatması gerekiyor, implementasyon turunda dikkat edilmeli.
+- Slice C'nin regex taraması yanlış-negatif ÜRETİYOR (bağlamsal/yaratıcı kimlik ifşasını, ve BİLEREK URL'yi yakalamıyor) — bu dosya "garanti" değil "makul çaba" iddia ediyor, ADR-0005 Addendum #2'de açıkça yazılı; avukatla bu çerçevenin kendisi ayrıca doğrulanmadı (founder işi, hâlâ açık).
+- Backfill'in kapsamı (TÜM geçmiş `authorId IS NULL` satırları) production'da mevcut veri hacmine göre uzun sürebilir — yerel/CI'daki test verisiyle ölçülemedi, ilk gerçek production deploy'unda gözlemlenmeli.
+- Slice B'nin varsayılan-AÇIK checkbox'ı, kullanıcıların "thread coherence" bozulmasını (kendi mesajlarının context'ten kaybolması) fark etmeden kabul etmesine yol açabilir — UI metni bunu anlatıyor ama gerçek kullanıcı davranışı gözlemlenmedi.
+- `auth.service.ts` ~726 satıra çıktı (CLAUDE.md'nin 400 satır eşiğinin üzerinde) — bölme kararı founder'a bırakıldı, bu dilimlerin kapsamı dışında bilerek ertelendi.

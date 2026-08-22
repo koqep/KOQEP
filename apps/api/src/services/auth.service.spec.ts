@@ -981,6 +981,8 @@ describe('AuthService', () => {
       overrides: {
         userDelete?: jest.Mock;
         messageFindMany?: jest.Mock;
+        messageEditFindMany?: jest.Mock;
+        reportFindMany?: jest.Mock;
       } = {},
     ) {
       const userDeleteSpy =
@@ -988,9 +990,13 @@ describe('AuthService', () => {
       const messageFindManySpy =
         overrides.messageFindMany ?? jest.fn().mockResolvedValue([]);
       const messageUpdateManySpy = jest.fn().mockResolvedValue({ count: 0 });
+      const messageEditFindManySpy =
+        overrides.messageEditFindMany ?? jest.fn().mockResolvedValue([]);
       const messageEditUpdateManySpy = jest
         .fn()
         .mockResolvedValue({ count: 0 });
+      const reportFindManySpy =
+        overrides.reportFindMany ?? jest.fn().mockResolvedValue([]);
       const reportUpdateManySpy = jest.fn().mockResolvedValue({ count: 0 });
       const txMock = {
         user: { delete: userDeleteSpy },
@@ -998,8 +1004,14 @@ describe('AuthService', () => {
           findMany: messageFindManySpy,
           updateMany: messageUpdateManySpy,
         },
-        messageEdit: { updateMany: messageEditUpdateManySpy },
-        report: { updateMany: reportUpdateManySpy },
+        messageEdit: {
+          findMany: messageEditFindManySpy,
+          updateMany: messageEditUpdateManySpy,
+        },
+        report: {
+          findMany: reportFindManySpy,
+          updateMany: reportUpdateManySpy,
+        },
       };
       const prismaMock: Partial<PrismaService> = {
         user: {
@@ -1014,7 +1026,9 @@ describe('AuthService', () => {
         userDeleteSpy,
         messageFindManySpy,
         messageUpdateManySpy,
+        messageEditFindManySpy,
         messageEditUpdateManySpy,
+        reportFindManySpy,
         reportUpdateManySpy,
       };
     }
@@ -1151,9 +1165,10 @@ describe('AuthService', () => {
           reportUpdateManySpy,
           userDeleteSpy,
         } = buildDeleteAccountPrismaMock(user, {
-          messageFindMany: jest
-            .fn()
-            .mockResolvedValue([{ id: 'msg-1' }, { id: 'msg-2' }]),
+          messageFindMany: jest.fn().mockResolvedValue([
+            { id: 'msg-1', content: 'ilk mesaj' },
+            { id: 'msg-2', content: 'ikinci mesaj' },
+          ]),
         });
 
         const service = buildService(prismaMock);
@@ -1166,7 +1181,7 @@ describe('AuthService', () => {
 
         expect(messageFindManySpy).toHaveBeenCalledWith({
           where: { authorId: 'user-1' },
-          select: { id: true },
+          select: { id: true, content: true },
         });
         expect(messageUpdateManySpy).toHaveBeenCalledWith({
           where: { id: { in: ['msg-1', 'msg-2'] } },
@@ -1185,17 +1200,97 @@ describe('AuthService', () => {
         });
       });
 
-      it('false_ya_da_belirtilmemisken_hicbir_redaksiyon_yapmaz', async () => {
+      it('false_ya_da_belirtilmemisken_ve_pii_yoksa_hicbir_redaksiyon_yapmaz', async () => {
         const passwordHash = await argon2.hash('correct-password');
         const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
         const { prismaMock, messageFindManySpy, messageUpdateManySpy } =
-          buildDeleteAccountPrismaMock(user);
+          buildDeleteAccountPrismaMock(user, {
+            messageFindMany: jest
+              .fn()
+              .mockResolvedValue([{ id: 'msg-1', content: 'sıradan mesaj' }]),
+          });
 
         const service = buildService(prismaMock);
         await service.deleteAccount('user-1', 'correct-password');
 
-        expect(messageFindManySpy).not.toHaveBeenCalled();
+        // M6c Slice C: mesajlar HER ZAMAN çekiliyor (dar tarama için) ama
+        // yapısal PII yoksa updateMany hiç çağrılmıyor.
+        expect(messageFindManySpy).toHaveBeenCalled();
         expect(messageUpdateManySpy).not.toHaveBeenCalled();
+      });
+
+      describe('dar otomatik tarama (redactMessageContent false/belirtilmemişken)', () => {
+        it('yapisal_pii_iceren_mesaji_redakte_eder_temiz_olana_dokunmaz', async () => {
+          const passwordHash = await argon2.hash('correct-password');
+          const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+          const { prismaMock, messageUpdateManySpy } =
+            buildDeleteAccountPrismaMock(user, {
+              messageFindMany: jest.fn().mockResolvedValue([
+                { id: 'msg-kirli', content: 'ben Ahmet, ahmet@ornek.com' },
+                { id: 'msg-temiz', content: 'sıradan bir mesaj' },
+              ]),
+            });
+
+          const service = buildService(prismaMock);
+          await service.deleteAccount('user-1', 'correct-password');
+
+          expect(messageUpdateManySpy).toHaveBeenCalledWith({
+            where: { id: { in: ['msg-kirli'] } },
+            data: { content: AUTHOR_DELETED_CONTENT },
+          });
+        });
+
+        it('mesaj_temiz_ama_gecmisi_pii_iceriyorsa_sadece_o_edit_satirini_redakte_eder', async () => {
+          const passwordHash = await argon2.hash('correct-password');
+          const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+          const { prismaMock, messageUpdateManySpy, messageEditUpdateManySpy } =
+            buildDeleteAccountPrismaMock(user, {
+              messageFindMany: jest
+                .fn()
+                .mockResolvedValue([
+                  { id: 'msg-1', content: 'düzenlenmiş, artık temiz' },
+                ]),
+              messageEditFindMany: jest.fn().mockResolvedValue([
+                {
+                  id: 'edit-1',
+                  previousContent: 'ben Ahmet, 0555 123 45 67',
+                },
+              ]),
+            });
+
+          const service = buildService(prismaMock);
+          await service.deleteAccount('user-1', 'correct-password');
+
+          expect(messageUpdateManySpy).not.toHaveBeenCalled();
+          expect(messageEditUpdateManySpy).toHaveBeenCalledWith({
+            where: { id: { in: ['edit-1'] } },
+            data: { previousContent: AUTHOR_DELETED_CONTENT },
+          });
+        });
+
+        it('rapor_snapshotu_pii_iceriyorsa_sadece_o_rapor_satirini_redakte_eder', async () => {
+          const passwordHash = await argon2.hash('correct-password');
+          const user = { id: 'user-1', email: 'a@koqep.local', passwordHash };
+          const { prismaMock, reportUpdateManySpy } =
+            buildDeleteAccountPrismaMock(user, {
+              messageFindMany: jest
+                .fn()
+                .mockResolvedValue([{ id: 'msg-1', content: 'sıradan mesaj' }]),
+              reportFindMany: jest
+                .fn()
+                .mockResolvedValue([
+                  { id: 'report-1', reportedContent: 'iletisim@ornek.com' },
+                ]),
+            });
+
+          const service = buildService(prismaMock);
+          await service.deleteAccount('user-1', 'correct-password');
+
+          expect(reportUpdateManySpy).toHaveBeenCalledWith({
+            where: { id: { in: ['report-1'] } },
+            data: { reportedContent: AUTHOR_DELETED_CONTENT },
+          });
+        });
       });
 
       it('kullanicinin_hic_mesaji_yoksa_updateMany_cagrilarini_atlar', async () => {

@@ -29,7 +29,8 @@
     "db:migrate:deploy": "prisma migrate deploy --schema=src/db/schema.prisma",
     "db:seed": "ts-node src/db/seed.ts",
     "db:backfill-totp-secrets": "ts-node src/db/backfill-totp-secrets.ts",
-    "db:backfill-room-members": "ts-node src/db/backfill-room-members.ts"
+    "db:backfill-room-members": "ts-node src/db/backfill-room-members.ts",
+    "db:backfill-message-content-pii": "ts-node src/db/backfill-message-content-pii.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

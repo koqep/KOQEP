@@ -21,6 +21,7 @@ import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 import { AUTHOR_DELETED_CONTENT } from './messages.service';
+import { containsStructuralPii } from './content-redaction.util';
 
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -395,12 +396,13 @@ export class AuthService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        const ownMessages = await tx.message.findMany({
+          where: { authorId: userId },
+          select: { id: true, content: true },
+        });
+        const messageIds = ownMessages.map((message) => message.id);
+
         if (redactMessageContent) {
-          const ownMessages = await tx.message.findMany({
-            where: { authorId: userId },
-            select: { id: true },
-          });
-          const messageIds = ownMessages.map((message) => message.id);
           if (messageIds.length > 0) {
             await tx.message.updateMany({
               where: { id: { in: messageIds } },
@@ -412,6 +414,51 @@ export class AuthService {
             });
             await tx.report.updateMany({
               where: { messageId: { in: messageIds } },
+              data: { reportedContent: AUTHOR_DELETED_CONTENT },
+            });
+          }
+        } else if (messageIds.length > 0) {
+          // M6c Slice C: kullanıcı redactMessageContent'i işaretlemedi -
+          // yine de DAR bir otomatik güvenlik ağı çalışır, SADECE yapısal
+          // kimlik deseni (e-posta/telefon) taşıyan satırları redakte eder.
+          // Message/MessageEdit/Report'un HER biri KENDİ metnine göre
+          // BAĞIMSIZ değerlendirilir - bir mesajın güncel içeriği temiz ama
+          // eski bir MessageEdit kaydı e-posta içeriyorsa, sadece o
+          // MessageEdit satırı redakte edilir.
+          const piiMessageIds = ownMessages
+            .filter((message) => containsStructuralPii(message.content))
+            .map((message) => message.id);
+          if (piiMessageIds.length > 0) {
+            await tx.message.updateMany({
+              where: { id: { in: piiMessageIds } },
+              data: { content: AUTHOR_DELETED_CONTENT },
+            });
+          }
+
+          const ownEdits = await tx.messageEdit.findMany({
+            where: { messageId: { in: messageIds } },
+            select: { id: true, previousContent: true },
+          });
+          const piiEditIds = ownEdits
+            .filter((edit) => containsStructuralPii(edit.previousContent))
+            .map((edit) => edit.id);
+          if (piiEditIds.length > 0) {
+            await tx.messageEdit.updateMany({
+              where: { id: { in: piiEditIds } },
+              data: { previousContent: AUTHOR_DELETED_CONTENT },
+            });
+          }
+
+          const ownReports = await tx.report.findMany({
+            where: { messageId: { in: messageIds } },
+            select: { id: true, reportedContent: true },
+          });
+          const piiReportIds = ownReports
+            .filter((report) => containsStructuralPii(report.reportedContent))
+            .map((report) => report.id);
+          if (piiReportIds.length > 0) {
+            await tx.report.updateMany({
+              where: { id: { in: piiReportIds } },
               data: { reportedContent: AUTHOR_DELETED_CONTENT },
             });
           }
