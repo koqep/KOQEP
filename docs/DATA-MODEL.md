@@ -59,3 +59,4 @@ Message volume stays low at ~600 users (soft ceiling, not a target). A standard 
 | Archived room | +60 days, zero views | Hard delete |
 | Core rooms | never | Never archived/deleted |
 | ReputationEvent | never | Immutable, retained indefinitely |
+| TrafficLog (planlanan, `docs/milestones/M6b-traffic-log-5651.md`) | 18 ay (5651, avukat cevabı 2026-08-21) | Otomatik cron ile hard delete — `userId` hesap silinse bile `SetNull` ile korunur, ADR-0005 Addendum |
