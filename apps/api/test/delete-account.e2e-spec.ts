@@ -188,6 +188,71 @@ describe('Account deletion (e2e)', () => {
       .expect(201);
   });
 
+  // M6c Slice B (ADR-0005 Addendum #2): yukarıdaki test flag GÖNDERMEDEN
+  // silme yapıp içeriğin AYNEN kaldığını doğruluyor (varsayılan davranış
+  // değişmedi) - bu test redactMessageContent:true iken içeriğin gerçekten
+  // AUTHOR_DELETED_CONTENT'e döndüğünü kanıtlıyor, üçü de (Message/
+  // MessageEdit/Report).
+  it('redactMessageContent_true_iken_mesaj_gecmis_ve_rapor_icerigini_gercekten_redakte_eder', async () => {
+    const user = await createTestUser();
+    const otherUser = await createTestUser();
+    const room = await prisma.room.upsert({
+      where: { name: CORE_ROOM_NAMES[0] },
+      update: {},
+      create: { name: CORE_ROOM_NAMES[0] },
+    });
+    const message = await prisma.message.create({
+      data: {
+        roomId: room.id,
+        authorId: user.id,
+        content: 'ben Ahmet, ahmet@ornek.com',
+      },
+    });
+    const edit = await prisma.messageEdit.create({
+      data: {
+        messageId: message.id,
+        previousContent: 'ilk hali - kimlik ifsasi',
+      },
+    });
+    const report = await prisma.report.create({
+      data: {
+        messageId: message.id,
+        reporterId: otherUser.id,
+        reportedUserId: user.id,
+        reportedContent: 'ben Ahmet, ahmet@ornek.com',
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/delete-account')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ password: user.password, redactMessageContent: true })
+      .expect(201)
+      .expect({ ok: true });
+
+    const redactedMessage = await prisma.message.findUnique({
+      where: { id: message.id },
+    });
+    expect(redactedMessage?.content).toBe(
+      '[Bu mesaj yazarı tarafından silindi.]',
+    );
+    expect(redactedMessage?.authorId).toBeNull();
+
+    const redactedEdit = await prisma.messageEdit.findUnique({
+      where: { id: edit.id },
+    });
+    expect(redactedEdit?.previousContent).toBe(
+      '[Bu mesaj yazarı tarafından silindi.]',
+    );
+
+    const redactedReport = await prisma.report.findUnique({
+      where: { id: report.id },
+    });
+    expect(redactedReport?.reportedContent).toBe(
+      '[Bu mesaj yazarı tarafından silindi.]',
+    );
+  });
+
   it('reddeder_ikinci_cagriyi_401le_500_degil', async () => {
     const user = await createTestUser();
 

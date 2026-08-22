@@ -20,6 +20,7 @@ import { sha256Hex } from './crypto.util';
 import { SignupDto } from '../api/dto/signup.dto';
 import { LoginDto } from '../api/dto/login.dto';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
+import { AUTHOR_DELETED_CONTENT } from './messages.service';
 
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -375,15 +376,48 @@ export class AuthService {
   // kalıyor, sadece "kim yayınladı" bilgisi siliniyor (bkz. milestone Plan
   // notları - GDPR/KVKK silme hakkı, M5'in henüz tasarlanmamış davetçi
   // hesap-verebilirliği fikrinden önceliklidir).
+  //
+  // M6c Slice B (ADR-0005 Addendum #2): authorId'yi SetNull yapmak SATIRI
+  // anonimleştirir ama METNİ değil - kullanıcı mesajında kendini ifşa
+  // ettiyse bu, hesap silindikten sonra da okunabilir kalırdı. Kullanıcı
+  // redactMessageContent'i işaretlerse, authorId henüz DOLUYKEN (user.delete
+  // çalışmadan ÖNCE, aynı transaction içinde) o kullanıcıya ait mesajların
+  // içeriği + düzenleme geçmişi + rapor snapshot'ları AUTHOR_DELETED_CONTENT
+  // ile değiştirilir - authorId null'a düştükten SONRA hangi satırların bu
+  // kullanıcıya ait olduğu artık bilinemez, sıra bu yüzden kritik.
   async deleteAccount(
     userId: string,
     password: string,
     totpCode?: string,
+    redactMessageContent?: boolean,
   ): Promise<void> {
     await this.verifyCurrentPassword(userId, password, totpCode);
 
     try {
-      await this.prisma.user.delete({ where: { id: userId } });
+      await this.prisma.$transaction(async (tx) => {
+        if (redactMessageContent) {
+          const ownMessages = await tx.message.findMany({
+            where: { authorId: userId },
+            select: { id: true },
+          });
+          const messageIds = ownMessages.map((message) => message.id);
+          if (messageIds.length > 0) {
+            await tx.message.updateMany({
+              where: { id: { in: messageIds } },
+              data: { content: AUTHOR_DELETED_CONTENT },
+            });
+            await tx.messageEdit.updateMany({
+              where: { messageId: { in: messageIds } },
+              data: { previousContent: AUTHOR_DELETED_CONTENT },
+            });
+            await tx.report.updateMany({
+              where: { messageId: { in: messageIds } },
+              data: { reportedContent: AUTHOR_DELETED_CONTENT },
+            });
+          }
+        }
+        await tx.user.delete({ where: { id: userId } });
+      });
     } catch (error) {
       // P2025: satır zaten yok - yarış durumu (aynı 15 dk'lık access
       // token'la ikinci çağrı, ya da bir önceki silmeden sonra). UsersService
