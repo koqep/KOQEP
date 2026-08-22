@@ -55,6 +55,7 @@ M6'nın gerçek teslimatı bu liste — dilimler bitince "hazırız" otomatik va
 - [ ] Rate limit sayıları gözden geçirildi (yukarıdaki Slice B eki) — değiştirilmedi bile olsa, bilinçli bir "şu an bu sayılar yeterli" kararı kayıtlı.
 - [x] E-posta gönderim domaini doğrulanmış (SPF/DKIM/DMARC) — zaten tamamlandı.
 - [ ] **YENİ (2026-08-21, 5651 avukat cevabı sonrası).** `TrafficLog` altyapısı canlıda çalışıyor — gerçek istemci IP'si (Render+Cloudflare proxy zinciri doğru okunuyor), 18 aylık saklama + otomatik silme cron'u doğrulandı, bütünlük hash'i (ya da nitelikli zaman damgası, avukat cevabına göre) uygulandı. Detay: `docs/milestones/M6b-traffic-log-5651.md`.
+- [ ] **YENİ (2026-08-22, founder kararı).** Render Postgres planı yükseltildi — TrafficLog gerçek veri yazmaya başlamadan (M6b Slice C/D deploy'undan) ÖNCE tamamlanmış olmalı. Tahmini gereksinim ~5.3GB/18 ay (500 kullanıcı), mevcut Basic-256mb planının 5GB depolama limitine çok yakın/üstünde. Zamanlaması founder'ın kendi takdirinde ama bu maddeden ÖNCE `TrafficLog`'un canlıda veri biriktirmeye başlaması KABUL EDİLEMEZ. Detay: `docs/BACKLOG.md` A18, `docs/milestones/M6b-traffic-log-5651.md`.
 
 Bu liste tamamen yeşil olmadan `docs/review/CRITIQUE.md`'nin Riskiest Assumption testi (manifesto/waitlist) gerçek yabancılara açılmaz — sadece founder'ın zaten bildiği/davet ettiği kapalı çevre için M6'yı beklemeden devam etmek ayrı bir karar, bu listenin kapsamı dışında.
 
