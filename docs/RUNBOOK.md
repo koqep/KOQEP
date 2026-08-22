@@ -89,6 +89,19 @@ UPDATE "User" SET "totpSecret" = NULL, "totpEnabledAt" = NULL WHERE "totpSecret"
 ```
 Bu, TÜM kullanıcılar için TOTP'yi zorla kapatır — kalıcı hesap kilidi DEĞİL, sadece "authenticator'ını yeniden kur" maliyeti. Detay: `docs/decisions/ADR-0008-totp-secret-encryption.md`.
 
+### 3.8 — Bir kullanıcı hesabını sildikten sonra eski bir mesajında kendini ifşa eden içeriğin kaldırılmasını istiyor
+ADR-0005 (Addendum #2) + `docs/milestones/M6c-message-content-anonymization.md`: `deleteAccount()` sadece `Message.authorId`'yi null'lar, mesajın METNİNE dokunmaz — kullanıcı mesajında kendi adını/e-postasını/başka bir kimlik bilgisini paylaşmışsa, bu içerik hesap silindikten sonra da aynen okunabilir kalır (§3.5'in — moderatör içerik geri alma — BİREBİR ters-yönlü emsali). Talep kanalı: mevcut `FEEDBACK_EMAIL` (`RoomHeader.tsx`, `docs/BACKLOG.md` A19) — yeni bir e-posta/form yok, bu talepler için de aynı adres kullanılıyor.
+
+Hedef mesajın id'si kullanıcının verdiği bağlamla (oda adı, yaklaşık zaman, içeriğin kendisinden bir parça) Render Postgres konsolundan `SELECT` ile bulunur, sonra üç tablo da güncellenir — `Message`'ın kendisi, o mesajın `MessageEdit` geçmişi (varsa), VE o mesaja ait bir `Report` snapshot'ı (varsa). `Report.messageId` `onDelete: SetNull` SADECE mesaj hard-delete edilirse tetiklenir (ör. odanın kendisi silinirse) — kullanıcı hesabı silinse bile `messageId` dolu kalır, bu yüzden `Report` satırı `reportedUserId` zaten null olmuş olsa da `messageId` üzerinden bulunabilir:
+
+```sql
+UPDATE "Message" SET content = '[Bu mesaj yazarı tarafından silindi.]' WHERE id = '<mesaj id>';
+UPDATE "MessageEdit" SET "previousContent" = '[Bu mesaj yazarı tarafından silindi.]' WHERE "messageId" = '<mesaj id>';
+UPDATE "Report" SET "reportedContent" = '[Bu mesaj yazarı tarafından silindi.]' WHERE "messageId" = '<mesaj id>';
+```
+
+Placeholder metni mevcut `AUTHOR_DELETED_CONTENT` sabitiyle (`apps/api/src/services/messages.service.ts`) bilerek AYNI tutuldu — uygulamanın kendi "silinmiş mesaj" görünümüyle tutarlı olsun diye. `docs/milestones/M6c-message-content-anonymization.md`'nin Slice B'si bu redaksiyonu (kullanıcının kendi seçimiyle) uygulama içine taşıyınca farklı bir sabit seçilirse, bu satır da eşleşecek şekilde güncellenmeli.
+
 ## 4. Yedekleme / restore
 
 Render Postgres Basic-256mb ücretli bir plan olduğu için Point-in-Time Recovery (PITR) teorik olarak dahil (`render.com/docs/postgresql-backups`: "Render continually backs up paid Render Postgres databases", ayrıca workspace planından bağımsız 7 günlük logical backup retention). **Ama "yedek var" hiçbir zaman varsayılmaz — aşağıdaki sıra izlenir:**
