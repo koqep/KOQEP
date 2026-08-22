@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -35,6 +35,7 @@ import { ModeratorRoleService } from './services/moderator-role.service';
 import { PasswordPolicyService } from './services/password-policy.service';
 import { SocketRegistryService } from './services/socket-registry.service';
 import { getRealClientIp } from './services/client-ip.util';
+import { TrafficLogMiddleware } from './api/traffic-log.middleware';
 import { PrismaModule } from './db/prisma.module';
 
 const ACCESS_TOKEN_TTL = '15m';
@@ -126,4 +127,10 @@ const DEFAULT_RATE_LIMIT = 100;
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // M6b Slice C: Guard'lardan ÖNCE çalışır - 401/429 gibi Guard'ların
+  // reddettiği istekler de TrafficLog'a düşer (bkz. traffic-log.middleware.ts).
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(TrafficLogMiddleware).forRoutes('*');
+  }
+}
