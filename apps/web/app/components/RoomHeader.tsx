@@ -1,6 +1,7 @@
 "use client";
 
 import type { Room } from "../../lib/api";
+import { FEEDBACK_EMAIL } from "../../lib/contact";
 import { formatRelativeActivity } from "../../lib/format";
 
 // apps/api/src/db/core-rooms.constants.ts ile AYNI değer -
@@ -9,12 +10,6 @@ import { formatRelativeActivity } from "../../lib/format";
 // mantığı sahibi değil). Çekirdek odalar switcher'da "ayrıl" affordance'ı
 // GÖSTERMEZ - backend'in kendi ForbiddenException reddiyle simetrik.
 const CORE_ROOM_NAMES = ["general", "meta"];
-
-// M7b Slice H2: kişisel gelen kutusu, kurumsal bir adres değil (bilerek
-// kabul edilen kısıt, docs/BACKLOG.md'de somut bir tetikleyiciyle not
-// düşülü) - kurumsal bir adrese (ör. support@koqep.com) geçiş bu TEK
-// satırın değişmesinden ibaret olsun diye ayrı bir sabitte yaşıyor.
-const FEEDBACK_EMAIL = "ussasa155@gmail.com";
 
 interface Props {
   rooms: Room[];

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const FEEDBACK_EMAIL = "ussasa155@gmail.com";
+import { FEEDBACK_EMAIL } from "../../lib/contact";
 
 export default function PrivacyPage() {
   return (
