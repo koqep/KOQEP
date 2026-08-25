@@ -18,6 +18,7 @@ import {
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { Throttle } from '@nestjs/throttler';
 import { Server, Socket } from 'socket.io';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 import { AuthService } from '../services/auth.service';
@@ -32,11 +33,27 @@ import { BlocksService } from '../services/blocks.service';
 import { WsThrottlerGuard } from './ws-throttler.guard';
 import { SocketRegistryService } from '../services/socket-registry.service';
 import { getAllowedOrigins } from '../allowed-origins';
+import { getRealClientIp } from '../services/client-ip.util';
+import { writeTrafficLogRow } from '../services/traffic-log-writer.util';
 
 const MESSAGE_SEND_LIMIT = 10;
 const MESSAGE_SEND_TTL_MS = 10 * 1000;
 
+const WS_CONNECTION_START = 'WS_CONNECTION_START';
+const WS_CONNECTION_END = 'WS_CONNECTION_END';
+
 interface SocketData {
+  connectionId: string;
+  ipAddress: string;
+  userId?: string;
+}
+
+// handleConnection'ın 'ready' emit ETMEDEN önce userId'yi HER ZAMAN set
+// ettiği anlardan (mesaj handler'ları, broadcastToRoom - hepsi 'ready'
+// SONRASI çalışır) sonraki kullanım noktaları için - SocketData'nın kendisi
+// (auth tamamlanmadan önceki bağlantı-only durum) userId'yi bilerek
+// opsiyonel tutuyor.
+interface AuthenticatedSocketData extends SocketData {
   userId: string;
 }
 
@@ -68,6 +85,33 @@ export class MessagesGateway
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
+    // M6b Slice D: auth kontrolünden ÖNCE - reddedilen (geçersiz/eksik
+    // token) bağlantılar da REST middleware'in (Slice C) "reddedilen
+    // istek de kayıt alır" felsefesiyle tutarlı şekilde kayda giriyor.
+    // userId bu satırda HEP null - auth henüz doğrulanmadı, kim
+    // bağlandığı (varsa) SADECE handleDisconnect'in END satırından
+    // connectionId ile eşlenerek okunur.
+    const connectionId = randomUUID();
+    const ipAddress = getRealClientIp(
+      client.handshake.headers['x-forwarded-for'],
+      client.handshake.headers['cf-connecting-ip'],
+      client.handshake.address,
+    );
+    client.data = { connectionId, ipAddress } as SocketData;
+    writeTrafficLogRow(
+      this.prisma,
+      {
+        serviceType: WS_CONNECTION_START,
+        ipAddress,
+        startedAt: new Date(),
+        endedAt: null,
+        connectionId,
+        bytesTransferred: null,
+        userId: null,
+      },
+      'ws:connect',
+    );
+
     const token = client.handshake.auth?.token as string | undefined;
 
     if (!token) {
@@ -96,8 +140,10 @@ export class MessagesGateway
         select: { roomId: true },
       });
 
-      const data: SocketData = { userId: payload.sub };
-      client.data = data;
+      // client.data'yı YENİDEN ATAMIYOR - handleConnection'ın başında
+      // set edilen connectionId/ipAddress korunuyor, sadece userId ekleniyor
+      // (handleDisconnect'in TrafficLog END satırı ikisine de ihtiyaç duyar).
+      (client.data as SocketData).userId = payload.sub;
       this.socketRegistry.register(payload.sub, client);
       for (const { roomId } of memberships) {
         await client.join(roomId);
@@ -117,8 +163,28 @@ export class MessagesGateway
   // burası o durumda zararsız bir no-op.
   handleDisconnect(client: Socket): void {
     const data = client.data as SocketData | undefined;
-    if (!data?.userId) return;
-    this.socketRegistry.unregister(data.userId, client);
+    if (data?.userId) {
+      this.socketRegistry.unregister(data.userId, client);
+    }
+    // connectionId/ipAddress handleConnection'ın EN BAŞINDA set edildiği
+    // için (auth başarısız olsa bile) burada her zaman dolu - START'ı
+    // eşleyen END satırı KOŞULSUZ yazılır, userId auth hiç tamamlanmadıysa
+    // null kalır.
+    if (data?.connectionId) {
+      writeTrafficLogRow(
+        this.prisma,
+        {
+          serviceType: WS_CONNECTION_END,
+          ipAddress: data.ipAddress,
+          startedAt: null,
+          endedAt: new Date(),
+          connectionId: data.connectionId,
+          bytesTransferred: null,
+          userId: data.userId ?? null,
+        },
+        'ws:disconnect',
+      );
+    }
   }
 
   @SubscribeMessage('message:send')
@@ -130,7 +196,7 @@ export class MessagesGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { content?: unknown; roomName?: unknown },
   ): Promise<AckResponse | void> {
-    const { userId } = client.data as SocketData;
+    const { userId } = client.data as AuthenticatedSocketData;
     const content = body?.content;
     const roomName =
       typeof body?.roomName === 'string' ? body.roomName : CORE_ROOM_NAMES[0];
@@ -207,7 +273,7 @@ export class MessagesGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { messageId?: unknown; content?: unknown },
   ): Promise<AckResponse | void> {
-    const { userId } = client.data as SocketData;
+    const { userId } = client.data as AuthenticatedSocketData;
     const messageId = body?.messageId;
     const content = body?.content;
 
@@ -280,7 +346,7 @@ export class MessagesGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { messageId?: unknown },
   ): Promise<AckResponse | void> {
-    const { userId } = client.data as SocketData;
+    const { userId } = client.data as AuthenticatedSocketData;
     const messageId = body?.messageId;
 
     if (typeof messageId !== 'string') {
@@ -323,7 +389,7 @@ export class MessagesGateway
       : new Set<string>();
     const socketsInRoom = await this.server.in(message.roomId).fetchSockets();
     for (const socket of socketsInRoom) {
-      const socketData = socket.data as SocketData;
+      const socketData = socket.data as AuthenticatedSocketData;
       if (!blockerIds.has(socketData.userId)) {
         socket.emit(eventName, message);
       }
