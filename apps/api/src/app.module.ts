@@ -11,6 +11,7 @@ import { PasswordResetController } from './api/password-reset.controller';
 import { BlocksController } from './api/blocks.controller';
 import { RoomsController } from './api/rooms.controller';
 import { RoomsLifecycleController } from './api/rooms-lifecycle.controller';
+import { TrafficLogLifecycleController } from './api/traffic-log-lifecycle.controller';
 import { MessagesController } from './api/messages.controller';
 import { MessagesGateway } from './api/messages.gateway';
 import { ModerationController } from './api/moderation.controller';
@@ -36,6 +37,7 @@ import { PasswordPolicyService } from './services/password-policy.service';
 import { SocketRegistryService } from './services/socket-registry.service';
 import { getRealClientIp } from './services/client-ip.util';
 import { TrafficLogMiddleware } from './api/traffic-log.middleware';
+import { TrafficLogService } from './services/traffic-log.service';
 import { PrismaModule } from './db/prisma.module';
 
 const ACCESS_TOKEN_TTL = '15m';
@@ -94,6 +96,7 @@ const DEFAULT_RATE_LIMIT = 100;
     BlocksController,
     RoomsController,
     RoomsLifecycleController,
+    TrafficLogLifecycleController,
     MessagesController,
     ModerationController,
     InvitesController,
@@ -110,6 +113,7 @@ const DEFAULT_RATE_LIMIT = 100;
     BlocksService,
     UsersService,
     RoomsService,
+    TrafficLogService,
     MessagesService,
     ReputationService,
     ReportsService,

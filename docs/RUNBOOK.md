@@ -13,6 +13,7 @@
 | Hata takibi | Sentry (`apps/api` + `apps/web`, M6 Slice B) | Sentry dashboard → Issues |
 | CI/CD | GitHub Actions (`.github/workflows/ci.yml`) — production'a deploy ETMİYOR, sadece PR/main'i test ediyor | GitHub → Actions sekmesi |
 | Cron (oda lifecycle sweep) | Render → `POST /internal/rooms/lifecycle-sweep`, GitHub Actions'tan tetikleniyor | GitHub Actions log'u + Render servis logu |
+| Cron (trafik logu purge, 5651 — M6b Slice F) | Render → `POST /internal/traffic-logs/purge`, GitHub Actions'tan GÜNLÜK tetikleniyor (`.github/workflows/traffic-log-purge.yml`) — 18 aydan eski `TrafficLog` satırlarını siler | GitHub Actions log'u + Render servis logu |
 | Uptime izleme | **Henüz kurulmadı** (M6 doc'un manuel listesinde, bekliyor) | — |
 
 ## 2. Genel ilk müdahale (her olay için önce bunlar)
@@ -124,7 +125,7 @@ Değerlerin KENDİSİ hiçbir yerde yazılı değil — sadece envanter ve "kayb
 |---|---|---|---|
 | `TOTP_ENCRYPTION_KEY` | Render dashboard | **EVET olmalı** (şifre yöneticisi vb. — ADR-0008/Slice E'nin kendi manuel görevi) | **KALICI VERİ KAYBI.** Mevcut şifreli `totpSecret` satırları sonsuza dek okunamaz — yeni bir değer üretmek işe yaramaz, gereken ESKİ değer. Toplu kurtarma: §3.7. |
 | `JWT_SECRET` | Render dashboard | Yok, gerekmiyor | Veri kaybı DEĞİL — yeni değer üretilip girilir, tek etkisi mevcut access/refresh token'ların geçersiz olması (herkes yeniden giriş yapar). Düşük risk. |
-| `CRON_SECRET` | Render dashboard **+** GitHub Actions secrets (aynı değer, iki yerde — ikisi de yazma-sadece, geri okunamaz) | Fiilen iki yerde ama hiçbiri "okunabilir" bir yedek değil | Veri kaybı değil — yeni değer üretip HER İKİ yere birden girmek yeterli. Güncellenene kadar sadece lifecycle-sweep cron'u 401 alır. |
+| `CRON_SECRET` | Render dashboard **+** GitHub Actions secrets (aynı değer, iki yerde — ikisi de yazma-sadece, geri okunamaz) | Fiilen iki yerde ama hiçbiri "okunabilir" bir yedek değil | Veri kaybı değil — yeni değer üretip HER İKİ yere birden girmek yeterli. Güncellenene kadar lifecycle-sweep VE traffic-log purge (M6b Slice F) cron'ları 401 alır. |
 | `RESEND_API_KEY` | Render dashboard | Asıl kaynağı zaten Resend'in kendi hesap paneli | Veri kaybı değil — Resend dashboard'undan yeniden üretilip girilir. E-posta gönderimi yeni key girilene kadar durur. |
 | `DATABASE_URL` | Render dashboard, değeri Render Postgres instance'ının kendi bağlantı bilgisinden türüyor | Asıl kaynağı Render Postgres'in kendi paneli | Veri kaybı değil (DB'nin KENDİSİ ayrı bir şey) — Render Postgres panelinden yeniden kopyalanır. |
 

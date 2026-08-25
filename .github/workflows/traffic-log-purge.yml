@@ -1,0 +1,17 @@
+name: Traffic log purge
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call traffic-logs purge endpoint
+        run: |
+          curl --fail --show-error \
+            -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.API_BASE_URL }}/internal/traffic-logs/purge"
