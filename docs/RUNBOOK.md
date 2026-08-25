@@ -103,6 +103,35 @@ UPDATE "Report" SET "reportedContent" = '[Bu mesaj yazarı tarafından silindi.]
 
 Placeholder metni mevcut `AUTHOR_DELETED_CONTENT` sabitiyle (`apps/api/src/services/messages.service.ts`) bilerek AYNI tutuldu — uygulamanın kendi "silinmiş mesaj" görünümüyle tutarlı olsun diye. `docs/milestones/M6c-message-content-anonymization.md`'nin Slice B'si bu redaksiyonu (kullanıcının kendi seçimiyle) uygulama içine taşıyınca farklı bir sabit seçilirse, bu satır da eşleşecek şekilde güncellenmeli.
 
+### 3.9 — Periyodik örneklem denetimi (M6c — 5651/KVKK avukat şartı, 2026-08-25)
+Avukatın "makul çaba" çerçevesine (ADR-0005 Addendum #2) koyduğu şart: otomatik yapısal-PII taramasının (Slice C, `content-redaction.util.ts`) GERÇEKTEN işlediğini gösteren düzenli manuel kontrol. Bir istatistik/rapor bunu KANITLAMAZ — insan gözüyle örnek satırlara bakmak gerekiyor. Önerilen sıklık: AYDA BİR (avukat kesin bir sıklık belirtmedi, founder'ın kendi takdiri — sıklık artırılabilir/azaltılabilir).
+
+**Adım 1 — Redakte edilmiş satırlardan rastgele örnek (redaksiyonun DOĞRU çalıştığını doğrula):**
+```sql
+SELECT id, content, "createdAt"
+FROM "Message"
+WHERE "authorId" IS NULL AND content = '[Bu mesaj yazarı tarafından silindi.]'
+ORDER BY random()
+LIMIT 10;
+```
+Beklenen: her satırın `content`'i tam olarak placeholder metin. Farklı bir şey görülüyorsa (ör. kısmi redaksiyon, hâlâ okunabilir bir PII parçası) gerçek bir regresyon — `content-redaction.util.spec.ts`'e yeni bir test eklenip kod düzeltilmeli.
+
+**Adım 2 — Redakte EDİLMEMİŞ, anonimleştirilmiş satırlardan rastgele örnek (taramanın bir şey KAÇIRIP KAÇIRMADIĞINI kontrol et):**
+```sql
+SELECT id, content, "createdAt"
+FROM "Message"
+WHERE "authorId" IS NULL AND content != '[Bu mesaj yazarı tarafından silindi.]'
+ORDER BY random()
+LIMIT 10;
+```
+Beklenen: hiçbirinde göz-ile-fark-edilir bir e-posta/telefon/TC kimlik/isim YOK. Bir tanesinde varsa — regex kaçırmışsa (yapısal bir desen olduğu hâlde) gerçek bir bug, kaçırdığı isim/bağlamsal bir ifşaysa (regex'in bilinen sınırı) `docs/RUNBOOK.md`'nin §3.8'indeki manuel talep prosedürüyle o TEK satır elle redakte edilebilir.
+
+**Audit izi — yeni bir tablo/otomatik log YOK, bu tabloya elle bir satır eklenir** (git commit geçmişi zaten zaman damgası+değişmezlik sağlıyor, tek-founder ölçeğinde ayrı bir DB tablosu aşırı mühendislik olurdu):
+
+| Tarih | Kim | Örneklenen satır (Adım 1 / Adım 2) | Bulgu |
+|---|---|---|---|
+| — | — | — | İlk denetim henüz yapılmadı |
+
 ## 4. Yedekleme / restore
 
 Render Postgres Basic-256mb ücretli bir plan olduğu için Point-in-Time Recovery (PITR) teorik olarak dahil (`render.com/docs/postgresql-backups`: "Render continually backs up paid Render Postgres databases", ayrıca workspace planından bağımsız 7 günlük logical backup retention). **Ama "yedek var" hiçbir zaman varsayılmaz — aşağıdaki sıra izlenir:**
