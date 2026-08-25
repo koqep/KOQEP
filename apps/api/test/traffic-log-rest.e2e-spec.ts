@@ -3,11 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { randomUUID, randomInt } from 'crypto';
+import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { TrafficLog } from '@prisma/client';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
+import { randomTestIp } from './support/random-test-ip';
 
 // M6b Slice C: TrafficLogMiddleware'in gerçek uçtan uca kanıtı - özellikle
 // middleware'i (interceptor değil) seçmenin gerekçesi olan "Guard'ın
@@ -15,11 +16,10 @@ import { PrismaService } from './../src/db/prisma.service';
 // için (bkz. traffic-log.middleware.ts) HTTP yanıtı dönünce satırın DB'ye
 // gerçekten yazılmış olması garanti değil - waitForTrafficLogRow kısa bir
 // pencerede POLL ediyor (kör bir sleep değil). Jest e2e dosyaları PARALEL
-// koşabiliyor - her test kendi isteğine RFC 5737 (TEST-NET-3) aralığından
-// RASTGELE, benzersiz bir X-Forwarded-For veriyor ve TÜM DB sorgularını o
-// IP'ye göre daraltıyor; aksi halde başka bir e2e dosyasının AYNI ANDA
-// ürettiği bir satır (userId:null + serviceType:'REST' de ondan olabilir)
-// yanlışlıkla eşleşebilir.
+// koşabiliyor - her test kendi isteğine `trackedTestIp()`'in (support/
+// random-test-ip.ts, M6b Slice D'de gerçek bir çarpışma bulunup geniş
+// bir alana çıkarıldı) ürettiği benzersiz bir X-Forwarded-For veriyor ve
+// TÜM DB sorgularını o IP'ye göre daraltıyor.
 describe('TrafficLog REST middleware (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -53,8 +53,8 @@ describe('TrafficLog REST middleware (e2e)', () => {
     await app.close();
   });
 
-  function randomTestIp(): string {
-    const ip = `203.0.113.${randomInt(1, 255)}`;
+  function trackedTestIp(): string {
+    const ip = randomTestIp();
     usedIpAddresses.push(ip);
     return ip;
   }
@@ -103,7 +103,7 @@ describe('TrafficLog REST middleware (e2e)', () => {
 
   it('basarili_public_istek_trafficlog_satiri_uretir', async () => {
     const { email, password } = await createTestUser();
-    const ip = randomTestIp();
+    const ip = trackedTestIp();
 
     await request(app.getHttpServer())
       .post('/auth/login')
@@ -124,7 +124,7 @@ describe('TrafficLog REST middleware (e2e)', () => {
   });
 
   it('guard_reddettigi_istek_de_kayit_uretir_userId_null', async () => {
-    const ip = randomTestIp();
+    const ip = trackedTestIp();
 
     await request(app.getHttpServer())
       .get('/me/export')
@@ -139,7 +139,7 @@ describe('TrafficLog REST middleware (e2e)', () => {
 
   it('kimlik_dogrulanmis_istekte_userId_dolu', async () => {
     const { userId, accessToken } = await createTestUser();
-    const ip = randomTestIp();
+    const ip = trackedTestIp();
 
     await request(app.getHttpServer())
       .get('/me/export')
@@ -154,7 +154,7 @@ describe('TrafficLog REST middleware (e2e)', () => {
   });
 
   it('health_route_trafficlog_satiri_uretmez', async () => {
-    const ip = randomTestIp();
+    const ip = trackedTestIp();
 
     await request(app.getHttpServer())
       .get('/health')
