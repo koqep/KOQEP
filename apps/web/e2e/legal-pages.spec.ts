@@ -5,7 +5,7 @@ test("gizlilik_sayfasi_onayli_politika_metnini_gosterir_ve_ana_sayfaya_doner", a
 }) => {
   await page.goto("/privacy");
 
-  await expect(page.getByText("TASLAK")).not.toBeVisible();
+  await expect(page.getByText(/\bTASLAK\b/)).not.toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Veri Sorumlusu" }),
   ).toBeVisible();
@@ -13,12 +13,15 @@ test("gizlilik_sayfasi_onayli_politika_metnini_gosterir_ve_ana_sayfaya_doner", a
   await expect(page).toHaveURL("/");
 });
 
-test("kullanim_sartlari_sayfasi_taslak_uyarisi_gosterir_ve_ana_sayfaya_doner", async ({
+test("kullanim_sartlari_sayfasi_onayli_metni_gosterir_ve_ana_sayfaya_doner", async ({
   page,
 }) => {
   await page.goto("/terms");
 
-  await expect(page.getByText("TASLAK")).toBeVisible();
+  await expect(page.getByText(/\bTASLAK\b/)).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Taraflar ve Kapsam" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "ana sayfaya dön" }).click();
   await expect(page).toHaveURL("/");
 });
@@ -36,12 +39,15 @@ test("gizlilik_sayfasinin_ingilizce_surumu_onayli_politika_metnini_gosterir_ve_a
   await expect(page).toHaveURL("/");
 });
 
-test("kullanim_sartlarinin_ingilizce_surumu_draft_uyarisi_gosterir_ve_ana_sayfaya_doner", async ({
+test("kullanim_sartlarinin_ingilizce_surumu_onayli_metni_gosterir_ve_ana_sayfaya_doner", async ({
   page,
 }) => {
   await page.goto("/terms/en");
 
-  await expect(page.getByText("DRAFT")).toBeVisible();
+  await expect(page.getByText(/\bDRAFT\b/)).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Parties and Scope" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "back to home" }).click();
   await expect(page).toHaveURL("/");
 });
