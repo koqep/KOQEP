@@ -23,12 +23,15 @@ test("kullanim_sartlari_sayfasi_taslak_uyarisi_gosterir_ve_ana_sayfaya_doner", a
   await expect(page).toHaveURL("/");
 });
 
-test("gizlilik_sayfasinin_ingilizce_surumu_draft_uyarisi_gosterir_ve_ana_sayfaya_doner", async ({
+test("gizlilik_sayfasinin_ingilizce_surumu_onayli_politika_metnini_gosterir_ve_ana_sayfaya_doner", async ({
   page,
 }) => {
   await page.goto("/privacy/en");
 
-  await expect(page.getByText("DRAFT")).toBeVisible();
+  await expect(page.getByText(/\bDRAFT\b/)).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Data Controller" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "back to home" }).click();
   await expect(page).toHaveURL("/");
 });
