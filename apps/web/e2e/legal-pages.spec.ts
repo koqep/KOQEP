@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
 
-test("gizlilik_sayfasi_taslak_uyarisi_gosterir_ve_ana_sayfaya_doner", async ({
+test("gizlilik_sayfasi_onayli_politika_metnini_gosterir_ve_ana_sayfaya_doner", async ({
   page,
 }) => {
   await page.goto("/privacy");
 
-  await expect(page.getByText("TASLAK")).toBeVisible();
+  await expect(page.getByText("TASLAK")).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Veri Sorumlusu" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "ana sayfaya dön" }).click();
   await expect(page).toHaveURL("/");
 });
