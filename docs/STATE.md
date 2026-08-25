@@ -12,12 +12,13 @@
 - **M6b Slice A-F MERGE OLDU/TAMAMLANDI (PR #77-83, F push onayında).** `getRealClientIp()` (Slice A, REST+WS ortak) POZİSYON-DOĞRULAMALI, sahtelenemez (bkz. Tuzaklar). `TrafficLog` şeması (B, `SetNull` FK) + REST/WS yazma (`traffic-log-writer.util.ts`, P2003 retry, C+D) + 18 aylık TAKVİM AYIYLA silme cron'u (F). Postgres kapasitesi KESİNLEŞTİ (founder) — yükseltme Slice I'nin gerçek yazımından ÖNCE gerekiyor (A18).
 - **M6b Slice I (nitelikli zaman damgası) ERTELENDİ (2026-08-25) — kapsam turu (TÜBİTAK KamuSM/E-Güven karşılaştırması, BATCH tasarım zorunluluğu — satır-başı damgalama ~3M TL/18ay'a denk gelir) TAMAMLANDI ama implementasyona hiç geçilmeden kullanıcı kararıyla durduruldu.** Somut tetikleyici: resmi bir makamdan talep/denetim (`docs/BACKLOG.md` A23). Bulgular SİLİNMEDİ, tetikleyici gerçekleşirse başlangıç noktası olarak duruyor.
 - **M6c (mesaj içeriği) A/B/C TAMAMLANDI+MERGE OLDU, milestone KESİN OLARAK KAPALI (2026-08-25, üç tur).** Avukat ÖNCE ŞARTLI onayladı (isim/TC kimlik de yakalanmalı) → kullanıcı ikisini de BİLEREK kapsam dışı bıraktı (TC kimlik'in kapsamı belirlenmişti — "Slice D" — implementasyona hiç geçilmeden, `docs/BACKLOG.md` A22; isim zaten A21'e ertelenmişti, gerçek NLP gerektiriyor) → karar avukata GERİ SORULDU → **avukat çerçevenin (e-posta/telefon regex + manuel talep kanalı + kullanıcının kendi seçimi) YETERLİ olduğunu, isim/TC kimlik'in gerekli OLMADIĞINI teyit etti.** A21/A22 "AVUKAT ONAYLADI, KAPANDI" işaretlendi. `docs/RUNBOOK.md` §3.9 periyodik örneklem denetimi YAZILDI. M6c'nin BU sorudaki açık founder-task'ı KALMADI.
-- **Gizlilik politikası (M6 AC #1) YAZILDI (2026-08-25).** `apps/web/app/privacy/page.tsx` avukat onaylı gerçek metinle güncellendi (TASLAK banner kaldırıldı, 8 bölüm: veri sorumlusu/toplanan veriler/paylaşım/haklar/çerezler/yaş sınırı/politika değişiklikleri/iki dilli metin notu). `/terms` ve `/privacy/en` bu görevin kapsamı DIŞINDA, hâlâ TASLAK. TR/EN çelişki durumunda hangi sürümün bağlayıcı olacağı henüz netleşmedi (sayfada açıkça belirtiliyor).
+- **Gizlilik politikası (M6 AC #1) TAMAMLANDI, TR+EN main'de (PR #87-88).** `apps/web/app/privacy/page.tsx` + `privacy/en/page.tsx` avukat onaylı metinle güncellendi, TASLAK/DRAFT banner'ları kaldırıldı.
+- **Kullanım şartları TAMAMLANDI (2026-08-25), TR+EN AYNI COMMIT'TE (`docs/terms-final-text`, push onayında).** `apps/web/app/terms/page.tsx` + `terms/en/page.tsx` avukat onaylı 14 bölümlük metinle güncellendi, TASLAK/DRAFT kaldırıldı. `legal-pages.spec.ts`'teki TASLAK/DRAFT kontrolleri `\b...\b` (kelime sınırı) regex'ine çevrildi — onaylı metin içinde tesadüfi bir alt-dize (ör. "drafted") yanlış pozitif üretebiliyordu.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `docs/privacy-policy-final-text` dalının (gizlilik politikası gerçek metni) push'u kullanıcı onayında. `docs/m6b-slice-i-deferred` de aynı şekilde push onayında.
-- **Sonraki adım:** M6b, M6c, gizlilik politikası (M6 AC #1) hepsi kod tarafında KAPALI, beklenen bir şey YOK. `/terms` hâlâ TASLAK ama ayrı bir görev. D1 (rate limit, M7b) Faz 1 gerçek trafiğini bekliyor — tek kalan aktif dilim.
+- **Görev:** `docs/terms-final-text` dalının (kullanım şartları TR+EN) push'u kullanıcı onayında.
+- **Sonraki adım:** M6b, M6c, gizlilik politikası, kullanım şartları hepsi kod tarafında KAPALI, beklenen bir şey YOK. D1 (rate limit, M7b) Faz 1 gerçek trafiğini bekliyor — tek kalan aktif dilim.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
@@ -36,7 +37,7 @@
 ## Tuzaklar (Claude buraya düşmesin)
 - `docs/BACKLOG.md` boş bir şablon DEĞİL — dolu ve detaylı; kapsam tartışılırken oku.
 - `ReputationEvent` sadece insert edilir; mesaj içeriği asla hard-delete edilmez, sadece yazar anonimleştirilir.
-- "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula.
+- "main güncel" / "merge oldu" iddialarını HER ZAMAN `git fetch` + `git log origin/main` ile bağımsız doğrula. Bir dalın PR'ı merge OLDUKTAN SONRA o dala YENİ commit push etmek main'e OTOMATİK girmez (PR zaten kapandı) — `git merge-base --is-ancestor <commit> origin/main` ile doğrula, "aynı işi ikiye böl, ikinci parçayı ayrı push et" YAPMA (gizlilik politikası TR/EN'i ayrı commit'lere bölmek bunu gerçekten yaşattı — EN çevirisi main'e hiç girmedi, Vercel doğru deploy etti ama main'de içerik hiç yoktu; kullanım şartlarında TR+EN AYNI commit'e alınarak tekrarlanmadı).
 - `.env`/`.env.*` dosyaları `Read`/`cat` için engelli; `@prisma/client` import edilince `.env`'i ayrıca sessizce (yeniden) yükler.
 - `apps/web/e2e/support/auth-mocks.ts` paylaşılan fixture — yeni auth-akışı testi yazarken kopyalamak yerine BUNU kullan/genişlet.
 - `prisma migrate dev` migration dosyasını hemen uyguluyor — elle SQL eklemek için önce `--create-only` kullan.
