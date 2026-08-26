@@ -33,6 +33,11 @@ export function parseCookieHeader(
   return result;
 }
 
+// Bilerek domain attribute'u YOK (host-only, api.koqep.com'a daraltılmış
+// kalıyor) - httpOnly olduğu için document.cookie okuma sorunu zaten yok,
+// CSRF çerezinin aksine genişletmeye gerek yok. .koqep.com'a genişletmek
+// ileride BAŞKA bir subdomain (ör. blog.koqep.com) XSS'e maruz kalırsa en
+// hassas kimlik materyalini (refresh token) de sızdırma riski açardı.
 export function buildRefreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
@@ -45,17 +50,57 @@ export function buildRefreshCookieOptions(): CookieOptions {
   };
 }
 
+// KRİTİK production regresyonu düzeltmesi (M7a Slice A düzeltmesi): domain
+// attribute'u OLMADAN bu çerez host-only olur - web (koqep.com) ve API
+// (api.koqep.com) farklı HOSTNAME'lerde olduğu için document.cookie web
+// sayfasından bunu asla okuyamazdı (RFC 6265 çerez eşleştirmesi port'u
+// değil hostname'i baz alır - localhost:3000/3001'de AYNI hostname
+// olduğundan bu bug yerel geliştirmede hiç görünmüyordu). WEB_ORIGIN'den
+// (allowed-origins.ts'in www-strip deseniyle AYNI) türetilen ortak
+// domain (ör. ".koqep.com") hem koqep.com hem api.koqep.com'un JS'ine
+// görünür kılıyor.
+export function getCsrfCookieDomain(
+  webOrigin: string | undefined,
+): string | undefined {
+  if (!webOrigin) {
+    return undefined;
+  }
+
+  let hostname: string;
+  try {
+    hostname = new URL(webOrigin).hostname;
+  } catch {
+    return undefined;
+  }
+
+  // localhost/IP/tek-etiketli hostname'lerde Domain attribute anlamsız -
+  // host-only (mevcut, yerel/CI davranışı) korunur.
+  const isIpLike = /^[\d.]+$/.test(hostname) || hostname.includes(':');
+  if (hostname === 'localhost' || isIpLike || !hostname.includes('.')) {
+    return undefined;
+  }
+
+  const canonical = hostname.startsWith('www.')
+    ? hostname.slice('www.'.length)
+    : hostname;
+  return `.${canonical}`;
+}
+
 // path:'/' - CSRF double-submit deseni JS'in bu cookie'yi document.cookie
 // ile HER sayfadan okuyup X-Csrf-Token header'ına eklemesini gerektiriyor;
 // path:'/auth' verilirse (refresh cookie'siyle aynı) kullanıcı /'dayken bu
 // cookie JS'e hiç görünmez, header hiçbir zaman gönderilemez.
-export function buildCsrfCookieOptions(): CookieOptions {
+export function buildCsrfCookieOptions(
+  webOrigin: string | undefined,
+): CookieOptions {
+  const domain = getCsrfCookieDomain(webOrigin);
   return {
     httpOnly: false,
     secure: true,
     sameSite: 'none',
     path: '/',
     maxAge: REFRESH_TOKEN_TTL_MS,
+    ...(domain ? { domain } : {}),
   };
 }
 

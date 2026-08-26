@@ -353,6 +353,16 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     // path:'/auth' YANLIŞ olurdu - JS'in bu cookie'yi /'dan hiç
     // okuyamaması demekti (kullanıcının review'ında bulunan gerçek bug).
     expect(csrfCookie).not.toContain('Path=/auth');
+
+    // Production regresyonu düzeltmesi (M7a Slice A düzeltmesi): test
+    // ortamında WEB_ORIGIN=http://localhost:3000 (ci.yml) - localhost
+    // istisnasına düştüğü için Domain attribute'u ÜRETİLMEMELİ, host-only
+    // davranış korunmalı. Domain=.koqep.com'un GERÇEKTEN üretildiği
+    // senaryo getCsrfCookieDomain'in kendi birim testinde (auth-cookie.
+    // util.spec.ts) kapsanıyor - saf fonksiyon olduğu için burada env'i
+    // request-arası değiştirip yarış koşulu yaratmaya gerek yok.
+    expect(refreshCookie).not.toMatch(/Domain=/i);
+    expect(csrfCookie).not.toMatch(/Domain=/i);
   });
 
   it('cookie_ve_dogru_csrf_header_ile_bodysiz_refresh_calisir', async () => {

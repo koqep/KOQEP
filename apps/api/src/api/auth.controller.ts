@@ -112,7 +112,7 @@ export class AuthController {
     response.cookie(
       CSRF_COOKIE_NAME,
       generateCsrfToken(),
-      buildCsrfCookieOptions(),
+      buildCsrfCookieOptions(process.env.WEB_ORIGIN),
     );
   }
 
@@ -125,7 +125,7 @@ export class AuthController {
     response.cookie(
       CSRF_COOKIE_NAME,
       '',
-      buildClearCookieOptions(buildCsrfCookieOptions()),
+      buildClearCookieOptions(buildCsrfCookieOptions(process.env.WEB_ORIGIN)),
     );
   }
 
