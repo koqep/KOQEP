@@ -37,7 +37,13 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   await inviterPage.getByRole("button", { name: "invites" }).click();
   // GET /invites en yeniden eskiye sıralıyor - az önce kazanılan davet
   // her zaman ilk satır, önceki bir koşudan kalan satırlardan etkilenmez.
-  const inviteRow = inviterPage.getByRole("listitem").first();
+  // M10 Faz 2 Slice A: panel artık overlay (SidePanel), arkadaki ChatPanel
+  // HER ZAMAN mount kalıyor (inert) - sayfa genelinde page.getByRole
+  // ("listitem") artık mesaj <li>'lerini DE eşleştirir (MessageItem.tsx da
+  // <li>). Panelin kendi dialog'una daraltmak gerekiyor, aksi halde .first()
+  // DOM sırasına göre yanlış bir listitem'i (bir mesajı) yakalayabilir.
+  const inviteDialog = inviterPage.getByRole("dialog");
+  const inviteRow = inviteDialog.getByRole("listitem").first();
   await expect(inviteRow).toBeVisible({ timeout: 10000 });
   const code = (await inviteRow.locator("span").first().textContent())?.trim();
   expect(code).toBeTruthy();
@@ -81,7 +87,11 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   await expect(inviterPage.getByLabel("email")).toHaveCount(0);
   await inviterPage.getByRole("button", { name: "invites" }).click();
   await expect(
-    inviterPage.getByRole("listitem").first().getByText("used", { exact: true }),
+    inviterPage
+      .getByRole("dialog")
+      .getByRole("listitem")
+      .first()
+      .getByText("used", { exact: true }),
   ).toBeVisible({ timeout: 10000 });
 
   await inviterContext.close();
