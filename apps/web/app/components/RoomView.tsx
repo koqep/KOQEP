@@ -28,6 +28,7 @@ import DiscoverRoomsView from "./DiscoverRoomsView";
 import ModerationQueueView from "./ModerationQueueView";
 import RoomHeader from "./RoomHeader";
 import ChatPanel from "./ChatPanel";
+import SidePanel, { SIDE_PANEL_TITLE_ID } from "./SidePanel";
 
 type ActivePanel =
   | "none"
@@ -43,6 +44,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
 const DRAFT_STORAGE_PREFIX = "koqep:draft:";
 const DRAFT_STORAGE_DEBOUNCE_MS = 500;
+// globals.css'in --motion-duration-base'iyle AYNI tutulmalı (M10 Faz 2
+// Slice A) - CSS değişkeni JS'te doğrudan okunmuyor, ikisi elle senkron.
+const PANEL_CLOSE_MS = 240;
 
 function readDraftsFromStorage(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -108,6 +112,7 @@ export default function RoomView({
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
   const [activePanel, setActivePanel] = useState<ActivePanel>("none");
+  const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -119,6 +124,27 @@ export default function RoomView({
   const messagesSectionRef = useRef<HTMLElement | null>(null);
   const pendingScrollAdjustmentRef = useRef<number | null>(null);
   const draftDebounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const panelCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // M10 Faz 2 Slice A: panelin kendi "close" butonu, backdrop tıklaması,
+  // Escape VE oda değiştirme/oluşturma sırasında panel açıksa - HEPSİ bu
+  // TEK yoldan geçiyor, böylece kapanış her zaman animasyonlu (SidePanel'in
+  // isClosing prop'u) ve tutarlı oluyor.
+  function requestClosePanel() {
+    if (activePanel === "none" || isPanelClosing) return;
+    setIsPanelClosing(true);
+    panelCloseTimerRef.current = setTimeout(() => {
+      setActivePanel("none");
+      setIsPanelClosing(false);
+      panelCloseTimerRef.current = null;
+    }, PANEL_CLOSE_MS);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (panelCloseTimerRef.current) clearTimeout(panelCloseTimerRef.current);
+    };
+  }, []);
 
   // drafts state bellek-içi kaynak-doğruluk; localStorage yazımı her tuş
   // vuruşunda değil, oda başına debounce'lu (500ms) - sekme kapanması/
@@ -478,7 +504,7 @@ export default function RoomView({
   }, [accessToken]);
 
   async function handleRoomSwitch(next: Room) {
-    setActivePanel("none");
+    requestClosePanel();
     if (next.id === activeRoom?.id) return;
     setActiveRoom(next);
 
@@ -620,75 +646,41 @@ export default function RoomView({
     (activeRoom === null || activeRoom.status === "active") &&
     !isMuted;
 
+  const isPanelOpen = activePanel !== "none";
+
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-2xl flex-col p-4">
-      <RoomHeader
-        rooms={rooms}
-        activeRoom={activeRoom}
-        onRoomSwitch={(room) => void handleRoomSwitch(room)}
-        onLeaveRoom={(room) => void handleLeaveRoom(room)}
-        onCreateRoomClick={() => setActivePanel("create-room")}
-        onDiscoverRoomsClick={() => setActivePanel("discover-rooms")}
-        showArchived={showArchived}
-        onToggleShowArchived={() => void handleToggleShowArchived()}
-        onOpenTotp={() => setActivePanel("totp")}
-        onOpenBlocked={() => setActivePanel("blocked")}
-        onOpenInvites={() => setActivePanel("invites")}
-        onOpenDeleteAccount={() => setActivePanel("delete-account")}
-        onLogout={() => void handleLogout()}
-        isModerator={myProfile?.role === "moderator"}
-        onOpenModeration={() => setActivePanel("moderation")}
-      />
+      {/* M10 Faz 2 Slice A: RoomHeader+ChatPanel artık HER ZAMAN mount kalır -
+          panel açıkken native inert (React 19) alt ağacı klavye/erişilebilirlik
+          ağacından çıkarır, dim ile görsel olarak da bastırılır. Bu, panel
+          kapanınca ChatPanel'in yeniden mount olup scroll pozisyonunu
+          sıfırladığı gerçek, fark edilmemiş bir bug'ı da yan etki olarak
+          düzeltiyor (messagesSectionRef'in DOM node'u artık hiç kaybolmuyor). */}
+      <div
+        inert={isPanelOpen}
+        className={
+          "chat-dim-transition flex h-full min-h-0 flex-col " +
+          (isPanelOpen ? "opacity-40" : "opacity-100")
+        }
+      >
+        <RoomHeader
+          rooms={rooms}
+          activeRoom={activeRoom}
+          onRoomSwitch={(room) => void handleRoomSwitch(room)}
+          onLeaveRoom={(room) => void handleLeaveRoom(room)}
+          onCreateRoomClick={() => setActivePanel("create-room")}
+          onDiscoverRoomsClick={() => setActivePanel("discover-rooms")}
+          showArchived={showArchived}
+          onToggleShowArchived={() => void handleToggleShowArchived()}
+          onOpenTotp={() => setActivePanel("totp")}
+          onOpenBlocked={() => setActivePanel("blocked")}
+          onOpenInvites={() => setActivePanel("invites")}
+          onOpenDeleteAccount={() => setActivePanel("delete-account")}
+          onLogout={() => void handleLogout()}
+          isModerator={myProfile?.role === "moderator"}
+          onOpenModeration={() => setActivePanel("moderation")}
+        />
 
-      {activePanel === "totp" ? (
-        <TotpSettingsView
-          accessToken={accessToken}
-          initialEnabled={totpEnabled}
-          onEnabledChange={setTotpEnabled}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : activePanel === "blocked" ? (
-        <BlockedUsersView
-          accessToken={accessToken}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : activePanel === "invites" ? (
-        <InviteView
-          accessToken={accessToken}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : activePanel === "delete-account" ? (
-        <DeleteAccountView
-          accessToken={accessToken}
-          onDeleted={onLoggedOut}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : activePanel === "create-room" ? (
-        <CreateRoomView
-          accessToken={accessToken}
-          onCreated={(room) => {
-            setRooms((prev) => [...prev, room]);
-            setActivePanel("none");
-            void handleRoomSwitch(room);
-          }}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : activePanel === "discover-rooms" ? (
-        <DiscoverRoomsView
-          accessToken={accessToken}
-          onJoined={(room) => {
-            setRooms((prev) => [...prev, room]);
-            setActivePanel("none");
-            void handleRoomSwitch(room);
-          }}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : activePanel === "moderation" ? (
-        <ModerationQueueView
-          accessToken={accessToken}
-          onClose={() => setActivePanel("none")}
-        />
-      ) : (
         <ChatPanel
           messagesSectionRef={messagesSectionRef}
           messages={messages}
@@ -716,6 +708,65 @@ export default function RoomView({
           isSending={isSending}
           onSubmit={(event) => void handleSubmit(event)}
         />
+      </div>
+
+      {isPanelOpen && (
+        <SidePanel isClosing={isPanelClosing} onRequestClose={requestClosePanel}>
+          {activePanel === "totp" ? (
+            <TotpSettingsView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              initialEnabled={totpEnabled}
+              onEnabledChange={setTotpEnabled}
+              onClose={requestClosePanel}
+            />
+          ) : activePanel === "blocked" ? (
+            <BlockedUsersView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              onClose={requestClosePanel}
+            />
+          ) : activePanel === "invites" ? (
+            <InviteView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              onClose={requestClosePanel}
+            />
+          ) : activePanel === "delete-account" ? (
+            <DeleteAccountView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              onDeleted={onLoggedOut}
+              onClose={requestClosePanel}
+            />
+          ) : activePanel === "create-room" ? (
+            <CreateRoomView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              onCreated={(room) => {
+                setRooms((prev) => [...prev, room]);
+                void handleRoomSwitch(room);
+              }}
+              onClose={requestClosePanel}
+            />
+          ) : activePanel === "discover-rooms" ? (
+            <DiscoverRoomsView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              onJoined={(room) => {
+                setRooms((prev) => [...prev, room]);
+                void handleRoomSwitch(room);
+              }}
+              onClose={requestClosePanel}
+            />
+          ) : activePanel === "moderation" ? (
+            <ModerationQueueView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              onClose={requestClosePanel}
+            />
+          ) : null}
+        </SidePanel>
       )}
     </main>
   );

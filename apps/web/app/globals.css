@@ -42,3 +42,64 @@
   animation: cursor-blink var(--motion-duration-cursor-blink)
     var(--motion-ease-terminal-blink) infinite;
 }
+
+/* M10 Faz 2 Slice A: SidePanel'in açılış/kapanış motion'ı - YENİ token
+   icat edilmedi, mevcut --motion-duration-base/--motion-ease-standard
+   yeniden kullanılıyor (Faz 1 kararı). Backdrop için fade-in'i tekrar
+   kullanmadık çünkü o translateY de içeriyor (küçük kartlar için) - burada
+   tam ekran bir katman, sadece opacity anlamlı. */
+@keyframes panel-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-slide-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes panel-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes panel-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-panel-slide-in {
+  animation: panel-slide-in var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+.animate-panel-slide-out {
+  animation: panel-slide-out var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+.animate-panel-backdrop-in {
+  animation: panel-backdrop-in var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+.animate-panel-backdrop-out {
+  animation: panel-backdrop-out var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+.chat-dim-transition {
+  transition: opacity var(--motion-duration-base) var(--motion-ease-standard);
+}

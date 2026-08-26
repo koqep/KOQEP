@@ -104,7 +104,14 @@ test("kapat_butonu_sohbet_ekranina_doner", async ({ page }) => {
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 });
 
-test("oda_butonuna_basinca_acik_panel_kapanip_sohbete_doner", async ({
+// M10 Faz 2 Slice A: panel artık gerçek bir overlay (SidePanel) - arka plan
+// (oda butonları dahil) panel açıkken `inert`, yani etkileşimsiz. Eski
+// davranış (arka plandaki bir butona basınca panelin SESSİZCE kapanıp
+// context değiştirmesi) BİLEREK kaldırıldı - bu, standart modal/dialog
+// semantiğiyle örtüşüyor (arka plana tıklamak dialog'u KAPATMAZ, sadece
+// backdrop/Escape/kendi kapat butonu kapatır). Testler bu YENİ, doğru
+// davranışı doğruluyor.
+test("panel_acikken_arka_plandaki_oda_butonu_etkilesimsiz_panel_acik_kalir", async ({
   page,
 }) => {
   await login(page);
@@ -115,15 +122,23 @@ test("oda_butonuna_basinca_acik_panel_kapanip_sohbete_doner", async ({
   await page.getByRole("button", { name: "blocked" }).click();
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 
-  // Panel açıkken zaten aktif olan (tek) odanın butonuna basmak - "geri
-  // dönme" için ilk akla gelen tepki - paneli kapatıp sohbete dönmeli.
-  await page.getByRole("button", { name: "#test-oda" }).click();
+  // Arka plandaki oda butonu artık inert sarmalayıcının İÇİNDE - gerçek bir
+  // tıklama denemek (Playwright'ın actionability beklemesi yüzünden) yavaş/
+  // kırılgan olurdu, doğrudan inert attribute'unun DOM'da olduğunu doğrulamak
+  // side-panel.spec.ts'in genel mekanizma testiyle AYNI, daha hızlı desen.
+  await expect(page.locator("[inert]")).toHaveCount(1);
+  await expect(
+    page.locator("[inert]").getByRole("button", { name: "#test-oda" }),
+  ).toBeVisible();
+  await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 
+  // Panel sadece kendi kapat yoluyla (Escape/backdrop/close butonu) kapanır.
+  await page.keyboard.press("Escape");
   await expect(page.getByText("you haven't blocked anyone yet")).toHaveCount(0);
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 });
 
-test("iki_adimli_dogrulama_paneli_acikken_engellenenlere_gecince_yer_degistirir", async ({
+test("bir_panelden_digerine_gecmek_icin_once_kapatmak_gerekir", async ({
   page,
 }) => {
   await login(page);
@@ -136,10 +151,17 @@ test("iki_adimli_dogrulama_paneli_acikken_engellenenlere_gecince_yer_degistirir"
     page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  // "blocked" tetikleyicisi de arka planda (aynı inert sarmalayıcının
+  // İÇİNDE) - TOTP paneli açıkken tıklanamaz, panel değişmez.
+  await expect(
+    page.locator("[inert]").getByRole("button", { name: "blocked" }),
+  ).toBeVisible();
 
+  await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: "start setup" }),
   ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "blocked" }).click();
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 });

@@ -9,12 +9,14 @@ interface Props {
   accessToken: string;
   onDeleted: () => void;
   onClose: () => void;
+  titleId: string;
 }
 
 export default function DeleteAccountView({
   accessToken,
   onDeleted,
   onClose,
+  titleId,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [password, setPassword] = useState("");
@@ -58,7 +60,7 @@ export default function DeleteAccountView({
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> delete account
         </h2>
         <button

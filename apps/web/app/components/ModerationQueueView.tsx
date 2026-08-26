@@ -26,9 +26,14 @@ interface PendingReasonAction {
 interface Props {
   accessToken: string;
   onClose: () => void;
+  titleId: string;
 }
 
-export default function ModerationQueueView({ accessToken, onClose }: Props) {
+export default function ModerationQueueView({
+  accessToken,
+  onClose,
+  titleId,
+}: Props) {
   const [reports, setReports] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -129,7 +134,7 @@ export default function ModerationQueueView({ accessToken, onClose }: Props) {
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> moderation
         </h2>
         <button
