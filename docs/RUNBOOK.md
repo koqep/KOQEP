@@ -144,7 +144,15 @@ Render Postgres Basic-256mb ücretli bir plan olduğu için Point-in-Time Recove
    - **CANLI DB'ye dokunmadan**, YENİ/ayrı bir veritabanına geri yükle (Render bunu destekliyorsa — bir backup/PITR noktasından yeni bir instance oluşturmak, canlıyı riske atmadan test etmenin yolu).
    - Geri yüklenen veriyi bilinen bir durumla (ör. belirli bir kullanıcı/oda/mesaj sayısı) karşılaştırarak bütünlüğü doğrula.
    - Gözlenen gerçek RTO (ne kadar sürdü) ve RPO'yu (ne kadar veri kaybı penceresi vardı) buraya not düş.
-3. Bu iki adım da **founder'ın kendi eliyle yapacağı iş** (`docs/milestones/M6-launch-readiness.md`'nin manuel listesinde zaten var) — bu doküman sadece adımları tarif ediyor, "tatbikat yapıldı" diye iddia etmiyor.
+3. Bu iki adım da **founder'ın kendi eliyle yapacağı iş** (`docs/milestones/M6-launch-readiness.md`'nin manuel listesinde zaten var).
+
+**Tatbikat kaydı — yeni bir tablo/otomatik log YOK, bu tabloya elle bir satır eklenir** (git commit geçmişi zaten zaman damgası+değişmezlik sağlıyor, tek-founder ölçeğinde ayrı bir DB tablosu aşırı mühendislik olurdu):
+
+| Tarih | Yöntem | Doğrulama | Sonuç | Temizlik |
+|---|---|---|---|---|
+| 2026-08-26 | Render PITR ile `koqep-db`'den yeni, ayrı bir test veritabanı oluşturuldu (canlı DB'ye dokunulmadı) | `User` tablosundaki satır sayısı canlı veritabanıyla karşılaştırıldı | **Doğrulandı — sayılar birebir eşleşti.** Restore mekanizması çalışıyor. | Test veritabanı silindi |
+
+RTO/RPO bu turda ölçülüp not düşülmedi — sadece restore mekanizmasının fiilen çalıştığı doğrulandı. Bir sonraki tatbikatta bu ikisi de gözlemlenip tabloya eklenebilir.
 
 ## 5. Sırlar ve nerede yedeklendikleri
 
