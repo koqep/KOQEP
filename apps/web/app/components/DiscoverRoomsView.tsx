@@ -14,12 +14,14 @@ interface Props {
   accessToken: string;
   onJoined: (room: Room) => void;
   onClose: () => void;
+  titleId: string;
 }
 
 export default function DiscoverRoomsView({
   accessToken,
   onJoined,
   onClose,
+  titleId,
 }: Props) {
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export default function DiscoverRoomsView({
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> discover rooms
         </h2>
         <button

@@ -7,9 +7,10 @@ import { useFocusOnMount } from "./useFocusOnMount";
 interface Props {
   accessToken: string;
   onClose: () => void;
+  titleId: string;
 }
 
-export default function InviteView({ accessToken, onClose }: Props) {
+export default function InviteView({ accessToken, onClose, titleId }: Props) {
   const [invites, setInvites] = useState<InviteDto[] | null>(null);
   const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
@@ -30,7 +31,7 @@ export default function InviteView({ accessToken, onClose }: Props) {
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} tabIndex={-1} className="text-neutral-400 outline-none">
+        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
           <span className="text-muted">#</span> invites
         </h2>
         <button

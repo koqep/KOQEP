@@ -1,6 +1,6 @@
 # M10 — Arayüz Tasarım Geçişi
 
-**Faz 1 (tasarım kararları) YAZILDI (2026-08-26), onay bekliyor — kod YOK, aşağıdaki "Faz 1" bölümüne bakın.**
+**Faz 1 (tasarım kararları) ONAYLANDI (2026-08-26).** **Faz 2 (kod) BAŞLADI — Slice A (panel deseni) TAMAMLANDI, `feat/m10-slice-a-side-panel` dalında, push onayında.** Kalan Faz 2 dilimleri aşağıdaki "Tasks — Faz 2 kod dilimleri" listesinde.
 
 *Kullanıcı bu milestone'u kendi 2026-08-12 kapsam turunda "M7" diye adlandırdı. **Burada M10 olarak numaralandırıldı** — sıralama nedeniyle: M7 (`M7-scale-and-critical-fixes.md`) 500-kullanıcı hedefinin ATEŞLEDİĞİ, ölçüm/adalet/kapasite gibi ERTELENEMEZ düzeltmeleri kapsıyor, M8 kullanıcının istediği yeni özellikleri. Bu ikisi CIDDI yeni UI yüzeyleri yaratıyor (landing sayfası, oda listesi, DM arayüzü, bildirim/rozet UI'ları) — hepsini M10'un TASARIM KARARLARI olmadan inşa edip SONRA yeniden tasarlamak, kullanıcının kendi endişesini ("tasarım ikinci kez bozulur") doğrudan gerçekleştirir. Bu yüzden M10, saf kronolojik sırada DEĞİL, M7/M8'in HER yeni-yüzey-yaratan dilimiyle KOORDİNELİ ilerliyor — aşağıya bakın.*
 
@@ -53,7 +53,15 @@ Kullanıcının kendi talimatı: önce tasarım kararları dokümante edilip ONA
 **M7/M8'in yeni yüzeyleri için erken kararlar — ARTIK GEÇMİŞTE KALDI, referans amaçlı korunuyor:** landing/onboarding (M7a Slice G, bitti, redesign'e dahil değil), oda-listesi'nin M7a Slice B/M7b Slice E ile gelen şekli (bitti, YUKARIDAKİ "Oda listesi" kararıyla YENİDEN tasarlanıyor), M8'in bildirim/rozet/DM arayüzleri (M8 henüz başlamadı — o milestone kendi plan-modu turuna başlamadan önce BU bölümün ilgili kısmına (özellikle profil paneline rozet eklenmesi) bakmalı).
 
 ### Faz 2 — Uygulama (kod)
-Faz 1 onaylandıktan SONRA, normal slice-bazlı kod dilimleri — kapsam Faz 1'in çıktısına göre burada güncellenir.
+Faz 1 onaylandıktan SONRA, normal slice-bazlı kod dilimleri — her biri kendi plan-modu turu.
+
+## Tasks — Faz 2 kod dilimleri (Claude uygular, her biri kendi plan-modu turu)
+- [x] **Slice A — Panel deseni: sağdan-kayan overlay.** Tamamlandı (2026-08-26). `activePanel`in sohbeti tamamen değiştirme bug'ı düzeltildi — yeni `SidePanel.tsx` (backdrop+overlay, `role="dialog"`/`aria-modal`/focus-trap), `RoomHeader`+`ChatPanel` artık her zaman mount (native `inert` ile bastırılıyor). Detay: "Plan notları — Slice A uygulaması" bölümü.
+- [ ] **Slice B — Header/sidebar ayrımı.** Üst bar (marka+oda aksiyonları+hesap▾) + sol kenar çubuğu (aranabilir dikey oda listesi) — bugünkü `RoomHeader.tsx`'in yatay sekme+tek-satır yapısının yerini alacak.
+- [ ] **Slice C — Mesaj ritmi.** Ardışık aynı-yazar mesajlarının gruplanması (`ChatPanel.tsx`/`MessageItem.tsx`).
+- [ ] **Slice D — Deterministik ASCII avatar.** Blok-karakter kimlik deseni (saf `id → desen` fonksiyonu), mesaj listesi + hesap menüsünde küçük render.
+- [ ] **Slice E — Profil paneli.** Yeni `GET /users/:username/profile` (public-safe alan seti) + SidePanel'i kullanan yeni panel türü (kendi/başkasının profili, büyük avatar+kullanıcı adı+katılma tarihi+seviye/XP, bio/rozet YOK).
+- [ ] **Slice F — Placeholder'lar.** Presence sayısı/son-mesaj önizlemesi/okunmamış rozetleri için görsel yer tutucular (`docs/BACKLOG.md` A24-A26'nın kod tarafı, gerçek implementasyon M8'e devrediliyor).
 
 ## Koordinasyon notu (M7/M8 ile) — 2026-08-26'da GÜNCELLENDİ, orijinal senaryo artık geçerli değil
 Yazıldığında M7/M8 henüz başlamamıştı, aşağıdaki iki madde "önce M10'a bak" koordinasyonunu varsayıyordu:
@@ -63,3 +71,21 @@ Yazıldığında M7/M8 henüz başlamamıştı, aşağıdaki iki madde "önce M1
 ## Risks
 - Bu milestone'un saat tahmini KASITLI OLARAK belirsiz (Faz 2 rakamı yok) — Faz 1 bitmeden gerçek bir tahmin vermek kullanıcının kendi "doğrudan implementasyona geçme" talimatını ihlal eder.
 - M8 kendi erken kararını almadan başlarsa (yukarıdaki güncellenmiş koordinasyon notu) kullanıcının asıl endişesi (tasarımın ikinci kez bozulması) gerçekleşir — `docs/milestones/M8-social-features.md`'nin kendi Sıradaki notuna da bu uyarı eklenmeli (Faz 2 başladığında).
+
+## Plan notları
+
+### Slice A — Panel deseni: sağdan-kayan overlay (2026-08-26, tamamlandı)
+Bir Plan agent'ı somut tasarımı üretti (DOM/CSS yaklaşımı, focus-trap, motion, 7 panelin minimal-diff entegrasyonu) — ardından kod okurken kendi başıma bir tutarlılık boşluğu bulundu: `handleRoomSwitch` + `CreateRoomView`/`DiscoverRoomsView`'ın `onCreated`/`onJoined`'ı panel'i `setActivePanel("none")` ile ANLIK kapatıyordu, panelin kendi kapat butonu ise YENİ animasyonlu `requestClosePanel()` yolunu kullanacaktı — aynı ekranda iki farklı kapanma davranışı karışırdı. Hepsi `requestClosePanel()`'e çevrildi.
+
+**İmplementasyon sırasında bulunan ve düzeltilen 2 gerçek bug (Plan agent'ının tasarımında da fark edilmemiş, gerçek Playwright koşumlarıyla bulundu):**
+
+1. **`position:fixed` viewport'a değil `<main>`'in kendi kutusuna göre konumlanıyordu.** `RoomView.tsx`'in `<main>`'i `animate-fade-in` taşıyor — bu bir `transform` animasyonu, `fill-mode:both` yüzünden animasyon bittikten SONRA bile `transform:translateY(0)` kalıcı kalıyor. CSS spec'ine göre `none` DIŞINDAKİ herhangi bir transform değeri (kimlik matrisi bile) o elemanı `position:fixed` torunları için bir containing block yapar — `SidePanel` `<main>`'in İÇİNDE olduğu için viewport'un tamamını değil `<main>`'in `max-w-2xl` genişliğindeki kutusunu kaplıyordu (`document.elementFromPoint(10,10)` ile `<body>` dönmesi, backdrop'un gerçek `getBoundingClientRect()`'inin `{x:304, width:672}` çıkması ile KANITLANDI — Plan agent'ının tasarımı bunu öngörmemişti, teorik CSS analiziyle değil GERÇEK ölçümle bulundu). **Düzeltme:** `createPortal` ile `document.body`'e portal — DOM ağacındaki HERHANGİ bir gelecekteki transform/filter'dan bağımsız, kalıcı bir çözüm.
+2. **Escape sonrası odak tetikleyici butona değil panelin kendi başlığına dönüyordu.** React mount'ta child effect'leri parent'ınkinden ÖNCE çalıştırıyor — panelin kendi `useFocusOnMount`'u (child) `SidePanel`'in `useFocusTrap`'inden (parent) ÖNCE çalışıp `document.activeElement`'i (parent'ın effect'i bunu okuduğunda) YANLIŞ yakalıyordu (paneldeki başlık, tetikleyici buton değil). **Düzeltme:** önceki-odaklı-eleman artık RENDER SIRASINDA (bir `useEffect` içinde değil, `useRef`'in initializer'ında) yakalanıyor — render tüm effect'lerden (child dahil) önce geldiği için doğru eleman garantili yakalanıyor.
+
+**Davranış değişikliği (bilinçli, Faz 1'in "arkadaki chat ... etkileşimsiz" kararının doğrudan sonucu):** panel açıkken arka plan artık GERÇEKTEN etkileşimsiz (native `inert`) — eskiden arka plandaki başka bir tetikleyiciye (ör. `blocked` butonu TOTP paneli açıkken) basmak paneli SESSİZCE değiştirirdi, artık standart modal semantiğiyle bu tıklama hiçbir şey yapmıyor, önce mevcut panel kapatılmalı. `blocked-users.spec.ts`'in bunu varsayan 2 testi YENİ davranışı doğrulayacak şekilde güncellendi.
+
+**Gerçek saat:** ~4-5h (Plan agent + tasarım review ~1h, 7 panel+RoomView+SidePanel+useFocusTrap implementasyonu ~1.5h, iki gerçek bug'ın bulunup düzeltilmesi ~1.5h, test yazımı+güncellemesi+dokümantasyon ~1h).
+
+**ÜÇÜNCÜ gerçek bug — commit sonrası, kullanıcının bağımsız bir CI/local koşumuyla bulundu (2026-08-26, aynı gün):** `apps/web/e2e-fullstack/invite-issuance.spec.ts` (gerçek `apps/api`+Postgres'e karşı çalışan, mock'suz süit) iki kez üst üste tutarlı şekilde başarısız oluyordu. Kök neden: bu dosya `page.getByRole("listitem").first()` ile davet panelinin İLK satırını yakalıyordu — `MessageItem.tsx` de `<li>` kullandığı için (implicit `role="listitem"`), ChatPanel artık her-zaman-mount olduğundan (bu Slice'ın kendi tasarımı) sayfa-geneli sorgu artık bir SOHBET MESAJINI yakalayabiliyordu ("deleted user:" gibi bir yazar-etiketi span'ı invite kodu SANILIP signup'a gönderiliyordu, "Davet kodu bulunamadı" ile sessizce başarısız oluyordu). **Bu Slice'ın kendi ilk doğrulaması bunu YAKALAYAMAMIŞTI** çünkü `apps/web`'in İKİ ayrı Playwright config'i var (`playwright.config.ts` vs `playwright.fullstack.config.ts`) ve `npx playwright test` sadece ilkini çalıştırır — bu boşluk `docs/STATE.md`'nin Tuzaklar'ına eklendi. Düzeltme: sorgu panelin kendi `getByRole("dialog")`'una daraltıldı (iki yerde). İzole+tam fullstack süitte (temiz seed+backfill ile) 2/2 tutarlı doğrulandı — fix ÖNCESİ 2/2 tutarlı başarısız (kullanıcının bildirdiğiyle birebir eşleşti), fix SONRASI 2/2 tutarlı başarılı.
+
+**Doğrulama:** `apps/web` lint/typecheck/build temiz. Yeni `side-panel.spec.ts` (5 test: Escape/backdrop/inert/focus-trap/scroll-pozisyonu regresyonu) + `mobile-viewport.spec.ts`'e 1 yeni test (375px tam ekran) + `blocked-users.spec.ts`'in güncellenen 2 testi dahil TÜM süit (100 test) iki kez üst üste geçti, flakiness yok.

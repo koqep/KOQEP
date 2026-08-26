@@ -41,3 +41,33 @@ test("oda_basligi_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   ).toBeInViewport();
   await expect(page.getByRole("button", { name: "log out" })).toBeInViewport();
 });
+
+// M10 Faz 2 Slice A: SidePanel'in w-full max-w-md kombinasyonu 375px'te
+// AYRI bir media query olmadan doğal olarak tam ekrana düşmeli.
+test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
+  await mockAuthSuccess(page);
+  await page.route("**/rooms", (route) =>
+    route.fulfill({
+      json: [{ id: "room-1", name: "genel", status: "active" }],
+    }),
+  );
+  await page.route("**/rooms/*/messages", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+
+  const box = await dialog.boundingBox();
+  // Alt-piksel yuvarlama olabilir (ör. 374.9999... ya da 375.00001...) -
+  // tam eşitlik yerine ±1px tolerans.
+  expect(box?.width).toBeGreaterThan(374);
+  expect(box?.width).toBeLessThan(376);
+});
