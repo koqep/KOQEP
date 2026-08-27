@@ -14,6 +14,30 @@ interface Message {
   editedAt: string | null;
 }
 
+// M10 Faz 2 Slice C: Faz 1'in "5 dakika" kararı (Slack/Discord emsali) -
+// kesin (>) kıyaslanıyor, tam 5:00 hâlâ AYNI grup içinde sayılır.
+const GROUP_BREAK_THRESHOLD_MS = 5 * 60 * 1000;
+
+// messages HER ZAMAN createdAt'e göre sıralı (RoomView.tsx'in
+// mergeMessagesById'si garanti ediyor) - bu yüzden grup-başı kararı ekstra
+// bir state gerektirmeden, her render'da array sırasından türetiliyor. Edit/
+// silme createdAt'e dokunmuyor, WS yeni mesajı sona ekliyor, "load older"
+// eskiyi başa ekleyip yeniden sıralıyor - hiçbiri kararsız/yanıp-sönen bir
+// sonuç üretmiyor. BİLEREK KASITLI yan etki: "load older" ile önceden
+// grup-başı olan bir mesajın önüne aynı yazardan/eşik-içi bir mesaj
+// yüklenirse, o mesaj artık devam mesajına döner (etiketi/saati kaybolur) -
+// Slack/Discord'un da yaptığı geriye-dönük yeniden gruplama.
+function isGroupStart(messages: Message[], index: number): boolean {
+  const message = messages[index];
+  const previous = messages[index - 1];
+  if (!previous) return true;
+  if (previous.authorUsername !== message.authorUsername) return true;
+  const gapMs =
+    new Date(message.createdAt).getTime() -
+    new Date(previous.createdAt).getTime();
+  return gapMs > GROUP_BREAK_THRESHOLD_MS;
+}
+
 interface Props {
   messagesSectionRef: RefObject<HTMLElement | null>;
   messages: Message[];
@@ -94,12 +118,13 @@ export default function ChatPanel({
               : "no messages yet"}
           </p>
         ) : (
-          <ul className="space-y-1">
-            {messages.map((message) => {
+          <ul>
+            {messages.map((message, index) => {
               const isMine =
                 message.authorUsername !== null &&
                 message.authorUsername === myProfile?.username;
               const canViewHistory = isMine || myProfile?.role === "moderator";
+              const groupStart = isGroupStart(messages, index);
               return (
                 <MessageItem
                   key={message.id}
@@ -107,10 +132,17 @@ export default function ChatPanel({
                   isMine={isMine}
                   isMuted={isMuted}
                   canViewHistory={canViewHistory}
+                  isGroupStart={groupStart}
                   onSubmitEdit={onMessageEditSubmit}
                   onSubmitDelete={onMessageDeleteSubmit}
                   fetchHistory={fetchHistoryForMessage}
                   onReport={onReportMessage}
+                  // Mesaj ritmi: grup içi sıkı (mt-0.5), gruplar arası
+                  // gevşek (mt-3) boşluk - listenin ilk öğesi hiç boşluk
+                  // almaz.
+                  className={
+                    index === 0 ? "" : groupStart ? "mt-3" : "mt-0.5"
+                  }
                 />
               );
             })}
