@@ -16,7 +16,11 @@ test("giris_formu_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   ).toBeInViewport();
 });
 
-test("oda_basligi_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
+// M10 Faz 2 Slice B: oda listesi artık TopBar'da değil, dikey RoomSidebar'da
+// - masaüstünde sabit `<aside>`, mobilde `md:hidden` hamburger ile açılan
+// bir SidePanel overlay'i (bkz. bir sonraki test). Bu test SADECE TopBar'ın
+// kendisinin 375px'te taşmadan görünmesini doğruluyor.
+test("topbar_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   await mockAuthSuccess(page);
   await page.route("**/rooms", (route) =>
     route.fulfill({
@@ -34,16 +38,51 @@ test("oda_basligi_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 
   await expect(
-    page.getByRole("button", { name: "#genel" }),
+    page.getByRole("button", { name: "open room list" }),
   ).toBeInViewport();
   await expect(
     page.getByRole("button", { name: "+ new room" }),
   ).toBeInViewport();
-  await expect(page.getByRole("button", { name: "log out" })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "account" })).toBeInViewport();
+});
+
+// M10 Faz 2 Slice B: mobilde oda listesi varsayılan gizli, hamburger ile
+// SidePanel overlay'i olarak açılıyor - bir oda seçilince handleRoomSwitch
+// zaten requestClosePanel()'i ilk satırda çağırdığı için overlay otomatik
+// kapanıyor (Slice A'nın kanıtlanmış mekanizması, ek kod yok).
+test("mobil_oda_listesi_hamburger_ile_acilir_oda_secilince_kapanir", async ({
+  page,
+}) => {
+  await mockAuthSuccess(page);
+  await page.route("**/rooms", (route) =>
+    route.fulfill({
+      json: [{ id: "room-1", name: "genel", status: "active" }],
+    }),
+  );
+  await page.route("**/rooms/*/messages", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+
+  await page.getByRole("button", { name: "open room list" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const roomButton = dialog.getByRole("button", { name: "#genel" });
+  await expect(roomButton).toBeInViewport();
+
+  await roomButton.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 // M10 Faz 2 Slice A: SidePanel'in w-full max-w-md kombinasyonu 375px'te
 // AYRI bir media query olmadan doğal olarak tam ekrana düşmeli.
+// M10 Faz 2 Slice B: "two-factor authentication" artık "account ▾"
+// menüsünün içinde - önce menüyü açmak gerekiyor.
 test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
   await mockAuthSuccess(page);
   await page.route("**/rooms", (route) =>
@@ -61,7 +100,8 @@ test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
   await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 

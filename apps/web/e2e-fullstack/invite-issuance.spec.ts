@@ -27,14 +27,20 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
 
   // Seed eşiğin tam bir mesaj öncesine sıfırlıyor - bu tek gerçek mesaj
   // seviye atlatıp aynı transaction'da gerçek bir Invite satırı üretiyor.
+  // Ortak "seviye-atlama-" ÖN EKİYLE eşleşme, ADR-0005'in hard-delete-yok
+  // kuralı yüzünden bu testin ÖNCEKİ koşularından kalan mesajlarla da
+  // eşleşirdi - tam üretilen (timestamp'li) metinle eşleşiyoruz.
   const input = inviterPage.getByPlaceholder("write a message...");
-  await input.fill(`seviye-atlama-${Date.now()}`);
+  const messageContent = `seviye-atlama-${Date.now()}`;
+  await input.fill(messageContent);
   await inviterPage.getByRole("button", { name: "send" }).click();
-  await expect(inviterPage.getByText(`seviye-atlama-`)).toBeVisible({
+  await expect(inviterPage.getByText(messageContent)).toBeVisible({
     timeout: 10000,
   });
 
-  await inviterPage.getByRole("button", { name: "invites" }).click();
+  // M10 Faz 2 Slice B: "invites" artık "account ▾" menüsünün içinde.
+  await inviterPage.getByRole("button", { name: "account" }).click();
+  await inviterPage.getByRole("menuitem", { name: "invites" }).click();
   // GET /invites en yeniden eskiye sıralıyor - az önce kazanılan davet
   // her zaman ilk satır, önceki bir koşudan kalan satırlardan etkilenmez.
   // M10 Faz 2 Slice A: panel artık overlay (SidePanel), arkadaki ChatPanel
@@ -85,7 +91,9 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
     timeout: 15000,
   });
   await expect(inviterPage.getByLabel("email")).toHaveCount(0);
-  await inviterPage.getByRole("button", { name: "invites" }).click();
+  // M10 Faz 2 Slice B: "invites" artık "account ▾" menüsünün içinde.
+  await inviterPage.getByRole("button", { name: "account" }).click();
+  await inviterPage.getByRole("menuitem", { name: "invites" }).click();
   await expect(
     inviterPage
       .getByRole("dialog")

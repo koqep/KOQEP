@@ -27,12 +27,19 @@ interface Props {
   accessToken: string;
   onClose: () => void;
   titleId: string;
+  // M10 Faz 2 Slice B: TopBar'ın "moderation [N]" rozeti için - bu panel
+  // AÇIKKEN reports state'i değiştikçe (dismiss/remove/mute) anlık
+  // güncellenir. Yeni bir backend count endpoint'i/WS event'i GEREKMİYOR -
+  // panel kapalıyken rozet en-son-açılıştaki kadar taze kalır (kabul
+  // edilebilir sınırlama, RoomView.tsx mount'ta ayrıca bir kez çekiyor).
+  onQueueCountChange?: (count: number) => void;
 }
 
 export default function ModerationQueueView({
   accessToken,
   onClose,
   titleId,
+  onQueueCountChange,
 }: Props) {
   const [reports, setReports] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +69,11 @@ export default function ModerationQueueView({
   function removeFromQueue(reportId: string) {
     setReports((prev) => (prev ?? []).filter((r) => r.id !== reportId));
   }
+
+  useEffect(() => {
+    if (reports) onQueueCountChange?.(reports.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports]);
 
   function startReasonAction(
     reportId: string,

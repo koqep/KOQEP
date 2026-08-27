@@ -93,7 +93,9 @@ test("taslak_localStorage_a_debounce_lu_yaziliyor_cikis_yapinca_tumu_silinir", a
   await waitForDraftStorageValue(page, draft);
   expect(await getDraftStorageKeys(page)).toHaveLength(1);
 
-  await page.getByRole("button", { name: "log out" }).click();
+  // M10 Faz 2 Slice B: "log out" artık "account ▾" menüsünün içinde.
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "log out" }).click();
   await expect(page.getByLabel("email")).toBeVisible();
 
   expect(await getDraftStorageKeys(page)).toHaveLength(0);

@@ -60,7 +60,9 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur_ve_redactMessag
   await expect(page.getByText(content)).toBeVisible({ timeout: 10000 });
   await expect(otherPage.getByText(content)).toBeVisible({ timeout: 10000 });
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  // M10 Faz 2 Slice B: "delete account" artık "account ▾" menüsünün içinde.
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "delete account" }).click();
   await page.getByRole("button", { name: "delete my account" }).click();
   await expect(page.getByRole("checkbox")).toBeChecked();
   await page.getByLabel("current password").fill(DEV_USER_2_PASSWORD);
@@ -90,8 +92,13 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur_ve_redactMessag
     timeout: 15000,
   });
   await otherPage.getByRole("button", { name: "#meta" }).click();
+  // ADR-0005 hard-delete-yok kuralı yüzünden #meta'da bu testin ÖNCEKİ
+  // koşularından kalan başka placeholder satırları da birikebilir - ekleme-
+  // sadece mesaj listesinde en yeni her zaman en sonda, `.last()` ile
+  // SADECE bu testin az önce redakte ettiği satıra daralt (bkz.
+  // message-self-delete.spec.ts'teki AYNI gerekçe).
   await expect(
-    otherPage.getByText("[Bu mesaj yazarı tarafından silindi.]"),
+    otherPage.getByText("[Bu mesaj yazarı tarafından silindi.]").last(),
   ).toBeVisible({ timeout: 10000 });
   await expect(otherPage.getByText(content)).toHaveCount(0);
 

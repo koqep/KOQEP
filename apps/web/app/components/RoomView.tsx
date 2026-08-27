@@ -15,6 +15,7 @@ import {
   listRooms,
   leaveRoom,
   reportMessage,
+  listOpenReports,
   type UserProfile,
   type MessageEdit,
   type Room,
@@ -26,10 +27,16 @@ import DeleteAccountView from "./DeleteAccountView";
 import CreateRoomView from "./CreateRoomView";
 import DiscoverRoomsView from "./DiscoverRoomsView";
 import ModerationQueueView from "./ModerationQueueView";
-import RoomHeader from "./RoomHeader";
+import TopBar from "./TopBar";
+import RoomSidebar from "./RoomSidebar";
 import ChatPanel from "./ChatPanel";
 import SidePanel, { SIDE_PANEL_TITLE_ID } from "./SidePanel";
 
+// M10 Faz 2 Slice B: "sidebar" (mobil oda listesi overlay'i) diğer
+// panellerle AYNI activePanel/requestClosePanel/SidePanel hattını
+// kullanıyor - ayrı bir isSidebarOpen state'i Slice A'nın bulduğu iki
+// gerçek bug'ı (containing-block, focus-restore) ikinci bir mekanizmada
+// tekrar riske atardı.
 type ActivePanel =
   | "none"
   | "totp"
@@ -38,7 +45,8 @@ type ActivePanel =
   | "delete-account"
   | "create-room"
   | "discover-rooms"
-  | "moderation";
+  | "moderation"
+  | "sidebar";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -115,6 +123,7 @@ export default function RoomView({
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [openReportCount, setOpenReportCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const activeRoomIdRef = useRef<string | null>(null);
   const activeRoomRef = useRef<Room | null>(null);
@@ -223,6 +232,30 @@ export default function RoomView({
     }, ms);
     return () => clearTimeout(timer);
   }, [myProfile?.mutedUntil]);
+
+  // M10 Faz 2 Slice B: TopBar'ın "moderation [N]" rozeti - yeni bir backend
+  // count endpoint'i/WS event'i yok, mevcut listOpenReports() zaten tüm
+  // listeyi döndürüyor. Moderatör kuyruğu AÇIKKEN ModerationQueueView'ın
+  // kendi onQueueCountChange'i bunu anlık günceller; kapalıyken en-son-
+  // açılıştaki (ya da mount'taki) kadar taze kalır - kabul edilebilir bir
+  // sınırlama, yeni bir işlem gerektirmiyor. Moderatör OLMAYAN durumda
+  // effect'in içinde senkron setState ÇAĞRILMIYOR (React'in yeni "effect
+  // içinde senkron setState kademeli render'a yol açar" kuralı) - "0" hâli
+  // aşağıdaki JSX'te render anında türetiliyor (bkz. openReportCount kullanımı).
+  useEffect(() => {
+    if (myProfile?.role !== "moderator") return;
+    let cancelled = false;
+    listOpenReports(accessToken)
+      .then((reports) => {
+        if (!cancelled) setOpenReportCount(reports.length);
+      })
+      .catch(() => {
+        // Sessizce yoksay - rozet 0 kalır, moderatör kuyruğu açınca zaten güncellenir.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, myProfile?.role]);
 
   async function fetchRoomHistory(
     roomName: string,
@@ -649,13 +682,17 @@ export default function RoomView({
   const isPanelOpen = activePanel !== "none";
 
   return (
-    <main className="animate-fade-in mx-auto flex h-dvh max-w-2xl flex-col p-4">
-      {/* M10 Faz 2 Slice A: RoomHeader+ChatPanel artık HER ZAMAN mount kalır -
-          panel açıkken native inert (React 19) alt ağacı klavye/erişilebilirlik
-          ağacından çıkarır, dim ile görsel olarak da bastırılır. Bu, panel
-          kapanınca ChatPanel'in yeniden mount olup scroll pozisyonunu
-          sıfırladığı gerçek, fark edilmemiş bir bug'ı da yan etki olarak
-          düzeltiyor (messagesSectionRef'in DOM node'u artık hiç kaybolmuyor). */}
+    <main className="animate-fade-in flex h-dvh flex-col">
+      {/* M10 Faz 2 Slice A: TopBar+sidebar+ChatPanel artık HER ZAMAN mount
+          kalır - panel açıkken native inert (React 19) alt ağacı klavye/
+          erişilebilirlik ağacından çıkarır, dim ile görsel olarak da
+          bastırılır. Bu, panel kapanınca ChatPanel'in yeniden mount olup
+          scroll pozisyonunu sıfırladığı gerçek, fark edilmemiş bir bug'ı da
+          yan etki olarak düzeltiyor (messagesSectionRef'in DOM node'u artık
+          hiç kaybolmuyor). M10 Faz 2 Slice B: kapsam TopBar + masaüstü
+          sidebar'ı da içine aldı - bir panel açıkken arka plandaki hesap▾/
+          moderasyon/oda satırlarının hepsi etkileşimsiz olmalı, tutarlı
+          modal semantiği. */}
       <div
         inert={isPanelOpen}
         className={
@@ -663,56 +700,85 @@ export default function RoomView({
           (isPanelOpen ? "opacity-40" : "opacity-100")
         }
       >
-        <RoomHeader
-          rooms={rooms}
-          activeRoom={activeRoom}
-          onRoomSwitch={(room) => void handleRoomSwitch(room)}
-          onLeaveRoom={(room) => void handleLeaveRoom(room)}
+        <TopBar
+          onOpenSidebar={() => setActivePanel("sidebar")}
           onCreateRoomClick={() => setActivePanel("create-room")}
           onDiscoverRoomsClick={() => setActivePanel("discover-rooms")}
-          showArchived={showArchived}
-          onToggleShowArchived={() => void handleToggleShowArchived()}
+          isModerator={myProfile?.role === "moderator"}
+          openReportCount={myProfile?.role === "moderator" ? openReportCount : 0}
+          onOpenModeration={() => setActivePanel("moderation")}
           onOpenTotp={() => setActivePanel("totp")}
           onOpenBlocked={() => setActivePanel("blocked")}
           onOpenInvites={() => setActivePanel("invites")}
           onOpenDeleteAccount={() => setActivePanel("delete-account")}
           onLogout={() => void handleLogout()}
-          isModerator={myProfile?.role === "moderator"}
-          onOpenModeration={() => setActivePanel("moderation")}
         />
 
-        <ChatPanel
-          messagesSectionRef={messagesSectionRef}
-          messages={messages}
-          myProfile={myProfile}
-          isMuted={isMuted}
-          mutedUntil={myProfile?.mutedUntil ?? null}
-          muteReason={myProfile?.muteReason ?? null}
-          onMessageEditSubmit={handleMessageEdit}
-          onMessageDeleteSubmit={handleMessageDelete}
-          fetchHistoryForMessage={fetchHistoryForMessage}
-          onReportMessage={handleReportMessage}
-          nextCursor={nextCursor}
-          isLoadingOlder={isLoadingOlder}
-          onLoadOlder={() => void handleLoadOlder()}
-          sendError={sendError}
-          contentRemovedNotice={contentRemovedNotice}
-          onDismissContentRemovedNotice={() => setContentRemovedNotice(null)}
-          activeRoom={activeRoom}
-          draft={draft}
-          onDraftChange={(value) =>
-            activeRoom ? setRoomDraft(activeRoom.id, value) : undefined
-          }
-          isReady={isReady}
-          canSend={canSend}
-          isSending={isSending}
-          onSubmit={(event) => void handleSubmit(event)}
-        />
+        <div className="flex min-h-0 flex-1">
+          <aside
+            aria-label="rooms"
+            className="hidden w-64 shrink-0 flex-col border-r border-neutral-800 p-4 md:flex"
+          >
+            <RoomSidebar
+              rooms={rooms}
+              activeRoom={activeRoom}
+              onRoomSwitch={(room) => void handleRoomSwitch(room)}
+              onLeaveRoom={(room) => void handleLeaveRoom(room)}
+              showArchived={showArchived}
+              onToggleShowArchived={() => void handleToggleShowArchived()}
+            />
+          </aside>
+
+          <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col p-4">
+            <ChatPanel
+              messagesSectionRef={messagesSectionRef}
+              messages={messages}
+              myProfile={myProfile}
+              isMuted={isMuted}
+              mutedUntil={myProfile?.mutedUntil ?? null}
+              muteReason={myProfile?.muteReason ?? null}
+              onMessageEditSubmit={handleMessageEdit}
+              onMessageDeleteSubmit={handleMessageDelete}
+              fetchHistoryForMessage={fetchHistoryForMessage}
+              onReportMessage={handleReportMessage}
+              nextCursor={nextCursor}
+              isLoadingOlder={isLoadingOlder}
+              onLoadOlder={() => void handleLoadOlder()}
+              sendError={sendError}
+              contentRemovedNotice={contentRemovedNotice}
+              onDismissContentRemovedNotice={() => setContentRemovedNotice(null)}
+              activeRoom={activeRoom}
+              draft={draft}
+              onDraftChange={(value) =>
+                activeRoom ? setRoomDraft(activeRoom.id, value) : undefined
+              }
+              isReady={isReady}
+              canSend={canSend}
+              isSending={isSending}
+              onSubmit={(event) => void handleSubmit(event)}
+            />
+          </div>
+        </div>
       </div>
 
       {isPanelOpen && (
-        <SidePanel isClosing={isPanelClosing} onRequestClose={requestClosePanel}>
-          {activePanel === "totp" ? (
+        <SidePanel
+          isClosing={isPanelClosing}
+          onRequestClose={requestClosePanel}
+          side={activePanel === "sidebar" ? "left" : "right"}
+        >
+          {activePanel === "sidebar" ? (
+            <RoomSidebar
+              titleId={SIDE_PANEL_TITLE_ID}
+              onClose={requestClosePanel}
+              rooms={rooms}
+              activeRoom={activeRoom}
+              onRoomSwitch={(room) => void handleRoomSwitch(room)}
+              onLeaveRoom={(room) => void handleLeaveRoom(room)}
+              showArchived={showArchived}
+              onToggleShowArchived={() => void handleToggleShowArchived()}
+            />
+          ) : activePanel === "totp" ? (
             <TotpSettingsView
               titleId={SIDE_PANEL_TITLE_ID}
               accessToken={accessToken}
@@ -764,6 +830,7 @@ export default function RoomView({
               titleId={SIDE_PANEL_TITLE_ID}
               accessToken={accessToken}
               onClose={requestClosePanel}
+              onQueueCountChange={setOpenReportCount}
             />
           ) : null}
         </SidePanel>
