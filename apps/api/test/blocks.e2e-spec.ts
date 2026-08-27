@@ -125,6 +125,45 @@ describe('Block-user (e2e)', () => {
     });
   });
 
+  // M10 Faz 2 Slice D+E: başkasının profili - public-safe alan seti.
+  it('doner_public_profili_ozel_alanlar_olmadan', async () => {
+    const a = await createTestUser();
+    const b = await createTestUser();
+
+    const response = await request(app.getHttpServer())
+      .get(`/users/${a.username}/profile`)
+      .set('Authorization', `Bearer ${b.accessToken}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      username: a.username,
+      level: 0,
+      totalXp: 0,
+    });
+    expect(response.body).not.toHaveProperty('email');
+    expect(response.body).not.toHaveProperty('mutedUntil');
+    expect(response.body).not.toHaveProperty('muteReason');
+    expect(response.body).not.toHaveProperty('passwordHash');
+    expect(response.body).not.toHaveProperty('role');
+  });
+
+  it('reddeder_kimliksiz_istegi_public_profil_icin', async () => {
+    const a = await createTestUser();
+
+    await request(app.getHttpServer())
+      .get(`/users/${a.username}/profile`)
+      .expect(401);
+  });
+
+  it('reddeder_var_olmayan_kullanici_adini_public_profilde', async () => {
+    const a = await createTestUser();
+
+    await request(app.getHttpServer())
+      .get(`/users/yok-${randomUUID()}/profile`)
+      .set('Authorization', `Bearer ${a.accessToken}`)
+      .expect(404);
+  });
+
   it('reddeder_kendini_engellemeyi', async () => {
     const a = await createTestUser();
 

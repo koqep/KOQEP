@@ -49,6 +49,7 @@ interface Props {
   onMessageDeleteSubmit: (messageId: string) => void;
   fetchHistoryForMessage: (messageId: string) => Promise<MessageEdit[]>;
   onReportMessage: (messageId: string) => Promise<void>;
+  onViewProfile: (username: string) => void;
   nextCursor: string | null;
   isLoadingOlder: boolean;
   onLoadOlder: () => void;
@@ -75,6 +76,7 @@ export default function ChatPanel({
   onMessageDeleteSubmit,
   fetchHistoryForMessage,
   onReportMessage,
+  onViewProfile,
   nextCursor,
   isLoadingOlder,
   onLoadOlder,
@@ -137,6 +139,7 @@ export default function ChatPanel({
                   onSubmitDelete={onMessageDeleteSubmit}
                   fetchHistory={fetchHistoryForMessage}
                   onReport={onReportMessage}
+                  onViewProfile={onViewProfile}
                   // Mesaj ritmi: grup içi sıkı (mt-0.5), gruplar arası
                   // gevşek (mt-3) boşluk - listenin ilk öğesi hiç boşluk
                   // almaz.

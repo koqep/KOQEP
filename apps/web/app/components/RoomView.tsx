@@ -28,6 +28,7 @@ import DeleteAccountView from "./DeleteAccountView";
 import CreateRoomView from "./CreateRoomView";
 import DiscoverRoomsView from "./DiscoverRoomsView";
 import ModerationQueueView from "./ModerationQueueView";
+import ProfileView from "./ProfileView";
 import TopBar from "./TopBar";
 import RoomSidebar from "./RoomSidebar";
 import ChatPanel from "./ChatPanel";
@@ -37,7 +38,9 @@ import SidePanel, { SIDE_PANEL_TITLE_ID } from "./SidePanel";
 // panellerle AYNI activePanel/requestClosePanel/SidePanel hattını
 // kullanıyor - ayrı bir isSidebarOpen state'i Slice A'nın bulduğu iki
 // gerçek bug'ı (containing-block, focus-restore) ikinci bir mekanizmada
-// tekrar riske atardı.
+// tekrar riske atardı. M10 Faz 2 Slice D+E: "profile" de AYNI hatta, ama
+// bu türün EKSTRA bir bilgi (hangi kullanıcı) taşıması gerekiyor - bkz.
+// aşağıdaki viewingProfileUsername.
 type ActivePanel =
   | "none"
   | "totp"
@@ -47,7 +50,8 @@ type ActivePanel =
   | "create-room"
   | "discover-rooms"
   | "moderation"
-  | "sidebar";
+  | "sidebar"
+  | "profile";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -125,6 +129,11 @@ export default function RoomView({
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [openReportCount, setOpenReportCount] = useState(0);
+  // M10 Faz 2 Slice D+E: "profile" panel türünün taşıdığı ekstra bilgi -
+  // mevcut 8 panel türünün hiçbiri buna ihtiyaç duymuyordu.
+  const [viewingProfileUsername, setViewingProfileUsername] = useState<
+    string | null
+  >(null);
   const socketRef = useRef<Socket | null>(null);
   const activeRoomIdRef = useRef<string | null>(null);
   const activeRoomRef = useRef<Room | null>(null);
@@ -148,6 +157,14 @@ export default function RoomView({
       setIsPanelClosing(false);
       panelCloseTimerRef.current = null;
     }, PANEL_CLOSE_MS);
+  }
+
+  // M10 Faz 2 Slice D+E: hesap▾ menüsündeki "profile" (kendi profili) VE
+  // bir mesajın grup-başı etiketine tıklamak (başkasının profili) AYNI
+  // fonksiyonu çağırıyor - kod tekrarı yok.
+  function handleViewProfile(username: string) {
+    setViewingProfileUsername(username);
+    setActivePanel("profile");
   }
 
   useEffect(() => {
@@ -740,6 +757,8 @@ export default function RoomView({
           isModerator={myProfile?.role === "moderator"}
           openReportCount={myProfile?.role === "moderator" ? openReportCount : 0}
           onOpenModeration={() => setActivePanel("moderation")}
+          username={myProfile?.username ?? null}
+          onOpenProfile={handleViewProfile}
           onOpenTotp={() => setActivePanel("totp")}
           onOpenBlocked={() => setActivePanel("blocked")}
           onOpenInvites={() => setActivePanel("invites")}
@@ -774,6 +793,7 @@ export default function RoomView({
               onMessageDeleteSubmit={handleMessageDelete}
               fetchHistoryForMessage={fetchHistoryForMessage}
               onReportMessage={handleReportMessage}
+              onViewProfile={handleViewProfile}
               nextCursor={nextCursor}
               isLoadingOlder={isLoadingOlder}
               onLoadOlder={() => void handleLoadOlder()}
@@ -864,6 +884,13 @@ export default function RoomView({
               accessToken={accessToken}
               onClose={requestClosePanel}
               onQueueCountChange={setOpenReportCount}
+            />
+          ) : activePanel === "profile" && viewingProfileUsername ? (
+            <ProfileView
+              titleId={SIDE_PANEL_TITLE_ID}
+              accessToken={accessToken}
+              username={viewingProfileUsername}
+              onClose={requestClosePanel}
             />
           ) : null}
         </SidePanel>

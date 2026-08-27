@@ -444,7 +444,7 @@ Terminal + metin-only kimliğinden doğal olarak çıkan, rakiplerin yapamayaca�
 | B4 | **Statusline** (tmux/vim tarzı alt bar) | 3 | S | V1 | Oda, online sayısı, okunmamış — tek satırda. Ekranı bölmeden bilgi verir. |
 | B5 | **`/now` — platform nabzı** | 5 | S | V1 | **Boş oda probleminin çözümü.** Tüm platformdaki canlı aktiviteyi tek ekranda gösterir. 50 kullanıcı 40 odaya dağılınca her yer ölü görünür; burası her zaman canlıdır. |
 | B6 | **ASCII davet ağacı** | 4 | S | V1 | Paylaşılabilir görsel artefakt. Ekran görüntüsü alınıp paylaşılır = organik tanıtım. |
-| B7 | **Deterministik ASCII avatar** (ID'den türetilir) | 3 | S | V1 | Yükleme yok, moderasyon maliyeti yok, kimliğe uygun. |
+| B7 | **Deterministik ASCII avatar** (ID'den türetilir) | 3 | S | V1 | **YAPILDI (2026-08-27, M10 Faz 2 Slice D+E).** Yükleme yok, moderasyon maliyeti yok, kimliğe uygun. Seed ID DEĞİL `username` oldu (web istemcisinde authorId hiç yok) — detay `docs/milestones/M10-ui-redesign.md`. |
 | B8 | **Yavaş mod / "düşünme modu"** (oda başına min. aralık) | 4 | S | V1.1 | "Dikkat dağıtmayan" felsefesinin somut hali. Kalite artırır, spam'i mekanik olarak keser. |
 | B9 | **Geri sayımlı geçici odalar** | 3 | S | V1.1 | Zaten planında var — sayacı görünür yap. Aciliyet ve canlılık hissi yaratır. |
 | B10 | **`Ctrl+K` komut paleti / bulanık arama** | 4 | M | V1 | Klavye-öncelikli iddiasının kanıtı. Oda, kullanıcı, komut — hepsi tek yerden. |
