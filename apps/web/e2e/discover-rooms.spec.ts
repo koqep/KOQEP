@@ -63,7 +63,7 @@ test("odalari_kesfet_acilinca_uye_olunmayan_aktif_odalar_listelenir_katilinca_sw
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
 
-  await page.getByRole("button", { name: "discover" }).click();
+  await page.getByRole("button", { name: "explore" }).click();
   await expect(page.getByText("#elden-ring — boss rush")).toBeVisible();
 
   await page.getByRole("button", { name: "join" }).click();
@@ -133,7 +133,7 @@ test("kesif_listesi_daha_fazla_goster_ile_sayfalanir", async ({ page }) => {
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
 
-  await page.getByRole("button", { name: "discover" }).click();
+  await page.getByRole("button", { name: "explore" }).click();
   await expect(page.getByText("#oda-1", { exact: false })).toBeVisible();
   await expect(page.getByText("#oda-2", { exact: false })).toHaveCount(0);
 

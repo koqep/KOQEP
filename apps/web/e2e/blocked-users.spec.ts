@@ -12,13 +12,23 @@ async function login(page: import("@playwright/test").Page) {
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
+// M10 Faz 2 Slice B: "blocked" artık TopBar'ın "account ▾" açılır menüsünün
+// İÇİNDE - önce menüyü açmak gerekiyor (menü öğeleri sadece menü açıkken
+// DOM'a render ediliyor, AccountMenu.tsx). Menü öğeleri role="menuitem"
+// TAŞIYOR (doğru WAI-ARIA semantiği) - bu, <button>'ın implicit "button"
+// rolünü EZER, getByRole("menuitem", ...) kullanılmalı.
+async function openBlockedPanel(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "blocked" }).click();
+}
+
 test("liste_bosken_bos_durum_mesaji_gosterir", async ({ page }) => {
   await login(page);
   await page.route("**/users/blocked", (route) =>
     route.fulfill({ json: [] }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
 
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 });
@@ -29,7 +39,7 @@ test("mevcut_engellenenler_listede_gorunur", async ({ page }) => {
     route.fulfill({ json: ["a@koqep.local", "b@koqep.local"] }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
 
   await expect(page.getByText("a@koqep.local")).toBeVisible();
   await expect(page.getByText("b@koqep.local")).toBeVisible();
@@ -44,7 +54,7 @@ test("email_girip_engelleyince_listeye_eklenir", async ({ page }) => {
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
   await page.getByLabel("email").fill("kotu@koqep.local");
   await page.getByRole("button", { name: "block", exact: true }).click();
 
@@ -64,7 +74,7 @@ test("bilinmeyen_email_engellenemez_hata_gosterir", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
   await page.getByLabel("email").fill("yok@koqep.local");
   await page.getByRole("button", { name: "block", exact: true }).click();
 
@@ -81,7 +91,7 @@ test("engeli_kaldirinca_listeden_cikar", async ({ page }) => {
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
   await expect(page.getByText("kotu@koqep.local")).toBeVisible();
 
   await page.getByRole("button", { name: "unblock" }).click();
@@ -96,7 +106,7 @@ test("kapat_butonu_sohbet_ekranina_doner", async ({ page }) => {
     route.fulfill({ json: [] }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 
   await page.getByRole("button", { name: "close" }).click();
@@ -119,13 +129,15 @@ test("panel_acikken_arka_plandaki_oda_butonu_etkilesimsiz_panel_acik_kalir", asy
     route.fulfill({ json: [] }),
   );
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 
-  // Arka plandaki oda butonu artık inert sarmalayıcının İÇİNDE - gerçek bir
-  // tıklama denemek (Playwright'ın actionability beklemesi yüzünden) yavaş/
-  // kırılgan olurdu, doğrudan inert attribute'unun DOM'da olduğunu doğrulamak
-  // side-panel.spec.ts'in genel mekanizma testiyle AYNI, daha hızlı desen.
+  // Arka plandaki oda butonu artık inert sarmalayıcının İÇİNDE (sidebar
+  // Slice B'de TopBar+aside+ChatPanel'i saran AYNI div'in içinde) - gerçek
+  // bir tıklama denemek (Playwright'ın actionability beklemesi yüzünden)
+  // yavaş/kırılgan olurdu, doğrudan inert attribute'unun DOM'da olduğunu
+  // doğrulamak side-panel.spec.ts'in genel mekanizma testiyle AYNI, daha
+  // hızlı desen.
   await expect(page.locator("[inert]")).toHaveCount(1);
   await expect(
     page.locator("[inert]").getByRole("button", { name: "#test-oda" }),
@@ -146,15 +158,17 @@ test("bir_panelden_digerine_gecmek_icin_once_kapatmak_gerekir", async ({
     route.fulfill({ json: [] }),
   );
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
   await expect(
     page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
 
-  // "blocked" tetikleyicisi de arka planda (aynı inert sarmalayıcının
-  // İÇİNDE) - TOTP paneli açıkken tıklanamaz, panel değişmez.
+  // "account ▾" tetikleyicisi de arka planda (aynı inert sarmalayıcının
+  // İÇİNDE) - TOTP paneli açıkken TIKLANAMAZ (dolayısıyla menü açılıp
+  // "blocked" öğesi DOM'a hiç render edilemez), panel değişmez.
   await expect(
-    page.locator("[inert]").getByRole("button", { name: "blocked" }),
+    page.locator("[inert]").getByRole("button", { name: "account" }),
   ).toBeVisible();
 
   await page.keyboard.press("Escape");
@@ -162,6 +176,6 @@ test("bir_panelden_digerine_gecmek_icin_once_kapatmak_gerekir", async ({
     page.getByRole("button", { name: "start setup" }),
   ).toHaveCount(0);
 
-  await page.getByRole("button", { name: "blocked" }).click();
+  await openBlockedPanel(page);
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 });

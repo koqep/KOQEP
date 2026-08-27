@@ -103,3 +103,31 @@
 .chat-dim-transition {
   transition: opacity var(--motion-duration-base) var(--motion-ease-standard);
 }
+
+/* M10 Faz 2 Slice B: mobil oda listesi overlay'i SidePanel'in `side="left"`
+   varyantı - aynı token'lar, sadece yön tersine dönüyor. */
+@keyframes panel-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-slide-out-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-panel-slide-in-left {
+  animation: panel-slide-in-left var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+.animate-panel-slide-out-left {
+  animation: panel-slide-out-left var(--motion-duration-base) var(--motion-ease-standard) both;
+}

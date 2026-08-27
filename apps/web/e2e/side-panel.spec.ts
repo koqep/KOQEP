@@ -4,6 +4,10 @@ import { mockAuthSuccess, mockRoomEndpoints } from "./support/auth-mocks";
 // M10 Faz 2 Slice A: panel mekanizması (SidePanel) 7 farklı panelin ortak
 // sarmalayıcısı - TOTP panelini temsilci olarak kullanıyoruz, panel-özel
 // içerik zaten kendi spec dosyasında (totp-settings.spec.ts) test ediliyor.
+// M10 Faz 2 Slice B: TOTP artık "account ▾" menüsünün içinde - dönen
+// "trigger" artık menuitem DEĞİL, "account" butonunun kendisi (menuitem
+// panel açılır açılmaz DOM'dan kalkıyor, AccountMenu.tsx'in select()'i
+// odağı ÖNCE "account" butonuna veriyor - bkz. o dosyadaki yorum).
 async function loginAndOpenTotpPanel(page: import("@playwright/test").Page) {
   await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
@@ -14,8 +18,9 @@ async function loginAndOpenTotpPanel(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 
-  const trigger = page.getByRole("button", { name: "two-factor authentication" });
+  const trigger = page.getByRole("button", { name: "account" });
   await trigger.click();
+  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   return trigger;
 }
@@ -102,7 +107,8 @@ test("panel_kapanip_acilinca_mesaj_listesi_scroll_pozisyonu_korunur", async ({
   await expect(page.getByText("mesaj 0")).toBeInViewport();
 
   // Panel aç/kapat - kırmızı test bunu unmount/remount'ta kaybederdi.
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 

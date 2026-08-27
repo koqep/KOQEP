@@ -60,7 +60,9 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur_ve_redactMessag
   await expect(page.getByText(content)).toBeVisible({ timeout: 10000 });
   await expect(otherPage.getByText(content)).toBeVisible({ timeout: 10000 });
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  // M10 Faz 2 Slice B: "delete account" artık "account ▾" menüsünün içinde.
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "delete account" }).click();
   await page.getByRole("button", { name: "delete my account" }).click();
   await expect(page.getByRole("checkbox")).toBeChecked();
   await page.getByLabel("current password").fill(DEV_USER_2_PASSWORD);

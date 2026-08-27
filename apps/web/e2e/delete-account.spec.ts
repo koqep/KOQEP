@@ -12,10 +12,17 @@ async function login(page: import("@playwright/test").Page) {
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
+// M10 Faz 2 Slice B: "delete account" artık TopBar'ın "account ▾" açılır
+// menüsünün İÇİNDE - önce menüyü açmak gerekiyor.
+async function openDeleteAccountPanel(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "delete account" }).click();
+}
+
 test("panel_acilir_onay_adimindan_sonra_form_gorunur", async ({ page }) => {
   await login(page);
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  await openDeleteAccountPanel(page);
   await expect(page.getByText("This is permanent")).toHaveCount(0);
 
   await page.getByRole("button", { name: "delete my account" }).click();
@@ -31,7 +38,7 @@ test("yanlis_sifre_hata_gosterir", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  await openDeleteAccountPanel(page);
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill("wrong-password");
   await page
@@ -50,7 +57,7 @@ test("totp_gerekince_alan_belirir", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  await openDeleteAccountPanel(page);
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill("a-strong-password");
   await page
@@ -66,7 +73,7 @@ test("basarili_silme_giris_ekranina_doner", async ({ page }) => {
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  await openDeleteAccountPanel(page);
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByLabel("current password").fill("a-strong-password");
   await page
@@ -89,7 +96,7 @@ test("mesaj_icerigini_kaldir_kutusu_varsayilan_isaretli_ve_istekte_true_gonderil
     await route.fulfill({ json: { ok: true } });
   });
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  await openDeleteAccountPanel(page);
   await page.getByRole("button", { name: "delete my account" }).click();
   await expect(page.getByRole("checkbox")).toBeChecked();
   await page.getByLabel("current password").fill("a-strong-password");
@@ -114,7 +121,7 @@ test("mesaj_icerigini_kaldir_kutusu_isareti_kaldirilinca_istekte_false_gonderili
     await route.fulfill({ json: { ok: true } });
   });
 
-  await page.getByRole("button", { name: "delete account" }).click();
+  await openDeleteAccountPanel(page);
   await page.getByRole("button", { name: "delete my account" }).click();
   await page.getByRole("checkbox").uncheck();
   await page.getByLabel("current password").fill("a-strong-password");

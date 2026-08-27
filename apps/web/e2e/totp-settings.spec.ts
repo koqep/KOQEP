@@ -16,6 +16,13 @@ async function loginWithoutTotp(page: import("@playwright/test").Page) {
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
+// M10 Faz 2 Slice B: "two-factor authentication" artık TopBar'ın
+// "account ▾" açılır menüsünün İÇİNDE - önce menüyü açmak gerekiyor.
+async function openTotpPanel(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
+}
+
 async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
   let loginCallCount = 0;
   await page.route("**/auth/login", (route) => {
@@ -51,7 +58,7 @@ async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
 test("totp_kapaliyken_panel_kurulum_baslat_gosterir", async ({ page }) => {
   await loginWithoutTotp(page);
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await openTotpPanel(page);
 
   await expect(
     page.getByRole("button", { name: "start setup" }),
@@ -75,7 +82,7 @@ test("kurulum_baslatinca_secret_ve_qr_ve_kod_alani_gorunur", async ({
     }),
   );
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await openTotpPanel(page);
   await page.getByRole("button", { name: "start setup" }).click();
 
   await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
@@ -105,7 +112,7 @@ test("dogru_kodla_etkinlestirince_kurtarma_kodlari_gosterilir_sonra_kapat_formun
     route.fulfill({ json: recoveryCodes }),
   );
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await openTotpPanel(page);
   await page.getByRole("button", { name: "start setup" }).click();
   await page.getByLabel("totp code").fill("654321");
   await page.getByRole("button", { name: "enable" }).click();
@@ -144,7 +151,7 @@ test("yanlis_kod_hata_gosterir_kurulum_yeniden_baslamaz", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await openTotpPanel(page);
   await page.getByRole("button", { name: "start setup" }).click();
   await page.getByLabel("totp code").fill("000000");
   await page.getByRole("button", { name: "enable" }).click();
@@ -164,7 +171,7 @@ test("totp_aciksa_panel_dogrudan_kapatma_formuna_gecer_basarili_kapatma_sonrasi_
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await openTotpPanel(page);
 
   await expect(
     page.getByRole("button", { name: "turn off TOTP" }),
@@ -180,7 +187,7 @@ test("totp_aciksa_panel_dogrudan_kapatma_formuna_gecer_basarili_kapatma_sonrasi_
 test("kapat_butonu_sohbet_ekranina_doner", async ({ page }) => {
   await loginWithoutTotp(page);
 
-  await page.getByRole("button", { name: "two-factor authentication" }).click();
+  await openTotpPanel(page);
   await expect(
     page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();

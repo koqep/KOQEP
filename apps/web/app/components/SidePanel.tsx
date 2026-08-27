@@ -11,12 +11,16 @@ export const SIDE_PANEL_TITLE_ID = "side-panel-title";
 interface Props {
   isClosing: boolean;
   onRequestClose: () => void;
+  // M10 Faz 2 Slice B: mobil oda listesi soldan kayıyor - varsayılan "right"
+  // mevcut 6 panelin DAVRANIŞINI DEĞİŞTİRMEDEN geçmesini sağlıyor.
+  side?: "left" | "right";
   children: ReactNode;
 }
 
 export default function SidePanel({
   isClosing,
   onRequestClose,
+  side = "right",
   children,
 }: Props) {
   const containerRef = useFocusTrap<HTMLDivElement>({
@@ -32,8 +36,22 @@ export default function SidePanel({
   // konumlanırdı (gerçekten böyle davrandığı Playwright'la KANITLANDI).
   // Portal bu sorunu DOM ağacındaki HERHANGİ bir gelecekteki transform/
   // filter'dan bağımsız olarak kalıcı şekilde çözüyor.
+  const slideClassName =
+    side === "left"
+      ? isClosing
+        ? "animate-panel-slide-out-left"
+        : "animate-panel-slide-in-left"
+      : isClosing
+        ? "animate-panel-slide-out"
+        : "animate-panel-slide-in";
+
   return createPortal(
-    <div className="fixed inset-0 z-40 flex justify-end">
+    <div
+      className={
+        "fixed inset-0 z-40 flex " +
+        (side === "left" ? "justify-start" : "justify-end")
+      }
+    >
       <div
         aria-hidden="true"
         onClick={onRequestClose}
@@ -48,8 +66,10 @@ export default function SidePanel({
         aria-modal="true"
         aria-labelledby={SIDE_PANEL_TITLE_ID}
         className={
-          "relative flex h-full w-full max-w-md flex-col border-l border-neutral-800 bg-neutral-950 p-4 " +
-          (isClosing ? "animate-panel-slide-out" : "animate-panel-slide-in")
+          "relative flex h-full w-full max-w-md flex-col bg-neutral-950 p-4 " +
+          (side === "left" ? "border-r " : "border-l ") +
+          "border-neutral-800 " +
+          slideClassName
         }
       >
         {children}

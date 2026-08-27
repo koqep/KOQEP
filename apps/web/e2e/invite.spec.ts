@@ -12,13 +12,20 @@ async function login(page: import("@playwright/test").Page) {
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
 
+// M10 Faz 2 Slice B: "invites" artık TopBar'ın "account ▾" açılır menüsünün
+// İÇİNDE - önce menüyü açmak gerekiyor.
+async function openInvitesPanel(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "invites" }).click();
+}
+
 test("henuz_kazanilmis_davet_yoksa_aciklayici_bos_durum_gosterir", async ({
   page,
 }) => {
   await login(page);
   await page.route("**/invites", (route) => route.fulfill({ json: [] }));
 
-  await page.getByRole("button", { name: "invites" }).click();
+  await openInvitesPanel(page);
 
   await expect(
     page.getByText("you haven't earned any invites yet"),
@@ -52,7 +59,7 @@ test("kazanilan_davetleri_kod_ve_durumuyla_listeler", async ({ page }) => {
     }),
   );
 
-  await page.getByRole("button", { name: "invites" }).click();
+  await openInvitesPanel(page);
 
   await expect(page.getByText("FRESH-CODE")).toBeVisible();
   await expect(page.getByText("USED-CODE")).toBeVisible();
@@ -68,7 +75,7 @@ test("davetci_hesap_verebilirligi_aciklama_satirini_gosterir", async ({
   await login(page);
   await page.route("**/invites", (route) => route.fulfill({ json: [] }));
 
-  await page.getByRole("button", { name: "invites" }).click();
+  await openInvitesPanel(page);
 
   await expect(
     page.getByText("one of your unused invites gets revoked"),
