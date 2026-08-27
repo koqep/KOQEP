@@ -41,19 +41,27 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   await rowOnA.getByRole("button", { name: "yes" }).click();
 
   // message:updated yayını gerçek zamanlı olarak hem gönderen sekmede hem
-  // karşı sekmede placeholder'ı göstermeli.
+  // karşı sekmede placeholder'ı göstermeli. Bu SABİT metin, ADR-0005'in
+  // hard-delete-yok kuralı yüzünden paylaşılan dev odasında BAŞKA (bu
+  // testin ÖNCEKİ koşularından kalan) placeholder satırlarıyla da eşleşir -
+  // ekleme-sadece mesaj listesinde en yeni her zaman en sonda, `.last()`
+  // ile SADECE bu testin az önce oluşturduğu satıra daralt.
   await expect(
-    pageA.getByText("[Bu mesaj yazarı tarafından silindi.]"),
+    pageA.getByText("[Bu mesaj yazarı tarafından silindi.]").last(),
   ).toBeVisible({ timeout: 10000 });
   await expect(
-    pageB.getByText("[Bu mesaj yazarı tarafından silindi.]"),
+    pageB.getByText("[Bu mesaj yazarı tarafından silindi.]").last(),
   ).toBeVisible({ timeout: 10000 });
   await expect(pageA.getByText(originalContent)).toHaveCount(0);
 
-  // Orijinal içerik geçmişte kalıyor (ADR-0005, hard-delete yok).
-  const placeholderRowOnA = pageA.locator("li", {
-    hasText: "[Bu mesaj yazarı tarafından silindi.]",
-  });
+  // Orijinal içerik geçmişte kalıyor (ADR-0005, hard-delete yok). Yukarıdaki
+  // AYNI gerekçeyle `.last()` - aksi halde birden fazla eski placeholder
+  // satırı "history" butonunu belirsizleştirirdi.
+  const placeholderRowOnA = pageA
+    .locator("li", {
+      hasText: "[Bu mesaj yazarı tarafından silindi.]",
+    })
+    .last();
   // Silinen mesaj KENDİ satırında "(düzenlendi)" göstermemeli - placeholder'ın
   // kendisi zaten "silindi" diyor, editedAt BİLEREK set edilmiyor. Sayfa
   // genelinde DEĞİL bu satıra ÖZGÜ kontrol - paylaşılan dev odasındaki

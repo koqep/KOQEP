@@ -92,8 +92,13 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur_ve_redactMessag
     timeout: 15000,
   });
   await otherPage.getByRole("button", { name: "#meta" }).click();
+  // ADR-0005 hard-delete-yok kuralı yüzünden #meta'da bu testin ÖNCEKİ
+  // koşularından kalan başka placeholder satırları da birikebilir - ekleme-
+  // sadece mesaj listesinde en yeni her zaman en sonda, `.last()` ile
+  // SADECE bu testin az önce redakte ettiği satıra daralt (bkz.
+  // message-self-delete.spec.ts'teki AYNI gerekçe).
   await expect(
-    otherPage.getByText("[Bu mesaj yazarı tarafından silindi.]"),
+    otherPage.getByText("[Bu mesaj yazarı tarafından silindi.]").last(),
   ).toBeVisible({ timeout: 10000 });
   await expect(otherPage.getByText(content)).toHaveCount(0);
 

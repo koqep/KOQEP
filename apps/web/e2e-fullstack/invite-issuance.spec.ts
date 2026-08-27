@@ -27,10 +27,14 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
 
   // Seed eşiğin tam bir mesaj öncesine sıfırlıyor - bu tek gerçek mesaj
   // seviye atlatıp aynı transaction'da gerçek bir Invite satırı üretiyor.
+  // Ortak "seviye-atlama-" ÖN EKİYLE eşleşme, ADR-0005'in hard-delete-yok
+  // kuralı yüzünden bu testin ÖNCEKİ koşularından kalan mesajlarla da
+  // eşleşirdi - tam üretilen (timestamp'li) metinle eşleşiyoruz.
   const input = inviterPage.getByPlaceholder("write a message...");
-  await input.fill(`seviye-atlama-${Date.now()}`);
+  const messageContent = `seviye-atlama-${Date.now()}`;
+  await input.fill(messageContent);
   await inviterPage.getByRole("button", { name: "send" }).click();
-  await expect(inviterPage.getByText(`seviye-atlama-`)).toBeVisible({
+  await expect(inviterPage.getByText(messageContent)).toBeVisible({
     timeout: 10000,
   });
 
