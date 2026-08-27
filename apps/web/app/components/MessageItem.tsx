@@ -5,6 +5,7 @@ import { MAX_MESSAGE_LENGTH } from "./RoomView";
 import MessageContent from "./MessageContent";
 import type { MessageEdit } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+import { generateSmallAvatar } from "../../lib/avatar";
 
 interface Message {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
   onSubmitDelete: (messageId: string) => void;
   fetchHistory: (messageId: string) => Promise<MessageEdit[]>;
   onReport: (messageId: string) => Promise<void>;
+  onViewProfile: (username: string) => void;
   className?: string;
 }
 
@@ -50,6 +52,7 @@ export default function MessageItem({
   onSubmitDelete,
   fetchHistory,
   onReport,
+  onViewProfile,
   className,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
@@ -107,6 +110,11 @@ export default function MessageItem({
   const authorLabel = isMine
     ? "you"
     : (message.authorUsername ?? "deleted user");
+  // Yerel bir const'a çıkarmak, aşağıdaki nested onClick closure'ında
+  // TypeScript'in bunu string olarak DARALTMASINI sağlıyor - message.
+  // authorUsername'a doğrudan bir property-access olarak erişmek closure
+  // sınırını aşamaz (TS'in bilinen bir kısıtı), `as string` cast'i gerektirirdi.
+  const clickableAuthorUsername = message.authorUsername;
 
   return (
     <li className={"text-neutral-200" + (className ? ` ${className}` : "")}>
@@ -150,7 +158,30 @@ export default function MessageItem({
           >
             {formatTime(message.createdAt)}
           </span>
-          {isGroupStart && <span className="text-muted">{authorLabel}:</span>}
+          {isGroupStart &&
+            (clickableAuthorUsername ? (
+              // M10 Faz 2 Slice D+E: {authorLabel}: metni KENDİ ayrı
+              // <span>'inde KALIYOR (avatar glyph'iyle BİRLEŞTİRİLMİYOR) -
+              // message-grouping.spec.ts'in getByText("baskasi:", {exact:
+              // true}) sorguları birleştirilmiş bir string'de eşleşmeyi
+              // kaybederdi. Kendi mesajını ("you:") tıklamak da AYNI
+              // mekanizmayla kendi profiline açılır - authorUsername "you"
+              // etiketinin ALTINDA hâlâ gerçek kullanıcı adı, özel durum yok.
+              <button
+                type="button"
+                onClick={() => onViewProfile(clickableAuthorUsername)}
+                className="flex items-baseline gap-1 text-muted hover:text-neutral-400"
+              >
+                <span aria-hidden="true">
+                  {generateSmallAvatar(clickableAuthorUsername)}
+                </span>
+                <span>{authorLabel}:</span>
+              </button>
+            ) : (
+              // Silinmiş yazarlı mesajlar tıklanamaz - authorId onlar için
+              // zaten hiç yok, profile açacak bir hedef yok.
+              <span className="text-muted">{authorLabel}:</span>
+            ))}
           <span className="flex-1">
             <MessageContent content={message.content} />
             {message.editedAt && (

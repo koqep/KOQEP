@@ -2,9 +2,12 @@
 
 import { useRef, useState } from "react";
 import { FEEDBACK_EMAIL } from "../../lib/contact";
+import { generateSmallAvatar } from "../../lib/avatar";
 import { useDismissableMenu } from "./useDismissableMenu";
 
 interface Props {
+  username: string | null;
+  onOpenProfile: (username: string) => void;
   onOpenTotp: () => void;
   onOpenBlocked: () => void;
   onOpenInvites: () => void;
@@ -16,6 +19,8 @@ const menuItemClassName =
   "px-2 py-1 text-left text-muted hover:text-neutral-400";
 
 export default function AccountMenu({
+  username,
+  onOpenProfile,
   onOpenTotp,
   onOpenBlocked,
   onOpenInvites,
@@ -58,7 +63,8 @@ export default function AccountMenu({
         onClick={() => setIsOpen((value) => !value)}
         className="text-muted hover:text-neutral-400"
       >
-        account <span aria-hidden="true">▾</span>
+        <span aria-hidden="true">{generateSmallAvatar(username)}</span> account{" "}
+        <span aria-hidden="true">▾</span>
       </button>
       {isOpen && (
         <div
@@ -66,6 +72,20 @@ export default function AccountMenu({
           aria-label="account"
           className="absolute right-0 top-full z-30 mt-1 flex w-56 flex-col gap-1 border border-neutral-800 bg-neutral-950 p-2"
         >
+          {/* M10 Faz 2 Slice D+E: myProfile async yükleniyor ama TopBar/
+              AccountMenu Slice A'dan beri her zaman mount'lu - ilk boyamada
+              username null olabilir. "disabled" state icat etmek yerine o
+              an menü öğesini hiç göstermiyoruz (en basit güvenli çözüm). */}
+          {username && (
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => select(() => onOpenProfile(username))}
+              className={menuItemClassName}
+            >
+              profile
+            </button>
+          )}
           <button
             role="menuitem"
             type="button"

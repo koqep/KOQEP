@@ -9,6 +9,8 @@ interface Props {
   isModerator: boolean;
   openReportCount: number;
   onOpenModeration: () => void;
+  username: string | null;
+  onOpenProfile: (username: string) => void;
   onOpenTotp: () => void;
   onOpenBlocked: () => void;
   onOpenInvites: () => void;
@@ -23,6 +25,8 @@ export default function TopBar({
   isModerator,
   openReportCount,
   onOpenModeration,
+  username,
+  onOpenProfile,
   onOpenTotp,
   onOpenBlocked,
   onOpenInvites,
@@ -67,6 +71,8 @@ export default function TopBar({
           </button>
         )}
         <AccountMenu
+          username={username}
+          onOpenProfile={onOpenProfile}
           onOpenTotp={onOpenTotp}
           onOpenBlocked={onOpenBlocked}
           onOpenInvites={onOpenInvites}

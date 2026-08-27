@@ -280,6 +280,25 @@ export function getCurrentUser(accessToken: string): Promise<UserProfile> {
   return authedGetJson<UserProfile>("/users/me", accessToken);
 }
 
+// M10 Faz 2 Slice D+E: başkasının profili - public-safe alan seti (email/
+// mutedUntil/muteReason gibi özel alanlar YOK, UserProfile'dan kasıtlı farklı).
+export interface PublicUserProfile {
+  username: string;
+  createdAt: string;
+  level: number;
+  totalXp: number;
+}
+
+export function getPublicProfile(
+  accessToken: string,
+  username: string,
+): Promise<PublicUserProfile> {
+  return authedGetJson<PublicUserProfile>(
+    `/users/${encodeURIComponent(username)}/profile`,
+    accessToken,
+  );
+}
+
 export interface MessageEdit {
   previousContent: string;
   editedAt: string;
