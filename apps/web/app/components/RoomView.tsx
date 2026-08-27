@@ -16,6 +16,7 @@ import {
   leaveRoom,
   reportMessage,
   listOpenReports,
+  refreshAccessToken,
   type UserProfile,
   type MessageEdit,
   type Room,
@@ -338,6 +339,38 @@ export default function RoomView({
 
         socket = io(API_URL, { auth: { token: accessToken } });
         socketRef.current = socket;
+
+        // KRİTİK, 2026-08-27: apps/api'nin handleConnection'ı
+        // (messages.gateway.ts) süresi dolmuş/geçersiz bir access token'la
+        // gelen bağlantıyı SESSİZCE disconnect ediyor - hiçbir hata event'i
+        // yok. Bu, engine.io bağlantısı KURULDUKTAN sonra (auth kontrolü
+        // handleConnection'ın İÇİNDE) olduğu için client'ta "connect_error"
+        // DEĞİL "disconnect" (reason: "io server disconnect") olarak
+        // görünüyor - GERÇEK bir Playwright koşumuyla ölçülüp doğrulandı
+        // (ilk taslak yanlışlıkla "connect_error" dinliyordu). socket.io-
+        // client'ın kendi dokümantasyonu: "io server disconnect" nedeniyle
+        // kapanan bir bağlantıda otomatik-yeniden-bağlanma BİLEREK devre
+        // dışı - client'ın kendisi socket.connect()'i MANUEL çağırmalı.
+        // Sonuç: isReady KALICI false kalır, composer süresiz "disabled"
+        // görünür, HİÇBİR yeniden deneme bile olmaz (production'da GERÇEKTEN
+        // yaşandı - "yasak/uyarı" imleci, kutu devre dışı). Gerçek bir authed
+        // HTTP çağrısının (authedGetJson/authedPostJson) zaten yaptığı 401->
+        // refreshAccessToken() akışının AYNISI burada da tetikleniyor: refresh
+        // başarılı olursa onAccessTokenRefreshed (page.tsx) accessToken
+        // state'ini günceller, bu effect [accessToken] bağımlılığı yüzünden
+        // YENİDEN çalışıp TAZE token'la BAMBAŞKA bir socket kurar (manuel
+        // socket.connect() GEREKMİYOR - aşağıdaki cleanup zaten eski,
+        // bağlantısı kesik socket'i kapatır). Refresh de başarısız olursa
+        // (refresh token da geçersiz) - projenin var olan deseniyle AYNI
+        // şekilde sessizce yutuluyor (bkz. getCurrentUser'ın catch'i) -
+        // kullanıcı bir sonraki authed HTTP isteğinde zaten normal 401
+        // akışıyla karşılaşacak.
+        socket.on("disconnect", (reason) => {
+          if (cancelled || reason !== "io server disconnect") return;
+          refreshAccessToken().catch(() => {
+            // Sessizce yoksay - bkz. yukarıdaki yorum.
+          });
+        });
 
         socket.on("ready", () => {
           if (cancelled) return;
