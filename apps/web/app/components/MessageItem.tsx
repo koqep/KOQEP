@@ -20,16 +20,23 @@ interface Props {
   isMine: boolean;
   isMuted: boolean;
   canViewHistory: boolean;
+  isGroupStart: boolean;
   onSubmitEdit: (messageId: string, content: string) => void;
   onSubmitDelete: (messageId: string) => void;
   fetchHistory: (messageId: string) => Promise<MessageEdit[]>;
   onReport: (messageId: string) => Promise<void>;
+  className?: string;
 }
 
+// M10 Faz 2 Slice C: 24-saat format (hour12: false) mockup'taki "03:12"
+// örneğiyle BİREBİR eşleşiyor - ayrıca çıktıyı HER ZAMAN sabit 5 karaktere
+// ("HH:MM") sabitleyip grup-başı/devam-mesajı satırları arasında genişlik
+// tahmini gerektirmeden hizalama garantiliyor (bkz. aşağıdaki gutter).
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -38,10 +45,12 @@ export default function MessageItem({
   isMine,
   isMuted,
   canViewHistory,
+  isGroupStart,
   onSubmitEdit,
   onSubmitDelete,
   fetchHistory,
   onReport,
+  className,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
@@ -100,7 +109,7 @@ export default function MessageItem({
     : (message.authorUsername ?? "deleted user");
 
   return (
-    <li className="text-neutral-200">
+    <li className={"text-neutral-200" + (className ? ` ${className}` : "")}>
       {isEditing ? (
         <form
           onSubmit={handleEditSubmit}
@@ -130,8 +139,18 @@ export default function MessageItem({
           </button>
         </form>
       ) : (
-        <div className="flex items-baseline gap-2">
-          <span className="text-muted">{authorLabel}:</span>
+        <div className="group flex items-baseline gap-2">
+          <span
+            className={
+              "shrink-0 whitespace-nowrap text-right text-muted" +
+              (isGroupStart
+                ? ""
+                : " invisible group-hover:visible group-focus-within:visible")
+            }
+          >
+            {formatTime(message.createdAt)}
+          </span>
+          {isGroupStart && <span className="text-muted">{authorLabel}:</span>}
           <span className="flex-1">
             <MessageContent content={message.content} />
             {message.editedAt && (
