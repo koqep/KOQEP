@@ -5,7 +5,7 @@ import { MAX_MESSAGE_LENGTH } from "./RoomView";
 import MessageContent from "./MessageContent";
 import type { MessageEdit } from "../../lib/api";
 import { inputClassName } from "./formStyles";
-import { generateSmallAvatar } from "../../lib/avatar";
+import { SmallAvatar } from "./Avatar";
 
 interface Message {
   id: string;
@@ -172,9 +172,7 @@ export default function MessageItem({
                 onClick={() => onViewProfile(clickableAuthorUsername)}
                 className="flex items-baseline gap-1 text-muted hover:text-neutral-400"
               >
-                <span aria-hidden="true">
-                  {generateSmallAvatar(clickableAuthorUsername)}
-                </span>
+                <SmallAvatar seed={clickableAuthorUsername} />
                 <span>{authorLabel}:</span>
               </button>
             ) : (

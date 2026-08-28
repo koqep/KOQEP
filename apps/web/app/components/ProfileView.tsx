@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getPublicProfile, ApiError, type PublicUserProfile } from "../../lib/api";
-import { generateLargeAvatar } from "../../lib/avatar";
+import { LargeAvatar } from "./Avatar";
 import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
@@ -73,9 +73,7 @@ export default function ProfileView({
         <p>loading...</p>
       ) : (
         <div className="flex flex-col gap-2">
-          <pre aria-hidden="true" className="text-neutral-200">
-            {generateLargeAvatar(profile.username).join("\n")}
-          </pre>
+          <LargeAvatar seed={profile.username} className="text-neutral-200" />
           <p className="text-neutral-200">{profile.username}</p>
           <p>joined {formatJoinDate(profile.createdAt)}</p>
           <p>

@@ -194,21 +194,54 @@ test("kucuk_avatar_ayni_yazarda_tutarli_farkli_yazarlarda_farkli", async ({
     },
   ]);
 
-  const firstBaskasiGlyph = await page
+  // Avatar SVG rect'lerden oluşuyor (M10 Faz 2 Slice D+E revizyonu) - metin
+  // içeriği yok, aynı-seed/farklı-seed karşılaştırması SVG markup'ı üzerinden.
+  const firstBaskasiSvg = await page
     .getByRole("button", { name: /baskasi:/ })
     .first()
-    .locator('[aria-hidden="true"]')
-    .textContent();
-  const digeriGlyph = await page
+    .locator("svg")
+    .evaluate((el) => el.outerHTML);
+  const digeriSvg = await page
     .getByRole("button", { name: /digeri:/ })
-    .locator('[aria-hidden="true"]')
-    .textContent();
-  const secondBaskasiGlyph = await page
+    .locator("svg")
+    .evaluate((el) => el.outerHTML);
+  const secondBaskasiSvg = await page
     .getByRole("button", { name: /baskasi:/ })
     .last()
-    .locator('[aria-hidden="true"]')
-    .textContent();
+    .locator("svg")
+    .evaluate((el) => el.outerHTML);
 
-  expect(firstBaskasiGlyph).toBe(secondBaskasiGlyph);
-  expect(firstBaskasiGlyph).not.toBe(digeriGlyph);
+  expect(firstBaskasiSvg).toBe(secondBaskasiSvg);
+  expect(firstBaskasiSvg).not.toBe(digeriSvg);
+});
+
+test("buyuk_avatar_5x5_izgarayi_render_eder", async ({ page }) => {
+  await loginWithMessages(page, [
+    {
+      id: "msg-1",
+      content: "ilk mesaj",
+      authorUsername: "test",
+      createdAt: "2026-01-01T10:00:00.000Z",
+    },
+  ]);
+  await page.route("**/users/test/profile", (route) =>
+    route.fulfill({
+      json: {
+        username: "test",
+        createdAt: "2025-06-15T00:00:00.000Z",
+        level: 4,
+        totalXp: 320,
+      },
+    }),
+  );
+
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "profile" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  // 5x5 ızgara = 25 rect render edilir (sadece 3x5=15 hücre BAĞIMSIZ
+  // hashleniyor, kalan 10'u ayna-simetri yüzünden değer olarak tekrarlanan
+  // ama YİNE DE ayrı render edilen rect'ler - bkz. avatar.ts).
+  await expect(dialog.locator("svg rect")).toHaveCount(25);
 });
