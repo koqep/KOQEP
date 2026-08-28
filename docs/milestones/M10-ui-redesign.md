@@ -1,11 +1,11 @@
 # M10 — Arayüz Tasarım Geçişi
 
-**Faz 1 (tasarım kararları) ONAYLANDI (2026-08-26).** **Faz 2 (kod) BAŞLADI — Slice A/B/C merge oldu. Slice D+E (deterministik ASCII avatar + profil paneli, kullanıcının kararıyla TEK turda birleştirildi) TAMAMLANDI, `feat/m10-slice-d-avatar-profile` dalında, push onayında.** Kalan Faz 2 dilimi aşağıdaki "Tasks — Faz 2 kod dilimleri" listesinde.
+**Faz 1 (tasarım kararları) ONAYLANDI (2026-08-26). Faz 2 (kod) TAMAMLANDI (2026-08-27) — Slice A-F hepsi main'de.** Milestone KAPALI — kalan üç mockup özelliği (presence/son-mesaj/okunmamış) bilinçli olarak M8'e devredildi, `docs/BACKLOG.md` A24-A26'da somut tetikleyicileri var.
 
 *Kullanıcı bu milestone'u kendi 2026-08-12 kapsam turunda "M7" diye adlandırdı. **Burada M10 olarak numaralandırıldı** — sıralama nedeniyle: M7 (`M7-scale-and-critical-fixes.md`) 500-kullanıcı hedefinin ATEŞLEDİĞİ, ölçüm/adalet/kapasite gibi ERTELENEMEZ düzeltmeleri kapsıyor, M8 kullanıcının istediği yeni özellikleri. Bu ikisi CIDDI yeni UI yüzeyleri yaratıyor (landing sayfası, oda listesi, DM arayüzü, bildirim/rozet UI'ları) — hepsini M10'un TASARIM KARARLARI olmadan inşa edip SONRA yeniden tasarlamak, kullanıcının kendi endişesini ("tasarım ikinci kez bozulur") doğrudan gerçekleştirir. Bu yüzden M10, saf kronolojik sırada DEĞİL, M7/M8'in HER yeni-yüzey-yaratan dilimiyle KOORDİNELİ ilerliyor — aşağıya bakın.*
 
 **Goal:** Ürünün gerçek bir tasarım dili olsun — hiyerarşi, bileşen deseni, motion — M0'dan beri istenen ama hiç sistematik uygulanmayan akışkanlık dahil.
-**Demo:** Header'da hesap işlemleri tek bir menüde; oda listesi dikey, okunmamış/aktif göstergeli; panel açılışı/oda geçişi/mesaj gelişi tutarlı bir motion diliyle.
+**Demo:** Header'da hesap işlemleri tek bir menüde; oda listesi dikey, aktif-oda göstergeli (okunmamış göstergesi Faz 2'de TESLİM EDİLMEDİ — bilerek, aşağıdaki Slice F notuna bkz.); panel açılışı/oda geçişi/mesaj gelişi tutarlı bir motion diliyle.
 **Estimated hours:** Faz 1 (tasarım kararları) TAMAMLANDI (2026-08-26). Faz 2 (kod): kapsamına göre ~50-90 saat + ASCII avatar/profil paneli eklendiği için biraz daha — kesin rakam onay sonrası, Faz 2 plan-modu turunda netleşir, burada VERİLEN bir üst sınır değil.
 
 ## Out of scope
@@ -60,7 +60,7 @@ Faz 1 onaylandıktan SONRA, normal slice-bazlı kod dilimleri — her biri kendi
 - [x] **Slice B — Header/sidebar ayrımı.** Tamamlandı (2026-08-27). `RoomHeader.tsx` silindi, yerine ince `TopBar.tsx` (marka+oda aksiyonları+moderasyon[N]+hesap▾) ve dikey/aranabilir `RoomSidebar.tsx` (masaüstünde sabit `<aside>`, mobilde `SidePanel` overlay'i, Slice A'nın `activePanel`/`requestClosePanel` hattına yeni `"sidebar"` değeri eklenerek) geldi. Kapsam BİLEREK sadece üst bar+sidebar — odanın kendi alt-başlığı ve TR/EN değiştirici ertelendi (aşağıya bakın). Detay: "Plan notları — Slice B uygulaması" bölümü.
 - [x] **Slice C — Mesaj ritmi.** Tamamlandı (2026-08-27). Ardışık aynı-yazar mesajları (5 dakika içinde) gruplanıyor: grup-başı etiket+saat gösterir, devam mesajları sadece içerik + hover/focus'ta saat. Detay: "Plan notları — Slice C uygulaması" bölümü.
 - [x] **Slice D+E — Deterministik ASCII avatar + profil paneli.** Tamamlandı (2026-08-27), kullanıcının kararıyla TEK turda birleştirildi. Blok-karakter kimlik deseni + yeni `GET /users/:username/profile` (public-safe alan seti) + SidePanel'i kullanan yeni panel türü (kendi/başkasının profili, büyük avatar+kullanıcı adı+katılma tarihi+seviye/XP, bio/rozet YOK). Detay: "Plan notları — Slice D+E uygulaması" bölümü.
-- [ ] **Slice F — Placeholder'lar.** Presence sayısı/son-mesaj önizlemesi/okunmamış rozetleri için görsel yer tutucular (`docs/BACKLOG.md` A24-A26'nın kod tarafı, gerçek implementasyon M8'e devrediliyor).
+- [x] **Slice F — Placeholder'lar.** Tamamlandı (2026-08-27) — kod YOK, kullanıcının kararıyla üçü de (presence/son-mesaj/okunmamış) HİÇBİR ŞEY render edilmeden ertelendi (`docs/BACKLOG.md` A24-A26). Detay: "Plan notları — Slice F" bölümü.
 
 ## Koordinasyon notu (M7/M8 ile) — 2026-08-26'da GÜNCELLENDİ, orijinal senaryo artık geçerli değil
 Yazıldığında M7/M8 henüz başlamamıştı, aşağıdaki iki madde "önce M10'a bak" koordinasyonunu varsayıyordu:
@@ -166,3 +166,21 @@ Kullanıcı, avatarın `░▒▓█` unicode karakterleri yerine GitHub identic
 **Görsel doğrulama — gerçek tarayıcıda, GERÇEKTEN bakılarak:** `run` skill'i denendi ama bu Windows kurulumunda `chromium-cli` yok — bunun yerine oturumun tamamında zaten kullanılan Playwright'la ekran görüntüsü alındı (mesaj satırı, hesap menüsü açıkken, profil paneli, küçük avatarın 4x büyütülmüş yakın çekimi). Sonuç: profil panelindeki büyük avatar temiz, ayna-simetrik, 4 tonu net ayırt edilebilir bir ızgara olarak render ediyor; küçük avatar hem mesaj satırında hem hesap menüsü tetikleyicisinde metinle doğru hizalanıyor, dikiş çizgisi yok. Ekran görüntüleri geçicidir, commit edilmedi.
 
 **Doğrulama:** `apps/web` lint/typecheck/build temiz. Standart süit (113 test, yeni 1 sağlık testi dahil) İKİ KEZ üst üste geçti. Backend'e hiç dokunulmadığı için fullstack süit tekrar koşulmadı (saf sunum-katmanı değişikliği, risk düşük).
+
+### Slice F — Placeholder'lar (2026-08-27, tamamlandı, docs-only)
+
+**Kod yazılmadan önce bulunan, gerçek bir belirsizlik:** "placeholder" kelimesinin bu milestone içinde NE ANLAMA GELDİĞİ belgenin kendi içinde tutarsızdı — Faz 1'in "rozet YOK sayı yerine" (`:45`) ifadesi "hiçbir şey render etme" gibi okunuyordu, ama Slice F'nin kendi görev satırı "görsel yer tutucular" diyordu (bir şeyin RENDER EDİLDİĞİNİ ima ediyor), Goal/Demo satırı (`:8`) da hâlâ "okunmamış... göstergeli" bir sidebar vaat ediyordu. Bir Explore agent `RoomSidebar.tsx`'i (bugün 131 satır, oda satırı SADECE isim-butonu + koşullu "ayrıl" butonu, `:94-126`) okuyup bu üç özellikten HİÇBİRİNİN bugün en ufak bir stub/rezerve edilmiş alan bile taşımadığını doğruladı — kod tabanında hiçbir emsel (skeleton-loader deseni de) yoktu.
+
+**Kullanıcıya soruldu, iki karar alındı (ikisi de önerilen seçenek):**
+1. Presence sayısı + okunmamış rozeti (ikisi de M8'e bağımlı) için **HİÇBİR ŞEY render edilmiyor** — oda satırı bugünkü haliyle AYNEN kalıyor, Faz 1'in "rozet YOK" ifadesinin en literal okuması.
+2. Son-mesaj önizlemesi — `docs/BACKLOG.md` A25 bunun M8'e bağımlı OLMADIĞINI, küçük bir backend sorgusuyla şimdi gerçek yapılabileceğini not düşmüştü — kullanıcı yine de diğer ikisiyle AYNI muameleyi seçti (tutarlılık, Slice F'yi küçük tutmak), gerçek implementasyon ayrı, daha küçük bir gelecek dilime bırakıldı.
+
+**Sonuç: bu dilimde kod YOK.** `RoomSidebar.tsx` zaten "hiçbir şey render etme" durumunu sağlıyordu — Slice F, bu YOKLUĞUN kasıtlı olduğunu kaydeden bir belgeleme turuydu. Goal/Demo satırındaki (`:8`) yanlış "okunmamış göstergeli" vaadi + Slice F'nin kendi görev satırındaki (`:63`) yanıltıcı "görsel yer tutucular" ifadesi düzeltildi.
+
+**Gerçek saat:** ~20dk (kod yok — Explore agent'ı ~10dk, `AskUserQuestion` + doküman düzeltmeleri ~10dk).
+
+**Doğrulama:** yok — davranış değişikliği yok, kod dosyası değişmedi, mevcut test süiti zaten bu (değişmeyen) UI'yi kapsıyor.
+
+---
+
+**M10 Faz 2 (kod) TAMAMEN BİTTİ (2026-08-27) — Slice A-F hepsi main'de.** Kalan tek açık uç: presence/son-mesaj/okunmamış üçü de `docs/BACKLOG.md` A24-A26'daki somut tetikleyicileri (M8'in ilgili dilimleri) bekliyor.
