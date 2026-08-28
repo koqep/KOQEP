@@ -147,3 +147,22 @@ Bir Plan agent'ı somut tasarımı üretti (DOM/CSS yaklaşımı, focus-trap, mo
 **Gerçek saat:** ~4-5h (Explore+Plan agent'ları+onay ~1.5h, backend implementasyonu+testleri ~1h, frontend implementasyonu (6 dosya) ~1.5h, test yazımı+doğrulama ~1h).
 
 **Doğrulama:** `apps/api` lint/build temiz, unit (319 test) + e2e (154 test) İKİ KEZ üst üste geçti. `apps/web` lint/typecheck/build temiz, standart süit (112 test, yeni 6 dahil) İKİ KEZ üst üste geçti, fullstack süit İKİ KEZ üst üste 10/10 geçti.
+
+#### Revizyon — unicode karakter → SVG kare ızgara (2026-08-27, tamamlandı)
+
+Kullanıcı, avatarın `░▒▓█` unicode karakterleri yerine GitHub identicon'unun görsel netliğine benzer (ama MONOKROM — renk yok) gerçek SVG karelerle render edilmesini istedi. Önce kod YAZMADAN bir kapsam turu yapıldı (kullanıcının açık isteği), sonra bir Plan agent'la somut geometri/erişilebilirlik detayları doğrulandı.
+
+**Hash mantığı BİREBİR korundu** (ayna-simetri, ayrı namespace'ler, anti-çakışma tasarımı) — SADECE `avatar.ts`'in dönüş şekli değişti: önceden-birleştirilmiş karakter string'i yerine ham hücre verisi (`generateLargeAvatarGrid(seed): number[][]`, `generateSmallAvatarGrid(seed): number[] | null`). Yeni `apps/web/app/components/Avatar.tsx` (`LargeAvatar`/`SmallAvatar`, TEK genel bileşen DEĞİL — iki boyutun ızgara şekli VE seed tipi kalıcı olarak farklı) render'ı 3 çağrı noktasında (`ProfileView`/`MessageItem`/`AccountMenu`) tekrarlamak yerine tek yerde topluyor. `fill="currentColor"` + çağıran taraf `className`'i (`text-neutral-200`/`text-muted` miras alınıyor) — yeni bir renk token'ı icat edilmedi.
+
+**Plan agent'ın implementasyondan ÖNCE bulduğu, somut detaylar:**
+- `width`/`height` SVG'de MUTLAKA açık set edilmeli — yoksa varsayılan intrinsic boyut (300×150 CSS px) `AccountMenu`/`MessageItem`'ın layout'unu bozardı.
+- `shapeRendering="crispEdges"` bitişik hücreler arası anti-aliasing "dikişini" öldürüyor — "netlik" isteğinin somut karşılığı.
+- Opaklık `0.25/0.5/0.75/1.0` DEĞİL `0.28/0.52/0.76/1.0` — neutral-950 zemine karşı 12px küçük-avatar hücrelerinde 0.25 zar zor görünürdü (WCAG ~1.85:1).
+- Satıriçi hizalama İKİ FARKLI muamele gerektirdi: `MessageItem.tsx`'in butonu `flex items-baseline` (`align-middle` burada NO-OP, spec gereği — varsayılan baseline-sentezleme kullanıldı), `AccountMenu.tsx`'in butonu flex DEĞİL (`align-middle` burada GERÇEKTEN çalışıyor, eklendi).
+- `aria-hidden="true"` içeriği erişilebilir-ad hesabından HARİÇ tutuluyor, İÇERİĞİN metin mi element mi (SVG dahil) olduğundan BAĞIMSIZ — `getByRole("button", {name:"account"})`'a dayanan 7 test dosyası dokunmadan geçmeye devam etti.
+
+**Kendi bulduğum bir test hatası (implementasyon sırasında):** ilk taslak yeni bir sağlık testinde büyük avatarın "15 rect" render ettiğini iddia ediyordu — 15, BAĞIMSIZ hashlenen hücre sayısı, ama 5×5 ızgara GERÇEKTE 25 rect render ediyor (10'u ayna-simetri yüzünden değer-tekrarlı ama YİNE DE ayrı render edilen rect'ler). Test çalıştırılınca (`toHaveCount(15)` beklenen, 25 alınan) hemen yakalandı, `toHaveCount(25)`'e düzeltildi, test adı da (`buyuk_avatar_5x5_izgarayi_render_eder`) buna göre güncellendi.
+
+**Görsel doğrulama — gerçek tarayıcıda, GERÇEKTEN bakılarak:** `run` skill'i denendi ama bu Windows kurulumunda `chromium-cli` yok — bunun yerine oturumun tamamında zaten kullanılan Playwright'la ekran görüntüsü alındı (mesaj satırı, hesap menüsü açıkken, profil paneli, küçük avatarın 4x büyütülmüş yakın çekimi). Sonuç: profil panelindeki büyük avatar temiz, ayna-simetrik, 4 tonu net ayırt edilebilir bir ızgara olarak render ediyor; küçük avatar hem mesaj satırında hem hesap menüsü tetikleyicisinde metinle doğru hizalanıyor, dikiş çizgisi yok. Ekran görüntüleri geçicidir, commit edilmedi.
+
+**Doğrulama:** `apps/web` lint/typecheck/build temiz. Standart süit (113 test, yeni 1 sağlık testi dahil) İKİ KEZ üst üste geçti. Backend'e hiç dokunulmadığı için fullstack süit tekrar koşulmadı (saf sunum-katmanı değişikliği, risk düşük).
