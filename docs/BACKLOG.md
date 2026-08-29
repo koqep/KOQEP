@@ -599,3 +599,86 @@ tahmini ilgili milestone dosyasında.
 - Unicode/zalgo: uzunluk dışında SIFIR karakter-türü kontrolü (`messages.gateway.ts:132-142` doğrulandı). Metin-only, monospace bir üründe özellikle etkili bir griefing yöntemi — ucuz bir düzeltme (birleşik işaret/grapheme sınırı). → **M7, 1.0-ZORUNLU.**
 
 **M7 — Arayüz tasarım geçişi (bölüm 6):** kullanıcı bunu "M7" diye adlandırdı ama SIRALAMA nedeniyle **M10** olarak numaralandırıldı (M7 artık yukarıdaki ölçek/kritik-düzeltme dilimi) — gerekçe M10'un kendi dosyasında. İki-aşamalı yapı (önce tasarım kararı dokümanı, sonra kod) AYNEN korundu.
+
+---
+
+## G. 2026-08-29 KAPSAM TURU — production kullanım denetimi
+
+M10 Faz 1+2 tamamen bitince, kullanıcı production'ı gerçek bir kullanıcı
+gibi kullandı ve 13 madde + kendi 4 önerisi (14-17) + 1 güvenlik maddesi
+(18) getirdi. 3 paralel Explore agent'ıyla TAMAMI kod okunarak doğrulandı
+(tahmine dayanan hiçbir madde yok) — sonra 4 açık belirsizlik
+`AskUserQuestion` ile netleştirildi (madde 8, 11, 12, 13). Tam döküm ve
+gerekçe sohbet geçmişinde; burada sadece kova/milestone sonucu.
+
+### Yeni milestone'lar
+- **M11a — Hızlı düzeltmeler** (`docs/milestones/M11a-quick-fixes.md`,
+  ~11-17h): madde 1 (TOTP→authenticator etiket), 4 (e-posta doğrulama hata
+  mesajı netleştirme), 5 (şifre göster/gizle), 9 (username yerine "you"),
+  10 (blocked listesinde username), 12 (mesaj aksiyonları hover-reveal).
+- **M11b — Güven & giriş cilası** (`docs/milestones/M11b-landing-onboarding.md`,
+  ~14-24h): madde 2 (landing+animasyon), 6 (kaydırma-onaylı terms), 17
+  (onboarding — kapsamı madde 2 ile örtüşme riski taşıyor, dilim içinde
+  netleştirilecek).
+- **M11c — Şifre-korumalı odalar** (`docs/milestones/M11c-password-rooms.md`,
+  ~15-20h): madde 8. Kullanıcı `AskUserQuestion` ile netleştirdi: katılım-
+  şifresi, mesaj-içeriği şifrelemesi DEĞİL (o seçenek anahtar yönetimi +
+  moderasyon/raporlamanın "okunabilir içerik" varsayımıyla çelişir, ~40-60h+,
+  reddedildi).
+- **M12 — Moderasyon paneli genişlemesi** (`docs/milestones/M12-moderation-expansion.md`,
+  ~41-60h): madde 13. Kullanıcı isteği ("ayrı pencerede + yeni özellikler")
+  `AskUserQuestion` ile netleştirildi — ayrı pencere REDDEDİLDİ (SidePanel
+  tutarlılığı korunuyor), "yeni özellikler" kullanıcının kendi 5 maddelik
+  listesiyle (dashboard, kullanıcı yönetimi, denetim kaydı, sistem sağlığı,
+  toplu işlemler) somutlaştı. Kendi başına M8-dilimi büyüklüğünde, M8'e
+  eklenmedi (odak dağılmasın diye) — moderatör-facing, sosyal özellik değil.
+
+### Mevcut milestone'ların kapsamında olduğu doğrulanan maddeler
+- Madde 3 (TR/EN dil değiştirici): **M9**'un tamamı zaten bu — kullanıcının
+  kendi "60-100 saat" tahmini M9'un 85-110h'lık kapsamıyla doğrulandı,
+  ek iş yok.
+- Madde 14 (terminal komutları): **M8 Slice K** (~16-22h). "En büyük kimlik
+  boşluğu" ifadesi hiçbir dokümanda bulunamadı — en yakını `A20` civarındaki
+  "kimlik iddiasının merkezinde ama ürün onsuz çalışıyor" (satır 573)
+  ifadesi, muhtemelen daha önce hiç yazıya geçmemiş bir konuşmada söylendi.
+- Madde 15 (mention+bildirim): **M8 Slice D** (~24-30h).
+- Madde 16 (mesaj arama): **M8 Slice I** (~12-16h), zaten A2'nin kova
+  revizyonuyla aynı madde.
+
+### Karar verilip DOKUNULMAYAN madde
+- **Madde 11 (AccountMenu → profil sayfası taşıma):** gerçek bir çelişki
+  bulundu — M10 Slice B'nin (bu turdan sadece birkaç gün önce kurulan)
+  ayrı-açılır-menü kararını kısmen geri alıyor, `ProfileView.tsx` bugün
+  kendi/başkası profili arasında hiç ayrım yapmıyor (orta ölçekli bir
+  refactor gerekir). `AskUserQuestion` ile netleştirildi: **kullanıcı
+  "şimdilik dokunma"yı seçti** — M10 Slice B'nin kararı aynen kalıyor, yeni
+  bir milestone'a alınmadı.
+
+### Ertelendi, kendi kapsamı belirsiz
+- **Madde 7 (Explore/oda keşfi geliştirmesi):** bugünkü hal doğrulandı (düz
+  liste, arama/filtre/kategori/sıralama yok, `announcement` alanı zaten
+  çekiliyor ama hiç render edilmiyor — bedava bir düzeltme fırsatı). "Geliştirilsin"
+  çok açık uçlu — arama kutusu mu, kategori mi, sıralama mı, oda önizlemesi
+  mi belirsiz. **Somut tetikleyici:** kullanıcı somut bir özellik listesi
+  verdiğinde kendi kapsam turu yapılır, o zamana kadar bir milestone'a
+  alınmadı.
+
+### Güvenlik — founder-bloklu, kod hazır
+- **Madde 18 (Host header allowlist):** GERÇEK, doğrulanmış bir açık — CORS
+  sadece tarayıcı-kaynaklı istekleri kapsıyor, `koqep.onrender.com`'a
+  doğrudan (curl/başka bir sunucu) geçerli bir Bearer token'la gitmek
+  `api.koqep.com` ile birebir aynı çalışıyor; CSRF double-submit kontrolü
+  sadece `/auth/refresh`+`/auth/logout`'un çerez akışını kapsıyor, bu açığı
+  kapatmıyor. `koqep.onrender.com` muhtemelen Cloudflare'in de arkasında
+  değil (kendi zone'un `api.koqep.com`'a yönlendirir) — rate-limit/WAF
+  korumaları da bu yoldan atlanabilir. **Kritik bağımlılık:** production
+  BUGÜN gerçekten `koqep.onrender.com` üzerinden çalışıyor (founder'ın
+  `api.koqep.com`'a taşıması `M7a-scale-gate.md`'de hâlâ açık) — allowlist'i
+  ŞİMDİ aktif etmek kendi frontend'ini de reddeder. Kod şimdi yazılabilir,
+  aktivasyonu founder'ın domain taşımasına bağlı — `docs/milestones/M7a-scale-gate.md`'ye
+  founder-task olarak eklendi, yeni bir milestone açılmadı.
+
+### Öncelik sırası
+M11a (ucuz+bağımsız, ilk) → Host-header middleware kodu (devre dışı,
+founder'ın taşımasını bekler) → M11b → M11c → M12 → M8/M9 kendi zaten
+planlı akışında devam eder.

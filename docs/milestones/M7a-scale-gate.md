@@ -101,6 +101,16 @@ yürütülebilecek şekilde ertelenmesinden geliyor).
 - [ ] Vercel'de `NEXT_PUBLIC_API_URL`'i `https://api.koqep.com`'a güncelle, web'i yeniden deploy et (yukarıdaki maddeden SONRA).
 - [ ] Render'da `WEB_ORIGIN`'in hâlâ `https://koqep.com` (kanonik, www'suz) olduğunu doğrula — değişmesi gerekmiyor, kod zaten bu değerden `.koqep.com`'u türetiyor.
 - [ ] Tüm adımlar bitince production'da gerçek login → F5 döngüsüyle doğrula (oturum artık düşmemeli).
+- [ ] **Host-header allowlist middleware'i ekle** — bugün `koqep.onrender.com`'a
+      doğrudan (tarayıcı dışı, curl/başka bir sunucu) geçerli bir Bearer
+      token'la gitmek `api.koqep.com` ile birebir aynı çalışıyor, CORS bunu
+      engellemiyor (sadece tarayıcı-kaynaklı istekleri kapsıyor), CSRF
+      double-submit kontrolü de sadece `/auth/refresh`+`/auth/logout`'un
+      çerez akışını kapsıyor. **KOD ŞİMDİ yazılabilir ama YUKARIDAKİ domain
+      taşıması TAMAMLANMADAN aktif edilemez** — production BUGÜN gerçekten
+      `koqep.onrender.com` üzerinden çalışıyor, allowlist'i şimdi açmak
+      kendi frontend'ini de reddeder. *(2026-08-29 kapsam turunda bulundu,
+      `docs/BACKLOG.md`'nin "G." bölümü — detay orada.)*
 
 ## Risks
 - ~~Slice B (`RoomMember`) en büyük ve en riskli dilim — mevcut "herkes her odada" davranışını KORUYARAK backfill etmek yanlış yapılırsa mevcut kullanıcılar odalarından "düşmüş" hissedebilir.~~ Slice B tamamlandı, üç-kaynaklı backfill union'ı (çekirdek + kurucu + gerçek katılımcı) + eşzamanlılığa dayanıklı insert (P2003 retry) ADR-0009'da belgeli.
