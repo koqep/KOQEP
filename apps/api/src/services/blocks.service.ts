@@ -37,12 +37,21 @@ export class BlocksService {
     });
   }
 
-  async listBlockedEmails(blockerId: string): Promise<string[]> {
+  async listBlockedUsers(
+    blockerId: string,
+  ): Promise<Array<{ email: string; username: string }>> {
+    // Block.blockedId onDelete:Cascade (schema.prisma) - engellenen bir
+    // hesap silinirse bu satır da birlikte silinir, yani `username` burada
+    // ADR-0005'in "yazar bağlantısı anonimleşir" durumuna hiç düşmez, her
+    // zaman canlı bir kullanıcıya ait, non-null bir değer.
     const rows = await this.prisma.block.findMany({
       where: { blockerId },
-      include: { blocked: { select: { email: true } } },
+      include: { blocked: { select: { email: true, username: true } } },
     });
-    return rows.map((row) => row.blocked.email);
+    return rows.map((row) => ({
+      email: row.blocked.email,
+      username: row.blocked.username,
+    }));
   }
 
   async getBlockedAuthorIds(blockerId: string): Promise<string[]> {

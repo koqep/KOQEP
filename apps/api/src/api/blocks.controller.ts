@@ -59,7 +59,9 @@ export class BlocksController {
   }
 
   @Get('blocked')
-  listBlocked(@Req() req: AuthenticatedRequest): Promise<string[]> {
-    return this.blocksService.listBlockedEmails(req.user.sub);
+  listBlocked(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<Array<{ email: string; username: string }>> {
+    return this.blocksService.listBlockedUsers(req.user.sub);
   }
 }

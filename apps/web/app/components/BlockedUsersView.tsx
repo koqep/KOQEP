@@ -6,6 +6,7 @@ import {
   unblockUser,
   listBlockedUsers,
   ApiError,
+  type BlockedUser,
 } from "../../lib/api";
 import { inputClassName } from "./formStyles";
 import { useFocusOnMount } from "./useFocusOnMount";
@@ -17,7 +18,7 @@ interface Props {
 }
 
 export default function BlockedUsersView({ accessToken, onClose, titleId }: Props) {
-  const [blockedEmails, setBlockedEmails] = useState<string[] | null>(null);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[] | null>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,11 +27,11 @@ export default function BlockedUsersView({ accessToken, onClose, titleId }: Prop
   useEffect(() => {
     let cancelled = false;
     listBlockedUsers(accessToken)
-      .then((emails) => {
-        if (!cancelled) setBlockedEmails(emails);
+      .then((users) => {
+        if (!cancelled) setBlockedUsers(users);
       })
       .catch(() => {
-        if (!cancelled) setBlockedEmails([]);
+        if (!cancelled) setBlockedUsers([]);
       });
     return () => {
       cancelled = true;
@@ -43,7 +44,9 @@ export default function BlockedUsersView({ accessToken, onClose, titleId }: Prop
     setIsSubmitting(true);
     try {
       await blockUser(accessToken, email);
-      setBlockedEmails((prev) => [...(prev ?? []), email]);
+      // Backend'in block endpoint'i username döndürmüyor - listeyi yeniden
+      // çekmek, senkron bir username'siz placeholder eklemekten daha basit.
+      setBlockedUsers(await listBlockedUsers(accessToken));
       setEmail("");
     } catch (err) {
       setError(
@@ -58,7 +61,9 @@ export default function BlockedUsersView({ accessToken, onClose, titleId }: Prop
     setError(null);
     try {
       await unblockUser(accessToken, targetEmail);
-      setBlockedEmails((prev) => (prev ?? []).filter((e) => e !== targetEmail));
+      setBlockedUsers((prev) =>
+        (prev ?? []).filter((user) => user.email !== targetEmail),
+      );
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Connection error. Try again.",
@@ -102,21 +107,21 @@ export default function BlockedUsersView({ accessToken, onClose, titleId }: Prop
         </button>
       </form>
 
-      {blockedEmails === null ? (
+      {blockedUsers === null ? (
         <p>loading...</p>
-      ) : blockedEmails.length === 0 ? (
+      ) : blockedUsers.length === 0 ? (
         <p>you haven&apos;t blocked anyone yet</p>
       ) : (
         <ul className="space-y-2">
-          {blockedEmails.map((blockedEmail) => (
+          {blockedUsers.map((user) => (
             <li
-              key={blockedEmail}
+              key={user.email}
               className="flex items-center justify-between gap-4 text-neutral-200"
             >
-              {blockedEmail}
+              {user.username}
               <button
                 type="button"
-                onClick={() => void handleUnblock(blockedEmail)}
+                onClick={() => void handleUnblock(user.email)}
                 className="text-muted hover:text-neutral-400"
               >
                 unblock
