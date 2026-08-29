@@ -163,7 +163,7 @@ test("kendi_mesajina_you_etiketine_tiklamak_da_kendi_profilini_acar", async ({
     }),
   );
 
-  await page.getByRole("button", { name: /you:/ }).click();
+  await page.getByRole("button", { name: /test:/ }).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();

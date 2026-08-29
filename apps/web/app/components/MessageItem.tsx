@@ -107,9 +107,7 @@ export default function MessageItem({
     }
   }
 
-  const authorLabel = isMine
-    ? "you"
-    : (message.authorUsername ?? "deleted user");
+  const authorLabel = message.authorUsername ?? "deleted user";
   // Yerel bir const'a çıkarmak, aşağıdaki nested onClick closure'ında
   // TypeScript'in bunu string olarak DARALTMASINI sağlıyor - message.
   // authorUsername'a doğrudan bir property-access olarak erişmek closure
@@ -147,6 +145,10 @@ export default function MessageItem({
           </button>
         </form>
       ) : (
+        // M11a Slice F: avatar + edit/delete/history/report Slice C'nin
+        // saat için kurduğu group-hover/focus-within desenini paylaşıyor -
+        // "are you sure?"/yes/cancel onay UI'ı BİLEREK dışarıda (aktif bir
+        // onay durumu, hover'dan bağımsız görünür kalmalı).
         <div className="group flex items-baseline gap-2">
           <span
             className={
@@ -164,15 +166,17 @@ export default function MessageItem({
               // <span>'inde KALIYOR (avatar glyph'iyle BİRLEŞTİRİLMİYOR) -
               // message-grouping.spec.ts'in getByText("baskasi:", {exact:
               // true}) sorguları birleştirilmiş bir string'de eşleşmeyi
-              // kaybederdi. Kendi mesajını ("you:") tıklamak da AYNI
-              // mekanizmayla kendi profiline açılır - authorUsername "you"
-              // etiketinin ALTINDA hâlâ gerçek kullanıcı adı, özel durum yok.
+              // kaybederdi. Kendi mesajını tıklamak da AYNI mekanizmayla
+              // kendi profiline açılır - authorLabel M11a Slice A'dan beri
+              // isMine farketmeksizin her zaman gerçek kullanıcı adı.
               <button
                 type="button"
                 onClick={() => onViewProfile(clickableAuthorUsername)}
                 className="flex items-baseline gap-1 text-muted hover:text-neutral-400"
               >
-                <SmallAvatar seed={clickableAuthorUsername} />
+                <span className="invisible group-hover:visible group-focus-within:visible">
+                  <SmallAvatar seed={clickableAuthorUsername} />
+                </span>
                 <span>{authorLabel}:</span>
               </button>
             ) : (
@@ -190,7 +194,7 @@ export default function MessageItem({
             <button
               type="button"
               onClick={startEditing}
-              className="text-muted hover:text-neutral-400"
+              className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-neutral-400"
             >
               edit
             </button>
@@ -224,7 +228,7 @@ export default function MessageItem({
               <button
                 type="button"
                 onClick={() => setIsConfirmingDelete(true)}
-                className="text-muted hover:text-red-400"
+                className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-red-400"
               >
                 delete
               </button>
@@ -233,7 +237,7 @@ export default function MessageItem({
             <button
               type="button"
               onClick={() => void toggleHistory()}
-              className="text-muted hover:text-neutral-400"
+              className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-neutral-400"
             >
               {isHistoryOpen ? "hide history" : "history"}
             </button>
@@ -246,7 +250,7 @@ export default function MessageItem({
                 type="button"
                 disabled={reportState === "sending"}
                 onClick={() => void handleReport()}
-                className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
+                className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-neutral-400 disabled:cursor-not-allowed"
               >
                 {reportState === "error"
                   ? "try again"

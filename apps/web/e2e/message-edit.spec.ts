@@ -46,6 +46,9 @@ test("kendi_mesajinda_duzenle_ve_gecmis_butonlari_gorunur_duzenle_formu_dolu_aci
 }) => {
   await login(page, "user", "test");
 
+  // M11a Slice F: edit/history butonları artık satır hover/focus'ta
+  // görünür (Slice C'nin saat deseni) - önce satırı hover'lamak gerekiyor.
+  await page.getByText("test mesajı").hover();
   await expect(page.getByRole("button", { name: "edit" })).toBeVisible();
   await expect(page.getByRole("button", { name: "history" })).toBeVisible();
 
@@ -55,6 +58,7 @@ test("kendi_mesajinda_duzenle_ve_gecmis_butonlari_gorunur_duzenle_formu_dolu_aci
 
   await page.getByRole("button", { name: "cancel" }).click();
 
+  await page.getByText("test mesajı").hover();
   await expect(page.getByRole("button", { name: "edit" })).toBeVisible();
 });
 
@@ -72,6 +76,7 @@ test("baskasinin_mesajinda_moderator_gecmisi_gorur_ama_duzenleyemez", async ({
 }) => {
   await login(page, "moderator", "baskasi");
 
+  await page.getByText("test mesajı").hover();
   await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "history" })).toBeVisible();
 });
@@ -140,6 +145,7 @@ test("gecmis_butonuna_basinca_onceki_icerik_listelenir", async ({ page }) => {
     }),
   );
 
+  await page.getByText("test mesajı").hover();
   await page.getByRole("button", { name: "history" }).click();
 
   await expect(page.getByText("eski içerik")).toBeVisible();
