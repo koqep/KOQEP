@@ -55,7 +55,7 @@ sıralandı (aşağıdaki, gerçek implementasyonda kullanılan sıra):
       avatar/buton grubuna Slice C'nin (M10) deseni.
 
 **M11a TAMAMEN BİTTİ — tüm 6 dilim main'e MERGE İÇİN HAZIR** (`feat/m11a-quick-fixes`
-dalında 4 commit, push kullanıcı onayında).
+dalı, main merge edilip conflict çözüldü, doğrulama sonrası kullanıcı push edecek).
 
 ## Risks
 - ~~Slice C (şifre göster/gizle): dört farklı formda tekrar eden bir desen —

@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-29 (M11a TAMAMLANDI, push onayında)
+**Son güncelleme:** 2026-08-29 (kapsam turu MERGE OLDU, M11a merge-conflict çözümü + doğrulama sürüyor)
 **M0-M10 hepsi main'de** (M7a/M7b/M6b/M6c'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a (hızlı düzeltmeler) TAMAMLANDI (2026-08-29), main'de DEĞİL — `feat/m11a-quick-fixes` dalında 4 commit, push onayında.** 6 dilim: (A) MessageItem'ın `isMine?"you":username` özel durumu kaldırıldı; (B) `GET /users/blocked` artık `{email,username}` (Block.blockedId `onDelete:Cascade` olduğu için username hep non-null); (C) yeni paylaşılan `PasswordInput.tsx` (explicit htmlFor/id) — login/signup/assign-moderator/delete-account/reset-password; (D) `AuthView` `EMAIL_NOT_VERIFIED` code'unu `TOTP_REQUIRED` deseniyle özel işliyor, net İngilizce mesaj; (E) "TOTP" → "authenticator" (frontend etiketleri + backend Türkçe hata metinleri "kimlik doğrulayıcı"); (F) avatar+edit/delete/history/report artık Slice C'nin (M10) saat için kurduğu group-hover/focus-within deseniyle satır hover/focus'ta görünür. Detay + kaynak: `docs/milestones/M11a-quick-fixes.md`.
-- **2026-08-29: production kullanım denetimi (18 madde) TAMAMLANDI (docs-only), main'de DEĞİL — `docs/m11-m12-scope-round` dalında, push onayında.** 4 yeni milestone açıldı: M11a (yukarıda), M11b (landing+onboarding), M11c (şifre-korumalı oda — katılım-şifresi, mesaj şifrelemesi DEĞİL), M12 (moderasyon paneli genişlemesi, ~41-60h). Host-header allowlist `M7a-scale-gate.md`'ye founder-bloklu task olarak eklendi (kod yazılabilir, founder'ın `api.koqep.com` taşıması bitene kadar AKTİF EDİLEMEZ). Detay: `docs/BACKLOG.md`'nin "G." bölümü.
-- M7a'nın kalıntısı: Postgres RAM/CPU/depolama ölçülemedi (A18) + `api.koqep.com` domain taşıması (founder). M7b'nin kalıntısı: D1 (rate limit, Faz 1 trafiğini bekliyor).
+- **2026-08-29: production kullanım denetimi (18 madde) TAMAMLANDI (docs-only) ve main'e MERGE OLDU** (PR #100, `docs/m11-m12-scope-round`). 4 yeni milestone açıldı: M11a (aşağıda), M11b (landing+onboarding), M11c (şifre-korumalı oda — katılım-şifresi, mesaj şifrelemesi DEĞİL), M12 (moderasyon paneli genişlemesi, ~41-60h). Host-header allowlist `M7a-scale-gate.md`'ye founder-bloklu task olarak eklendi (kod yazılabilir, founder'ın `api.koqep.com` taşıması bitene kadar AKTİF EDİLEMEZ). Madde 11 (AccountMenu→profil taşıma) kullanıcı kararıyla YAPILMAYACAK (M10 Slice B aynen kalıyor), madde 7 (Explore geliştirmesi) kapsamı belirsiz kaldı. Tam gerekçe: `docs/BACKLOG.md`'nin "G." bölümü.
+- **M11a (hızlı düzeltmeler) TAMAMLANDI (2026-08-29), main'de DEĞİL — `feat/m11a-quick-fixes` dalında, PR açık, main merge edilip conflict çözüldü, doğrulama sürüyor.** 6 dilim: (A) MessageItem'ın `isMine?"you":username` özel durumu kaldırıldı; (B) `GET /users/blocked` artık `{email,username}` (Block.blockedId `onDelete:Cascade` olduğu için username hep non-null); (C) yeni paylaşılan `PasswordInput.tsx` (explicit htmlFor/id) — login/signup/assign-moderator/delete-account/reset-password; (D) `AuthView` `EMAIL_NOT_VERIFIED` code'unu `TOTP_REQUIRED` deseniyle özel işliyor, net İngilizce mesaj; (E) "TOTP" → "authenticator" (frontend etiketleri + backend Türkçe hata metinleri "kimlik doğrulayıcı"); (F) avatar+edit/delete/history/report artık Slice C'nin (M10) saat için kurduğu group-hover/focus-within deseniyle satır hover/focus'ta görünür. Detay + kaynak: `docs/milestones/M11a-quick-fixes.md`.
+- M7a'nın kalıntısı: Postgres RAM/CPU/depolama ölçülemedi (A18) + `api.koqep.com` domain taşıması (founder, artık Host-header allowlist'i de bekliyor). M7b'nin kalıntısı: D1 (rate limit, Faz 1 trafiğini bekliyor).
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** iki bekleyen dalın (`feat/m11a-quick-fixes`, `docs/m11-m12-scope-round`) push'u kullanıcı onayında.
-- **Sonraki adım:** M11b/M11c/M12'den biri seçilip plan modu başlatılacak — kullanıcı sırayı onayladı (M11a→Host-header kodu→M11b→M11c→M12).
+- **Görev:** `feat/m11a-quick-fixes`'in main ile merge-conflict'i (STATE.md + M11a-quick-fixes.md, ikisi de bu iki dalda paralel güncellenmişti) çözüldü, test süiti doğrulanıyor; kullanıcı doğrulama sonrası kendisi push edecek.
+- **Sonraki adım:** M11a main'e girince, M11b/M11c/M12'den biri seçilip plan modu başlatılacak — kullanıcı sırayı onayladı (M11a→Host-header kodu→M11b→M11c→M12).
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
