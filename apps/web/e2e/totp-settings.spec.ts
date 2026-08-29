@@ -50,7 +50,7 @@ async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
-  await page.getByLabel("totp code").fill("123456");
+  await page.getByLabel("authenticator code").fill("123456");
   await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 }
@@ -64,7 +64,7 @@ test("totp_kapaliyken_panel_kurulum_baslat_gosterir", async ({ page }) => {
     page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "turn off TOTP" }),
+    page.getByRole("button", { name: "turn off authenticator" }),
   ).toHaveCount(0);
 });
 
@@ -86,8 +86,8 @@ test("kurulum_baslatinca_secret_ve_qr_ve_kod_alani_gorunur", async ({
   await page.getByRole("button", { name: "start setup" }).click();
 
   await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
-  await expect(page.getByLabel("totp code")).toBeVisible();
-  const qrImage = page.getByAltText("TOTP QR code");
+  await expect(page.getByLabel("authenticator code")).toBeVisible();
+  const qrImage = page.getByAltText("authenticator QR code");
   await expect(qrImage).toBeVisible();
   await expect(qrImage).toHaveAttribute("src", /^data:image\//);
 });
@@ -114,7 +114,7 @@ test("dogru_kodla_etkinlestirince_kurtarma_kodlari_gosterilir_sonra_kapat_formun
 
   await openTotpPanel(page);
   await page.getByRole("button", { name: "start setup" }).click();
-  await page.getByLabel("totp code").fill("654321");
+  await page.getByLabel("authenticator code").fill("654321");
   await page.getByRole("button", { name: "enable" }).click();
 
   await expect(
@@ -127,7 +127,7 @@ test("dogru_kodla_etkinlestirince_kurtarma_kodlari_gosterilir_sonra_kapat_formun
   await page.getByRole("button", { name: "saved it" }).click();
 
   await expect(
-    page.getByRole("button", { name: "turn off TOTP" }),
+    page.getByRole("button", { name: "turn off authenticator" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "start setup" }),
@@ -153,7 +153,7 @@ test("yanlis_kod_hata_gosterir_kurulum_yeniden_baslamaz", async ({ page }) => {
 
   await openTotpPanel(page);
   await page.getByRole("button", { name: "start setup" }).click();
-  await page.getByLabel("totp code").fill("000000");
+  await page.getByLabel("authenticator code").fill("000000");
   await page.getByRole("button", { name: "enable" }).click();
 
   await expect(page.getByText("Geçersiz TOTP kodu.")).toBeVisible();
@@ -174,10 +174,10 @@ test("totp_aciksa_panel_dogrudan_kapatma_formuna_gecer_basarili_kapatma_sonrasi_
   await openTotpPanel(page);
 
   await expect(
-    page.getByRole("button", { name: "turn off TOTP" }),
+    page.getByRole("button", { name: "turn off authenticator" }),
   ).toBeVisible();
-  await page.getByLabel("totp code").fill("654321");
-  await page.getByRole("button", { name: "turn off TOTP" }).click();
+  await page.getByLabel("authenticator code").fill("654321");
+  await page.getByRole("button", { name: "turn off authenticator" }).click();
 
   await expect(
     page.getByRole("button", { name: "start setup" }),

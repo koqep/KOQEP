@@ -264,7 +264,7 @@ export class AuthService {
         // kırılgan olurdu (bkz. plan notları) - yapısal bir kontrat.
         throw new UnauthorizedException({
           code: 'TOTP_REQUIRED',
-          message: 'Geçerli bir TOTP kodu gerekli.',
+          message: 'Geçerli bir kimlik doğrulayıcı kodu gerekli.',
         });
       }
     }
@@ -359,7 +359,7 @@ export class AuthService {
       if (!totpValid) {
         throw new UnauthorizedException({
           code: 'TOTP_REQUIRED',
-          message: 'Geçerli bir TOTP kodu gerekli.',
+          message: 'Geçerli bir kimlik doğrulayıcı kodu gerekli.',
         });
       }
     }
