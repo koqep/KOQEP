@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { deleteAccount, ApiError } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+import PasswordInput from "./PasswordInput";
 import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
@@ -89,21 +90,17 @@ export default function DeleteAccountView({
               messages stay visible to others, only your username is removed
             </span>
           </label>
-          <label className="flex flex-col gap-1 text-muted">
-            current password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- "delete my account"a tıklandıktan sonra beliren onay alanı, sürpriz odak sıçraması değil.
-              autoFocus
-              className={inputClassName}
-            />
-          </label>
+          <PasswordInput
+            label="current password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- "delete my account"a tıklandıktan sonra beliren onay alanı, sürpriz odak sıçraması değil.
+            autoFocus
+          />
           {totpRequired && (
             <label className="flex flex-col gap-1 text-muted">
-              totp code
+              authenticator code
               <input
                 type="text"
                 value={totpCode}

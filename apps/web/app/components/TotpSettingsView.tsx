@@ -141,7 +141,7 @@ export default function TotpSettingsView({
         <form onSubmit={handleDisable} className="flex flex-col gap-3">
           <p>Two-factor authentication is currently on.</p>
           <label className="flex flex-col gap-1 text-muted">
-            totp code
+            authenticator code
             <input
               type="text"
               value={totpCode}
@@ -156,21 +156,21 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            turn off TOTP
+            turn off authenticator
           </button>
         </form>
       ) : setup ? (
         <form onSubmit={handleEnable} className="flex flex-col gap-3">
           {qr && (
             // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image optimizasyonuna uygun bir uzak/statik kaynak değil.
-            <img src={qr} alt="TOTP QR code" className="h-40 w-40" />
+            <img src={qr} alt="authenticator QR code" className="h-40 w-40" />
           )}
           <p className="text-muted">
             secret key to enter manually into your authenticator app:
           </p>
           <p className="font-mono text-neutral-200 select-all">{setup.secret}</p>
           <label className="flex flex-col gap-1 text-muted">
-            totp code
+            authenticator code
             <input
               type="text"
               value={totpCode}

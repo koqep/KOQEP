@@ -36,29 +36,36 @@ test("liste_bosken_bos_durum_mesaji_gosterir", async ({ page }) => {
 test("mevcut_engellenenler_listede_gorunur", async ({ page }) => {
   await login(page);
   await page.route("**/users/blocked", (route) =>
-    route.fulfill({ json: ["a@koqep.local", "b@koqep.local"] }),
+    route.fulfill({
+      json: [
+        { email: "a@koqep.local", username: "auser" },
+        { email: "b@koqep.local", username: "buser" },
+      ],
+    }),
   );
 
   await openBlockedPanel(page);
 
-  await expect(page.getByText("a@koqep.local")).toBeVisible();
-  await expect(page.getByText("b@koqep.local")).toBeVisible();
+  await expect(page.getByText("auser")).toBeVisible();
+  await expect(page.getByText("buser")).toBeVisible();
 });
 
 test("email_girip_engelleyince_listeye_eklenir", async ({ page }) => {
   await login(page);
+  let blocked: Array<{ email: string; username: string }> = [];
   await page.route("**/users/blocked", (route) =>
-    route.fulfill({ json: [] }),
+    route.fulfill({ json: blocked }),
   );
-  await page.route("**/users/block", (route) =>
-    route.fulfill({ json: { ok: true } }),
-  );
+  await page.route("**/users/block", (route) => {
+    blocked = [{ email: "kotu@koqep.local", username: "kotuuser" }];
+    return route.fulfill({ json: { ok: true } });
+  });
 
   await openBlockedPanel(page);
   await page.getByLabel("email").fill("kotu@koqep.local");
   await page.getByRole("button", { name: "block", exact: true }).click();
 
-  await expect(page.getByText("kotu@koqep.local")).toBeVisible();
+  await expect(page.getByText("kotuuser")).toBeVisible();
   await expect(page.getByLabel("email")).toHaveValue("");
 });
 
@@ -85,18 +92,20 @@ test("bilinmeyen_email_engellenemez_hata_gosterir", async ({ page }) => {
 test("engeli_kaldirinca_listeden_cikar", async ({ page }) => {
   await login(page);
   await page.route("**/users/blocked", (route) =>
-    route.fulfill({ json: ["kotu@koqep.local"] }),
+    route.fulfill({
+      json: [{ email: "kotu@koqep.local", username: "kotuuser" }],
+    }),
   );
   await page.route("**/users/unblock", (route) =>
     route.fulfill({ json: { ok: true } }),
   );
 
   await openBlockedPanel(page);
-  await expect(page.getByText("kotu@koqep.local")).toBeVisible();
+  await expect(page.getByText("kotuuser")).toBeVisible();
 
   await page.getByRole("button", { name: "unblock" }).click();
 
-  await expect(page.getByText("kotu@koqep.local")).toHaveCount(0);
+  await expect(page.getByText("kotuuser")).toHaveCount(0);
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 });
 

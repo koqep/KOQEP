@@ -264,8 +264,15 @@ export async function unblockUser(
   await authedPostJson("/users/unblock", accessToken, { email });
 }
 
-export function listBlockedUsers(accessToken: string): Promise<string[]> {
-  return authedGetJson<string[]>("/users/blocked", accessToken);
+export interface BlockedUser {
+  email: string;
+  username: string;
+}
+
+export function listBlockedUsers(
+  accessToken: string,
+): Promise<BlockedUser[]> {
+  return authedGetJson<BlockedUser[]>("/users/blocked", accessToken);
 }
 
 export interface UserProfile {

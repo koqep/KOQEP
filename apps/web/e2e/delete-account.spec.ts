@@ -64,7 +64,7 @@ test("totp_gerekince_alan_belirir", async ({ page }) => {
     .getByRole("button", { name: "permanently delete my account" })
     .click();
 
-  await expect(page.getByLabel("totp code")).toBeVisible();
+  await expect(page.getByLabel("authenticator code")).toBeVisible();
 });
 
 test("basarili_silme_giris_ekranina_doner", async ({ page }) => {

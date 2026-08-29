@@ -37,6 +37,8 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   });
 
   const rowOnA = pageA.locator("li", { hasText: originalContent });
+  // M11a Slice F: delete/history butonları artık satır hover/focus'ta görünür.
+  await rowOnA.hover();
   await rowOnA.getByRole("button", { name: "delete" }).click();
   await rowOnA.getByRole("button", { name: "yes" }).click();
 
@@ -69,6 +71,7 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   // olabilir.
   await expect(placeholderRowOnA.getByText("(edited)")).toHaveCount(0);
 
+  await placeholderRowOnA.hover();
   await placeholderRowOnA.getByRole("button", { name: "history" }).click();
   await expect(pageA.getByText(originalContent)).toBeVisible({
     timeout: 10000,

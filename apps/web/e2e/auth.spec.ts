@@ -86,7 +86,9 @@ test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {
   await page.getByRole("button", { name: "log in" }).click();
 
   await expect(
-    page.getByText("E-postanı doğrulaman gerekiyor."),
+    page.getByText(
+      "Check your inbox — you need to verify your email before signing in.",
+    ),
   ).toBeVisible();
 });
 
@@ -109,7 +111,7 @@ test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({
   await page.getByRole("button", { name: "log in" }).click();
 
   await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible();
-  await expect(page.getByLabel("totp code")).toHaveCount(0);
+  await expect(page.getByLabel("authenticator code")).toHaveCount(0);
 });
 
 test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
@@ -141,7 +143,7 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
 
-  const totpField = page.getByLabel("totp code");
+  const totpField = page.getByLabel("authenticator code");
   await expect(totpField).toBeVisible();
   await totpField.fill("123456");
   await page.getByRole("button", { name: "log in" }).click();

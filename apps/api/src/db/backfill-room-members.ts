@@ -4,6 +4,7 @@ import { CORE_ROOM_NAMES } from './core-rooms.constants';
 export interface BackfillRoomMembersResult {
   created: number;
   alreadyMember: number;
+  skippedInvalid: number;
 }
 
 // M7a Slice B (ADR-0009): RoomMember tablosu boş bir tablo olarak başlıyor -
@@ -72,28 +73,45 @@ export async function backfillRoomMembers(
     }
   }
 
-  const created = await insertPairs(prisma, Array.from(pairs.values()));
+  const { created, skippedInvalid } = await insertPairs(
+    prisma,
+    Array.from(pairs.values()),
+  );
 
   return {
     created,
     alreadyMember: existingCount,
+    skippedInvalid,
   };
 }
 
+interface InsertPairsResult {
+  created: number;
+  skippedInvalid: number;
+}
+
 // Kaynak sorguları (allUsers vb.) ile bu insert arasında bir kullanıcı/oda
-// silinmişse (deploy-zamanı script'i olarak normalde tek-yazıcılı bir
-// pencerede çalışır, ama savunma amaçlı) createMany FK ihlaliyle patlar -
-// hata YUTULMUYOR, geçerli id'lere göre filtrelenip BİR KEZ tekrar deneniyor.
-async function insertPairs(
+// silinmiş olabilir (deploy-zamanı script'i olarak normalde tek-yazıcılı bir
+// pencerede çalışır, ama e2e test süiti PARALEL koşan başka dosyaların
+// gerçek /auth/delete-account çağırdığı bir ortamda bunu KANITLADI - tek
+// seferlik "filtrele + tekrar dene" YETMEDİ, çünkü retry'ın KENDİ okuma-
+// yazma penceresi de aynı şekilde yarışa açık, sürekli churn'de aynı
+// olasılıkla tekrar patlıyor. Kalıcı çözüm: toplu insert (skipDuplicates)
+// hızlı yol olarak KALIYOR, ama P2003'te tekrar toplu denemek yerine
+// SATIR SATIR dene - her satırın FK kontrolü kendi insert'iyle ATOMİK
+// olduğu için o satırın kendi penceresi tek bir round-trip'e iner. O anda
+// gerçekten geçersiz olan (kullanıcı/oda silinmiş) satır atlanır - script
+// idempotent olduğu için bir sonraki koşuda geçerliyse zaten yakalanır.
+export async function insertPairs(
   prisma: PrismaClient,
   allPairs: Array<{ userId: string; roomId: string }>,
-): Promise<number> {
+): Promise<InsertPairsResult> {
   try {
     const result = await prisma.roomMember.createMany({
       data: allPairs,
       skipDuplicates: true,
     });
-    return result.count;
+    return { created: result.count, skippedInvalid: 0 };
   } catch (error) {
     if (
       !(error instanceof Prisma.PrismaClientKnownRequestError) ||
@@ -101,20 +119,34 @@ async function insertPairs(
     ) {
       throw error;
     }
-    const [validUsers, validRooms] = await Promise.all([
-      prisma.user.findMany({ select: { id: true } }),
-      prisma.room.findMany({ select: { id: true } }),
-    ]);
-    const userIds = new Set(validUsers.map((u) => u.id));
-    const roomIds = new Set(validRooms.map((r) => r.id));
-    const validPairs = allPairs.filter(
-      (pair) => userIds.has(pair.userId) && roomIds.has(pair.roomId),
-    );
-    const retryResult = await prisma.roomMember.createMany({
-      data: validPairs,
-      skipDuplicates: true,
-    });
-    return retryResult.count;
+    let created = 0;
+    let skippedInvalid = 0;
+    for (const pair of allPairs) {
+      try {
+        await prisma.roomMember.create({ data: pair });
+        created += 1;
+      } catch (rowError) {
+        if (
+          rowError instanceof Prisma.PrismaClientKnownRequestError &&
+          rowError.code === 'P2003'
+        ) {
+          // Bu satırın kullanıcısı/odası bu anda gerçekten yok - yarışın
+          // kendisi, atla.
+          skippedInvalid += 1;
+          continue;
+        }
+        if (
+          rowError instanceof Prisma.PrismaClientKnownRequestError &&
+          rowError.code === 'P2002'
+        ) {
+          // Zaten üye - createMany'nin skipDuplicates'ının tek-satır
+          // eşdeğeri, hata değil.
+          continue;
+        }
+        throw rowError;
+      }
+    }
+    return { created, skippedInvalid };
   }
 }
 
@@ -122,7 +154,7 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient();
   const result = await backfillRoomMembers(prisma);
   console.log(
-    `RoomMember backfill tamam. Oluşturulan: ${result.created}, önceden mevcut: ${result.alreadyMember}.`,
+    `RoomMember backfill tamam. Oluşturulan: ${result.created}, önceden mevcut: ${result.alreadyMember}, atlanan (geçersiz FK): ${result.skippedInvalid}.`,
   );
   await prisma.$disconnect();
 }

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { confirmPasswordReset, ApiError } from "../../lib/api";
-import { inputClassName } from "./formStyles";
+import PasswordInput from "./PasswordInput";
 
 export default function ResetPasswordView() {
   const searchParams = useSearchParams();
@@ -61,16 +61,12 @@ export default function ResetPasswordView() {
         <span className="text-muted">#</span> new password
       </h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-muted">
-          new password
-          <input
-            type="password"
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-            required
-            className={inputClassName}
-          />
-        </label>
+        <PasswordInput
+          label="new password"
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          required
+        />
 
         {error && <p className="text-red-400">{error}</p>}
 

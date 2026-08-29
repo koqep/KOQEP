@@ -10,6 +10,7 @@ import {
   type TokenPair,
 } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+import PasswordInput from "./PasswordInput";
 
 type Mode = "login" | "signup" | "forgot-password";
 
@@ -75,6 +76,13 @@ export default function AuthView({ onAuthenticated }: Props) {
       if (err instanceof ApiError) {
         if (err.code === "TOTP_REQUIRED") {
           setTotpRequired(true);
+        } else if (err.code === "EMAIL_NOT_VERIFIED") {
+          // Backend'in ham mesajı Türkçe (A20, backend hata metinleri
+          // henüz çevrilmedi) - bilinen code'lar için TOTP_REQUIRED'la
+          // AYNI desen, frontend kendi net İngilizce mesajını gösteriyor.
+          setError(
+            "Check your inbox — you need to verify your email before signing in.",
+          );
         } else {
           setError(err.message);
         }
@@ -143,23 +151,19 @@ export default function AuthView({ onAuthenticated }: Props) {
           )}
 
           {mode !== "forgot-password" && (
-            <label className="flex flex-col gap-1 text-muted">
-              password
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                minLength={8}
-                maxLength={200}
-                className={inputClassName}
-              />
-            </label>
+            <PasswordInput
+              label="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              minLength={8}
+              maxLength={200}
+            />
           )}
 
           {mode === "login" && totpRequired && (
             <label className="flex flex-col gap-1 text-muted">
-              totp code
+              authenticator code
               <input
                 type="text"
                 value={totpCode}

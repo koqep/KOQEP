@@ -161,6 +161,9 @@ test("devam_mesajinin_edit_delete_history_butonlari_calisir", async ({
   );
 
   const secondRow = page.locator("li", { hasText: "devam mesaji" });
+  // M11a Slice F: edit/delete/history butonları artık satır hover/focus'ta
+  // görünür - "are you sure?"/cancel onay UI'ı hover'dan bağımsız kalıyor.
+  await secondRow.hover();
 
   // history: aç/kapat, önceki içerik satırda görünür.
   await secondRow.getByRole("button", { name: "history" }).click();
@@ -179,6 +182,7 @@ test("devam_mesajinin_edit_delete_history_butonlari_calisir", async ({
 
   // delete: iki adımlı onay UI'ı çalışır (WS round-trip mock'suz e2e/
   // süitin kapsamı dışında - message-delete.spec.ts'in AYNI deseni).
+  await secondRow.hover();
   await secondRow.getByRole("button", { name: "delete", exact: true }).click();
   await expect(secondRow.getByText("are you sure?")).toBeVisible();
   await secondRow.getByRole("button", { name: "cancel" }).click();

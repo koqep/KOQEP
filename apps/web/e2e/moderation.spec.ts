@@ -65,6 +65,7 @@ test("baskasinin_mesajini_raporlayinca_onay_gosterir", async ({ page }) => {
     await route.fulfill({ json: { ok: true } });
   });
 
+  await page.getByText("test mesajı").hover();
   await page.getByRole("button", { name: "report" }).click();
 
   await expect(page.getByText("reported")).toBeVisible();

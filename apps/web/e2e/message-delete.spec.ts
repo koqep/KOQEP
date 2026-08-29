@@ -47,6 +47,7 @@ test("kendi_mesajinda_sil_butonu_iki_adimli_onay_ister_vazgec_geri_alir", async 
 }) => {
   await login(page, "user", "test");
 
+  await page.getByText("test mesajı").hover();
   await expect(page.getByRole("button", { name: "delete", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "delete", exact: true }).click();
 
@@ -56,6 +57,7 @@ test("kendi_mesajinda_sil_butonu_iki_adimli_onay_ister_vazgec_geri_alir", async 
   await page.getByRole("button", { name: "cancel" }).click();
 
   await expect(page.getByText("are you sure?")).toHaveCount(0);
+  await page.getByText("test mesajı").hover();
   await expect(page.getByRole("button", { name: "delete", exact: true })).toBeVisible();
 });
 
@@ -74,6 +76,7 @@ test("susturulmus_kullanici_kendi_mesajinda_sil_butonunu_yine_de_gorur", async (
   const mutedUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   await login(page, "user", "test", mutedUntil);
 
+  await page.getByText("test mesajı").hover();
   await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "delete", exact: true })).toBeVisible();
 });

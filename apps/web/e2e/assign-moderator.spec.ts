@@ -100,12 +100,12 @@ test("totp_gerekince_alan_belirir", async ({ page }) => {
     }),
   );
 
-  await expect(page.getByLabel("totp code")).toHaveCount(0);
+  await expect(page.getByLabel("authenticator code")).toHaveCount(0);
   await page.getByLabel("email", { exact: true }).first().fill("yeni@koqep.local");
   await page.getByLabel("your password").fill("a-strong-password");
   await page.getByRole("button", { name: "assign", exact: true }).click();
 
-  await expect(page.getByLabel("totp code")).toBeVisible();
+  await expect(page.getByLabel("authenticator code")).toBeVisible();
 });
 
 test("kaldirma_email_girip_submit_edince_basari_mesaji_gosterir", async ({

@@ -104,23 +104,26 @@ describe('BlocksService', () => {
     });
   });
 
-  describe('listBlockedEmails', () => {
-    it('engellenen_e_postalari_dondurur', async () => {
+  describe('listBlockedUsers', () => {
+    it('engellenen_kullanicilari_email_ve_username_ile_dondurur', async () => {
       const prismaMock: Partial<PrismaService> = {
         block: {
           findMany: jest
             .fn()
             .mockResolvedValue([
-              { blocked: { email: 'b@koqep.local' } },
-              { blocked: { email: 'c@koqep.local' } },
+              { blocked: { email: 'b@koqep.local', username: 'buser' } },
+              { blocked: { email: 'c@koqep.local', username: 'cuser' } },
             ]),
         } as unknown as PrismaService['block'],
       };
 
       const service = buildService(prismaMock);
-      const emails = await service.listBlockedEmails('blocker-1');
+      const users = await service.listBlockedUsers('blocker-1');
 
-      expect(emails).toEqual(['b@koqep.local', 'c@koqep.local']);
+      expect(users).toEqual([
+        { email: 'b@koqep.local', username: 'buser' },
+        { email: 'c@koqep.local', username: 'cuser' },
+      ]);
     });
   });
 

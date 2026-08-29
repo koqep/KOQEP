@@ -38,6 +38,8 @@ test("mesaj_duzenlenince_karsi_sekmede_de_gunceller_gecmiste_eski_icerik_gorunur
   });
 
   const rowOnA = pageA.locator("li", { hasText: originalContent });
+  // M11a Slice F: edit/history butonları artık satır hover/focus'ta görünür.
+  await rowOnA.hover();
   await rowOnA.getByRole("button", { name: "edit" }).click();
   // Düzenleme moduna girince li'nin metni değişiyor (form/input, düz metin
   // değil) - rowOnA artık eşleşmez, bu yüzden buradan sonrası sayfa
@@ -55,6 +57,7 @@ test("mesaj_duzenlenince_karsi_sekmede_de_gunceller_gecmiste_eski_icerik_gorunur
   });
 
   const editedRowOnA = pageA.locator("li", { hasText: editedContent });
+  await editedRowOnA.hover();
   await editedRowOnA.getByRole("button", { name: "history" }).click();
 
   await expect(pageA.getByText(originalContent)).toBeVisible({

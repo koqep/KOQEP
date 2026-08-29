@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { assignModerator, revokeModerator, ApiError } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+import PasswordInput from "./PasswordInput";
 
 interface Props {
   accessToken: string;
@@ -101,19 +102,15 @@ export default function AssignModeratorSection({ accessToken }: Props) {
             className={inputClassName}
           />
         </label>
-        <label className="flex flex-col gap-1 text-muted">
-          your password
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            className={inputClassName}
-          />
-        </label>
+        <PasswordInput
+          label="your password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
         {totpRequired && (
           <label className="flex flex-col gap-1 text-muted">
-            totp code
+            authenticator code
             <input
               type="text"
               value={totpCode}
