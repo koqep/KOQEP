@@ -161,14 +161,21 @@ test("devam_mesajinin_edit_delete_history_butonlari_calisir", async ({
   );
 
   const secondRow = page.locator("li", { hasText: "devam mesaji" });
-  // M11a Slice F: edit/delete/history butonları artık satır hover/focus'ta
-  // görünür - "are you sure?"/cancel onay UI'ı hover'dan bağımsız kalıyor.
-  await secondRow.hover();
+  // M11a devamı: edit/delete/history artık "message actions" ("⋯")
+  // menüsünün içinde, menü her seçimden sonra kapanıyor - her aksiyondan
+  // önce AYRI AYRI hover+menü-aç gerekiyor. "are you sure?"/cancel onay
+  // UI'ı menünün dışında, hover'dan bağımsız kalıyor.
+  async function openMenu() {
+    await secondRow.hover();
+    await secondRow.getByRole("button", { name: "message actions" }).click();
+  }
 
   // history: aç/kapat, önceki içerik satırda görünür.
-  await secondRow.getByRole("button", { name: "history" }).click();
+  await openMenu();
+  await secondRow.getByRole("menuitem", { name: "history" }).click();
   await expect(secondRow.getByText("eski hal")).toBeVisible();
-  await secondRow.getByRole("button", { name: "hide history" }).click();
+  await openMenu();
+  await secondRow.getByRole("menuitem", { name: "hide history" }).click();
   await expect(secondRow.getByText("eski hal")).toHaveCount(0);
 
   // edit: form mevcut içerikle dolu açılır. secondRow'un hasText filtresi
@@ -176,14 +183,17 @@ test("devam_mesajinin_edit_delete_history_butonlari_calisir", async ({
   // bir <input value="..."> İÇİNDE - metin içeriği olarak görünmüyor,
   // secondRow filtresi eşleşmeyi KAYBEDER. Sayfa genelinde sorgula (aynı
   // anda tek bir mesaj edit modunda olabilir, belirsizlik riski yok).
-  await secondRow.getByRole("button", { name: "edit" }).click();
+  await openMenu();
+  await secondRow.getByRole("menuitem", { name: "edit" }).click();
   await expect(page.getByLabel("edit message")).toHaveValue("devam mesaji");
   await page.getByRole("button", { name: "cancel" }).click();
 
   // delete: iki adımlı onay UI'ı çalışır (WS round-trip mock'suz e2e/
   // süitin kapsamı dışında - message-delete.spec.ts'in AYNI deseni).
-  await secondRow.hover();
-  await secondRow.getByRole("button", { name: "delete", exact: true }).click();
+  await openMenu();
+  await secondRow
+    .getByRole("menuitem", { name: "delete", exact: true })
+    .click();
   await expect(secondRow.getByText("are you sure?")).toBeVisible();
   await secondRow.getByRole("button", { name: "cancel" }).click();
   await expect(secondRow.getByText("are you sure?")).toHaveCount(0);

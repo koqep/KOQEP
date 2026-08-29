@@ -37,9 +37,11 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   });
 
   const rowOnA = pageA.locator("li", { hasText: originalContent });
-  // M11a Slice F: delete/history butonları artık satır hover/focus'ta görünür.
+  // M11a devamı: delete/history artık "message actions" ("⋯") menüsünün
+  // içinde. "yes" onay UI'ı menünün dışında, DEĞİŞMEDİ.
   await rowOnA.hover();
-  await rowOnA.getByRole("button", { name: "delete" }).click();
+  await rowOnA.getByRole("button", { name: "message actions" }).click();
+  await rowOnA.getByRole("menuitem", { name: "delete" }).click();
   await rowOnA.getByRole("button", { name: "yes" }).click();
 
   // message:updated yayını gerçek zamanlı olarak hem gönderen sekmede hem
@@ -72,7 +74,10 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   await expect(placeholderRowOnA.getByText("(edited)")).toHaveCount(0);
 
   await placeholderRowOnA.hover();
-  await placeholderRowOnA.getByRole("button", { name: "history" }).click();
+  await placeholderRowOnA
+    .getByRole("button", { name: "message actions" })
+    .click();
+  await placeholderRowOnA.getByRole("menuitem", { name: "history" }).click();
   await expect(pageA.getByText(originalContent)).toBeVisible({
     timeout: 10000,
   });

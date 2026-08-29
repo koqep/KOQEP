@@ -48,8 +48,11 @@ test("kendi_mesajinda_sil_butonu_iki_adimli_onay_ister_vazgec_geri_alir", async 
   await login(page, "user", "test");
 
   await page.getByText("test mesajı").hover();
-  await expect(page.getByRole("button", { name: "delete", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "delete", exact: true }).click();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "delete", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "delete", exact: true }).click();
 
   await expect(page.getByText("are you sure?")).toBeVisible();
   await expect(page.getByRole("button", { name: "yes" })).toBeVisible();
@@ -58,13 +61,21 @@ test("kendi_mesajinda_sil_butonu_iki_adimli_onay_ister_vazgec_geri_alir", async 
 
   await expect(page.getByText("are you sure?")).toHaveCount(0);
   await page.getByText("test mesajı").hover();
-  await expect(page.getByRole("button", { name: "delete", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "delete", exact: true }),
+  ).toBeVisible();
 });
 
 test("baskasinin_mesajinda_sil_butonu_gorunmez", async ({ page }) => {
   await login(page, "user", "baskasi");
 
-  await expect(page.getByRole("button", { name: "delete", exact: true })).toHaveCount(0);
+  // Trigger yine de render edilir (report menü öğesi mevcut).
+  await page.getByText("test mesajı").hover();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "delete", exact: true }),
+  ).toHaveCount(0);
 });
 
 // M7b Slice D2: editMessage'ın mute-reddi TERSİ - susturulmuş kullanıcı
@@ -77,6 +88,9 @@ test("susturulmus_kullanici_kendi_mesajinda_sil_butonunu_yine_de_gorur", async (
   await login(page, "user", "test", mutedUntil);
 
   await page.getByText("test mesajı").hover();
-  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "delete", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "edit" })).toHaveCount(0);
+  await expect(
+    page.getByRole("menuitem", { name: "delete", exact: true }),
+  ).toBeVisible();
 });

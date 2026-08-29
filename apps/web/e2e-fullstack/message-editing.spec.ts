@@ -38,9 +38,10 @@ test("mesaj_duzenlenince_karsi_sekmede_de_gunceller_gecmiste_eski_icerik_gorunur
   });
 
   const rowOnA = pageA.locator("li", { hasText: originalContent });
-  // M11a Slice F: edit/history butonları artık satır hover/focus'ta görünür.
+  // M11a devamı: edit/history artık "message actions" ("⋯") menüsünün içinde.
   await rowOnA.hover();
-  await rowOnA.getByRole("button", { name: "edit" }).click();
+  await rowOnA.getByRole("button", { name: "message actions" }).click();
+  await rowOnA.getByRole("menuitem", { name: "edit" }).click();
   // Düzenleme moduna girince li'nin metni değişiyor (form/input, düz metin
   // değil) - rowOnA artık eşleşmez, bu yüzden buradan sonrası sayfa
   // genelinde bulunuyor (tek seferde en fazla bir mesaj düzenlenebilir).
@@ -58,7 +59,10 @@ test("mesaj_duzenlenince_karsi_sekmede_de_gunceller_gecmiste_eski_icerik_gorunur
 
   const editedRowOnA = pageA.locator("li", { hasText: editedContent });
   await editedRowOnA.hover();
-  await editedRowOnA.getByRole("button", { name: "history" }).click();
+  await editedRowOnA
+    .getByRole("button", { name: "message actions" })
+    .click();
+  await editedRowOnA.getByRole("menuitem", { name: "history" }).click();
 
   await expect(pageA.getByText(originalContent)).toBeVisible({
     timeout: 10000,

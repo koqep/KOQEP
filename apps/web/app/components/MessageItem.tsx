@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { MAX_MESSAGE_LENGTH } from "./RoomView";
 import MessageContent from "./MessageContent";
 import type { MessageEdit } from "../../lib/api";
 import { inputClassName } from "./formStyles";
 import { SmallAvatar } from "./Avatar";
+import { useDismissableMenu } from "./useDismissableMenu";
+
+const menuItemClassName =
+  "px-2 py-1 text-left text-muted hover:text-neutral-400";
 
 interface Message {
   id: string;
@@ -66,6 +70,40 @@ export default function MessageItem({
   const [reportState, setReportState] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuOpensUpward, setMenuOpensUpward] = useState(true);
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  function closeMenu() {
+    setIsMenuOpen(false);
+    menuTriggerRef.current?.focus();
+  }
+
+  const menuContainerRef = useDismissableMenu<HTMLDivElement>({
+    isOpen: isMenuOpen,
+    onClose: closeMenu,
+  });
+
+  // Statik "hep yukarı aç" kararı (bottom-full) mesaj listesinin en
+  // ÜSTÜNDEKİ bir satırda menüyü viewport'un DIŞINA (negatif y) itiyordu -
+  // gerçek bir Playwright ölçümüyle bulundu (y:-34). Açılışta trigger'ın
+  // viewport'a göre üstünde GERÇEKTEN yeterli yer var mı ölç, yoksa aşağı aç.
+  const ESTIMATED_MENU_HEIGHT_PX = 170;
+  function toggleMenu() {
+    if (!isMenuOpen) {
+      const rect = menuTriggerRef.current?.getBoundingClientRect();
+      setMenuOpensUpward(!rect || rect.top >= ESTIMATED_MENU_HEIGHT_PX);
+    }
+    setIsMenuOpen((value) => !value);
+  }
+
+  // AccountMenu.select()'in AYNI deseni - odağı ÖNCE trigger'a taşı, SONRA
+  // menüyü kapat, SONRA aksiyonu çalıştır (bkz. AccountMenu.tsx:43-49).
+  function selectAction(action: () => void) {
+    menuTriggerRef.current?.focus();
+    setIsMenuOpen(false);
+    action();
+  }
 
   async function handleReport() {
     setReportState("sending");
@@ -80,6 +118,9 @@ export default function MessageItem({
   function startEditing() {
     setDraft(message.content);
     setIsEditing(true);
+    // "⋯" menüsünden edit'e girip iptal edince sil-onayının sessizce geri
+    // gelmemesi için - ikisi bağımsız state, aksi halde eski state sızardı.
+    setIsConfirmingDelete(false);
   }
 
   function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
@@ -113,6 +154,15 @@ export default function MessageItem({
   // authorUsername'a doğrudan bir property-access olarak erişmek closure
   // sınırını aşamaz (TS'in bilinen bir kısıtı), `as string` cast'i gerektirirdi.
   const clickableAuthorUsername = message.authorUsername;
+
+  // canViewHistory = isMine || moderator (ChatPanel.tsx) - yani kendi
+  // mesajında bu her zaman true, "⋯" tetikleyicisi sil-onayı açıkken bile
+  // asla tamamen kaybolmaz.
+  const hasMenuActions =
+    (isMine && !isMuted) ||
+    (isMine && !isConfirmingDelete) ||
+    canViewHistory ||
+    (!isMine && reportState !== "sent");
 
   return (
     <li className={"text-neutral-200" + (className ? ` ${className}` : "")}>
@@ -190,75 +240,117 @@ export default function MessageItem({
               <span className="text-muted"> (edited)</span>
             )}
           </span>
-          {isMine && !isMuted && (
-            <button
-              type="button"
-              onClick={startEditing}
-              className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-neutral-400"
-            >
-              edit
-            </button>
+          {hasMenuActions && (
+            <div ref={menuContainerRef} className="relative">
+              <button
+                ref={menuTriggerRef}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={isMenuOpen}
+                aria-label="message actions"
+                onClick={toggleMenu}
+                className={
+                  "text-muted hover:text-neutral-400" +
+                  (isMenuOpen
+                    ? " visible"
+                    : " invisible group-hover:visible group-focus-within:visible")
+                }
+              >
+                <span aria-hidden="true">⋯</span>
+              </button>
+              {isMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="message actions"
+                  className={
+                    "absolute right-0 z-30 flex w-40 flex-col gap-1 border border-neutral-800 bg-neutral-950 p-2" +
+                    (menuOpensUpward ? " bottom-full mb-1" : " top-full mt-1")
+                  }
+                >
+                  {isMine && !isMuted && (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => selectAction(startEditing)}
+                      className={menuItemClassName}
+                    >
+                      edit
+                    </button>
+                  )}
+                  {isMine && !isConfirmingDelete && (
+                    // Mute kontrolü BİLEREK YOK - susturulmuş kullanıcı da
+                    // kendi mesajını silebilmeli (silme yeni içerik
+                    // EKLEMİYOR, sabit bir placeholder'a değiştiriyor,
+                    // mute'un koruduğu risk yok).
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() =>
+                        selectAction(() => setIsConfirmingDelete(true))
+                      }
+                      className="px-2 py-1 text-left text-muted hover:text-red-400"
+                    >
+                      delete
+                    </button>
+                  )}
+                  {canViewHistory && (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() =>
+                        selectAction(() => void toggleHistory())
+                      }
+                      className={menuItemClassName}
+                    >
+                      {isHistoryOpen ? "hide history" : "history"}
+                    </button>
+                  )}
+                  {!isMine && reportState !== "sent" && (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      disabled={reportState === "sending"}
+                      onClick={() => selectAction(() => void handleReport())}
+                      className={
+                        menuItemClassName + " disabled:cursor-not-allowed"
+                      }
+                    >
+                      {reportState === "error"
+                        ? "try again"
+                        : reportState === "sending"
+                          ? "reporting..."
+                          : "report"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-          {isMine &&
-            (isConfirmingDelete ? (
-              <>
-                <span className="text-red-400">are you sure?</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSubmitDelete(message.id);
-                    setIsConfirmingDelete(false);
-                  }}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  yes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmingDelete(false)}
-                  className="text-muted hover:text-neutral-400"
-                >
-                  cancel
-                </button>
-              </>
-            ) : (
-              // Mute kontrolü BİLEREK YOK - susturulmuş kullanıcı da kendi
-              // mesajını silebilmeli (silme yeni içerik EKLEMİYOR, sabit bir
-              // placeholder'a değiştiriyor, mute'un koruduğu risk yok).
+          {isMine && isConfirmingDelete && (
+            <>
+              <span className="text-red-400">are you sure?</span>
               <button
                 type="button"
-                onClick={() => setIsConfirmingDelete(true)}
-                className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-red-400"
+                onClick={() => {
+                  onSubmitDelete(message.id);
+                  setIsConfirmingDelete(false);
+                }}
+                className="text-red-400 hover:text-red-300"
               >
-                delete
+                yes
               </button>
-            ))}
-          {canViewHistory && (
-            <button
-              type="button"
-              onClick={() => void toggleHistory()}
-              className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-neutral-400"
-            >
-              {isHistoryOpen ? "hide history" : "history"}
-            </button>
-          )}
-          {!isMine &&
-            (reportState === "sent" ? (
-              <span className="text-muted">reported</span>
-            ) : (
               <button
                 type="button"
-                disabled={reportState === "sending"}
-                onClick={() => void handleReport()}
-                className="invisible text-muted group-hover:visible group-focus-within:visible hover:text-neutral-400 disabled:cursor-not-allowed"
+                onClick={() => setIsConfirmingDelete(false)}
+                className="text-muted hover:text-neutral-400"
               >
-                {reportState === "error"
-                  ? "try again"
-                  : reportState === "sending"
-                    ? "reporting..."
-                    : "report"}
+                cancel
               </button>
-            ))}
+            </>
+          )}
+          {!isMine && reportState === "sent" && (
+            <span className="text-muted">reported</span>
+          )}
         </div>
       )}
 

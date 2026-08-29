@@ -54,7 +54,13 @@ test("kendi_mesajinda_raporla_butonu_gorunmez_baskasinin_mesajinda_gorunur", asy
   page,
 }) => {
   await login(page, "user", "test");
-  await expect(page.getByRole("button", { name: "report" })).toHaveCount(0);
+  // Trigger yine de render edilir (edit/history menü öğeleri mevcut) -
+  // assertion'ın anlamlı olması için ÖNCE menüyü aç.
+  await page.getByText("test mesajı").hover();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "report" })).toHaveCount(
+    0,
+  );
 });
 
 test("baskasinin_mesajini_raporlayinca_onay_gosterir", async ({ page }) => {
@@ -66,7 +72,8 @@ test("baskasinin_mesajini_raporlayinca_onay_gosterir", async ({ page }) => {
   });
 
   await page.getByText("test mesajı").hover();
-  await page.getByRole("button", { name: "report" }).click();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await page.getByRole("menuitem", { name: "report" }).click();
 
   await expect(page.getByText("reported")).toBeVisible();
   // reason boşsa gövde hiç gönderilmiyor (lib/api.ts'in reportMessage'ı) -
@@ -169,7 +176,10 @@ test("susturulmus_kullanici_composer_devre_disi_ve_bildirim_gorur_kendi_mesajind
   await expect(
     page.getByRole("textbox", { name: "write a message..." }),
   ).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
+  // Trigger yine de render edilir (delete/history menü öğeleri mevcut).
+  await page.getByText("test mesajı").hover();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "edit" })).toHaveCount(0);
 });
 
 test("moderator_rapor_satirinda_sustur_ve_susturmayi_kaldir_butonlarini_gorur_ve_dogru_kullaniciyi_hedefler", async ({
