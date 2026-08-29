@@ -5,7 +5,10 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/db/prisma.service';
 import { CORE_ROOM_NAMES } from './../src/db/core-rooms.constants';
-import { backfillRoomMembers } from './../src/db/backfill-room-members';
+import {
+  backfillRoomMembers,
+  insertPairs,
+} from './../src/db/backfill-room-members';
 
 // M7a Slice B (ADR-0009): backfillRoomMembers'ın üç-kaynaklı birleşim
 // mantığını (çekirdek odalar - tüm kullanıcılar, oda kurucuları, gerçek
@@ -134,5 +137,58 @@ describe('RoomMember backfill (e2e)', () => {
     expect(creatorMembershipAfter?.createdAt).toEqual(
       creatorMembershipBefore?.createdAt,
     );
+  });
+
+  // CI'da paralel koşan delete-account.e2e-spec.ts'in gerçek /auth/
+  // delete-account çağrıları, backfillRoomMembers'ın kaynak-okuma ile
+  // insert'i arasında bir kullanıcıyı silip P2003 üretebiliyor - eski tek
+  // seferlik "filtrele + tekrar dene" bunu KURTARAMIYORDU (retry'ın kendi
+  // penceresi de aynı şekilde yarışa açık). Gerçek bir zamanlama yarışını
+  // burada üretmek flaky olurdu - onun yerine insertPairs'i DOĞRUDAN,
+  // baştan geçersiz bir userId ile çağırıp AYNI kod yolunu (P2003 →
+  // satır-satır fallback) deterministik olarak kanıtlıyoruz.
+  it('gecersiz_fk_iceren_bir_cift_toplu_insert_patlatir_ama_satir_satir_fallback_gecerli_ciftleri_yine_de_yaratir', async () => {
+    const validUserId = await createUser();
+    const validRoom = await prisma.room.create({
+      data: { name: `fallback-odasi-${randomUUID()}` },
+    });
+    const nonExistentUserId = randomUUID();
+
+    const result = await insertPairs(prisma, [
+      { userId: validUserId, roomId: validRoom.id },
+      { userId: nonExistentUserId, roomId: validRoom.id },
+    ]);
+
+    expect(result.created).toBe(1);
+    expect(result.skippedInvalid).toBe(1);
+
+    const validMembership = await prisma.roomMember.findUnique({
+      where: { userId_roomId: { userId: validUserId, roomId: validRoom.id } },
+    });
+    expect(validMembership).not.toBeNull();
+
+    const invalidMembership = await prisma.roomMember.findUnique({
+      where: {
+        userId_roomId: { userId: nonExistentUserId, roomId: validRoom.id },
+      },
+    });
+    expect(invalidMembership).toBeNull();
+  });
+
+  it('satir_satir_fallback_zaten_uye_olan_cifti_hata_atmadan_atlar', async () => {
+    const userId = await createUser();
+    const room = await prisma.room.create({
+      data: { name: `zaten-uye-odasi-${randomUUID()}` },
+    });
+    await prisma.roomMember.create({ data: { userId, roomId: room.id } });
+    const nonExistentUserId = randomUUID();
+
+    const result = await insertPairs(prisma, [
+      { userId, roomId: room.id },
+      { userId: nonExistentUserId, roomId: room.id },
+    ]);
+
+    expect(result.created).toBe(0);
+    expect(result.skippedInvalid).toBe(1);
   });
 });

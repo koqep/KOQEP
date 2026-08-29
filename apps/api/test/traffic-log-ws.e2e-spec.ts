@@ -51,6 +51,28 @@ describe('TrafficLog WS gateway (e2e)', () => {
 
   afterAll(async () => {
     openSockets.forEach((socket) => socket.close());
+    // writeTrafficLogRow (handleDisconnect'in çağırdığı) fire-and-forget -
+    // socket.close() DÖNDÜĞÜNDE WS_CONNECTION_END satırı henüz DB'ye
+    // yazılmamış olabilir. Aşağıdaki user.deleteMany bu yazının FK'sini
+    // (userId) o anda geçersiz kılarsa P2003 üretir - writeTrafficLogRow
+    // bunu userId:null ile TEK retry'la toparlıyor, ama app.close()'un
+    // $disconnect()'i o retry'ı da yarışabilir ("Response from the Engine
+    // was empty"). Kullanıcıları silmeden ÖNCE her IP için END satırının
+    // gerçekten landed olduğunu bekle - aynı dosyanın kendi
+    // waitForTrafficLogRow deseni.
+    for (const ip of usedIpAddresses) {
+      try {
+        await waitForTrafficLogRow({
+          ipAddress: ip,
+          serviceType: 'WS_CONNECTION_END',
+        });
+      } catch {
+        // Bu IP'nin bağlantısı hiç END üretmediyse (beklenmeyen bir
+        // durum) burada takılıp kalmak yerine devam et - aşağıdaki
+        // cleanup zaten en kötü ihtimalle aynı P2003/retry riskini taşır,
+        // yeni bir regresyon YARATMIYORUZ, sadece iyileştiriyoruz.
+      }
+    }
     if (usedIpAddresses.length > 0) {
       await prisma.trafficLog.deleteMany({
         where: { ipAddress: { in: usedIpAddresses } },
