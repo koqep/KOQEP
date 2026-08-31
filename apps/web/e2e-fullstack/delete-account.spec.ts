@@ -46,11 +46,11 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur_ve_redactMessag
   // hali).
   const otherContext = await browser.newContext();
   const otherPage = await otherContext.newPage();
-  await otherPage.goto("/");
+  await otherPage.goto("/app");
   await loginAsDevUser(otherPage);
   await otherPage.getByRole("button", { name: "#meta" }).click();
 
-  await page.goto("/");
+  await page.goto("/app");
   await loginAsDevUser2(page);
   await page.getByRole("button", { name: "#meta" }).click();
 

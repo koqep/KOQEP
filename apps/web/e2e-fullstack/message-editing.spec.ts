@@ -21,8 +21,8 @@ test("mesaj_duzenlenince_karsi_sekmede_de_gunceller_gecmiste_eski_icerik_gorunur
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
-  await pageA.goto("/");
-  await pageB.goto("/");
+  await pageA.goto("/app");
+  await pageB.goto("/app");
   await loginAsDevUser(pageA);
   await loginAsDevUser(pageB);
 

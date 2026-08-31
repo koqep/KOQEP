@@ -17,7 +17,7 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   const inviterContext = await browser.newContext();
   const inviterPage = await inviterContext.newPage();
 
-  await inviterPage.goto("/");
+  await inviterPage.goto("/app");
   await inviterPage.getByLabel("email").fill(DEV_USER_LEVELUP_EMAIL);
   await inviterPage.getByLabel("password").fill(DEV_USER_LEVELUP_PASSWORD);
   await inviterPage.getByRole("button", { name: "log in" }).click();
@@ -56,7 +56,7 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
 
   const newUserContext = await browser.newContext();
   const newUserPage = await newUserContext.newPage();
-  await newUserPage.goto("/");
+  await newUserPage.goto("/app");
   await newUserPage
     .getByRole("button", { name: "don't have an account? sign up" })
     .click();

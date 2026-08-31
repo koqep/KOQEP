@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-29 (M11a main'de; M11a'nın iki devam-özelliği doğrulandı, push bekliyor)
+**Son güncelleme:** 2026-08-31 (M11a main'de; M11b Slice A tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a (hızlı düzeltmeler) main'de** — 6 dilim (username/blocked-listesi/PasswordInput/e-posta-doğrulama-mesajı/"authenticator"/hover-reveal), detay `docs/milestones/M11a-quick-fixes.md`. Merge sırasında CI'da bulunan `backfill-room-members.ts`'in P2003 retry bug'ı da düzeltildi — bkz. Tuzaklar.
-- **2026-08-29: M11a'nın iki devam-özelliği TAMAMLANDI, main'de DEĞİL, push bekliyor** — (1) `feat/message-actions-menu`: mesaj satırındaki edit/delete/history/report artık tek bir "⋯" menüsünde (AccountMenu'nün `useDismissableMenu` deseni), menünün yönü (yukarı/aşağı) artık AÇILIŞTA ölçülüyor (statik "hep yukarı" varsayımı gerçek bir Playwright ölçümüyle viewport dışına taştığı bulundu). (2) `feat/password-hold-reveal`: şifre göster/gizle artık göz ikonlu BASILI-TUTMA (toggle değil), üç girdi modu (mouse/touch/klavye) simetrik, ekran-okuyucu sentetik click'i zarif biçimde toggle'a düşüyor. İkisi de kendi dalında, `docs/milestones/M11a-quick-fixes.md`'ye henüz not düşülmedi (bkz. sonraki adım).
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b/M11c/M12 sırada — kullanıcı onayladı.
+- **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü. Merge sırasında CI'da bulunan `backfill-room-members.ts`'in P2003 retry bug'ı da düzeltildi — bkz. Tuzaklar.
+- **2026-08-31: M11b Slice A (landing sayfası + `/app` routing geçişi) TAMAMLANDI, `feat/landing-page` dalında, main'e push/merge EDİLMEDİ.** `/` artık saf statik pazarlama landing'i (canvas ASCII arka plan, TR/EN kutusu, 3 özellik kutusu), eski `page.tsx` mantığı değişmeden `/app`'e taşındı. 34 test dosyası + `landing.spec.ts` yeniden yazımı + yeni mobil test güncellendi, mock'lu süit 124/124 + fullstack 8/8 (2 bilinen dev-fixture testi hariç) yeşil. Detay `docs/milestones/M11b-landing-onboarding.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12 sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/message-actions-menu` + `feat/password-hold-reveal` (main'den, birbirinden bağımsız) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası `docs/milestones/M11a-quick-fixes.md`'ye bu iki devam-özelliği not düşülecek. Ardından M11b/M11c/M12'den biri seçilip plan modu başlatılacak.
+- **Görev:** `feat/landing-page` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M11b Slice B (kaydırma-onaylı terms modalı) ya da Slice C (onboarding netleştirmesi) seçilip plan modu başlatılacak.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

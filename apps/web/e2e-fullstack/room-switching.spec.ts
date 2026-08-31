@@ -16,7 +16,7 @@ async function loginAsDevUser(page: Page): Promise<void> {
 test("mesaj_sadece_gonderildigi_odada_gorunur_diger_odaya_sizmaz", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await loginAsDevUser(page);
 
   const generalButton = page.getByRole("button", { name: "#general" });

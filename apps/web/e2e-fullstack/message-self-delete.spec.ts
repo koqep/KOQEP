@@ -21,8 +21,8 @@ test("mesajini_silince_karsi_sekmede_de_placeholder_gorunur_orijinal_gecmiste_ka
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
-  await pageA.goto("/");
-  await pageB.goto("/");
+  await pageA.goto("/app");
+  await pageB.goto("/app");
   await loginAsDevUser(pageA);
   await loginAsDevUser(pageB);
 

@@ -27,8 +27,8 @@ test("baglanti_kesilip_geri_gelince_kacirilan_mesaj_reload_gerekmeden_geri_dolar
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
-  await pageA.goto("/");
-  await pageB.goto("/");
+  await pageA.goto("/app");
+  await pageB.goto("/app");
   await loginAsDevUser(pageA);
   await loginAsDevUser(pageB);
 

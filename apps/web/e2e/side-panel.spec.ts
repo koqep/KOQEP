@@ -12,7 +12,7 @@ async function loginAndOpenTotpPanel(page: import("@playwright/test").Page) {
   await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -95,7 +95,7 @@ test("panel_kapanip_acilinca_mesaj_listesi_scroll_pozisyonu_korunur", async ({
     route.fulfill({ json: { messages: manyMessages, nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
