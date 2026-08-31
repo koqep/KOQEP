@@ -1,11 +1,15 @@
-import Link from "next/link";
-
 import { FEEDBACK_EMAIL } from "../../../lib/contact";
+import LegalPageShell from "../../components/LegalPageShell";
 
 export default function PrivacyPageEn() {
   return (
-    <main lang="en" className="animate-fade-in mx-auto max-w-2xl p-4 text-neutral-400">
-      <h1 className="mb-2 text-neutral-400">
+    <LegalPageShell
+      subtitle="text-based chat · invite-only"
+      homeLabel="back to home"
+      switchHref="/privacy"
+      switchLabel="Türkçe sürüm"
+    >
+      <h1 className="mb-2 text-neutral-200">
         <span className="text-muted">#</span> privacy policy
       </h1>
 
@@ -225,15 +229,6 @@ export default function PrivacyPageEn() {
           </p>
         </section>
       </div>
-
-      <p className="mt-8 flex gap-4 text-xs">
-        <Link href="/" className="text-muted hover:text-neutral-400">
-          back to home
-        </Link>
-        <Link href="/privacy" className="text-muted hover:text-neutral-400">
-          Türkçe sürüm
-        </Link>
-      </p>
-    </main>
+    </LegalPageShell>
   );
 }
