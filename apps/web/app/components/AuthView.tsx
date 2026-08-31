@@ -16,10 +16,11 @@ type Mode = "login" | "signup" | "forgot-password";
 
 interface Props {
   onAuthenticated: (tokens: TokenPair, totpEnabled: boolean) => void;
+  initialMode?: Mode;
 }
 
-export default function AuthView({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<Mode>("login");
+export default function AuthView({ onAuthenticated, initialMode }: Props) {
+  const [mode, setMode] = useState<Mode>(initialMode ?? "login");
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
