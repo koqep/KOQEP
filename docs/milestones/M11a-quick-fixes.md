@@ -54,8 +54,19 @@ sıralandı (aşağıdaki, gerçek implementasyonda kullanılan sıra):
 - [x] **Slice F — Mesaj aksiyonları hover-reveal.** `MessageItem.tsx`'in
       avatar/buton grubuna Slice C'nin (M10) deseni.
 
-**M11a TAMAMEN BİTTİ — tüm 6 dilim main'e MERGE İÇİN HAZIR** (`feat/m11a-quick-fixes`
-dalı, main merge edilip conflict çözüldü, doğrulama sonrası kullanıcı push edecek).
+**M11a TAMAMEN BİTTİ VE MAIN'DE** (PR #101). Merge sonrası CI'da bulunan
+ayrı bir bug (`backfill-room-members.ts`'in P2003 retry'ı) da düzeltilip
+main'e girdi — detay `docs/STATE.md` Tuzaklar.
+
+**2026-08-29, M11a'nın devamı — iki küçük UI iyileştirmesi (kullanıcı isteği,
+Slice C ve F'nin doğrudan devamı):**
+- [x] Mesaj aksiyonları (edit/delete/history/report) artık tek bir "⋯"
+      menüsünde, `AccountMenu`'nün `useDismissableMenu` deseniyle
+      (`feat/message-actions-menu` dalı).
+- [x] Şifre göster/gizle artık göz ikonlu BASILI-TUTMA (toggle değil)
+      (`feat/password-hold-reveal` dalı).
+İkisi de kendi bağımsız dalında, doğrulandı, push kullanıcı onayında —
+detay aşağıda Plan notları'nda.
 
 ## Risks
 - ~~Slice C (şifre göster/gizle): dört farklı formda tekrar eden bir desen —
@@ -102,3 +113,47 @@ seed+backfill script'leri koşulunca düzeldi, STATE.md Tuzaklar'a eklendi).
 C+D+E'nin ÜÇÜNÜ birden taşıyor) plandaki "6 ayrı commit" 4 commit'e
 konsolide edildi — commit mesajları hangi slice'ları kapsadığını açıkça
 listeliyor.
+
+### Devam turu — mesaj aksiyonları menüsü + şifre basılı-tutma (2026-08-29)
+Kullanıcı, main'e girdikten sonra gerçek kullanımla iki küçük iyileştirme
+istedi, ikisi için de plan modu (kod yazmadan) çalıştırıldı, bir Plan
+agent'ı tasarımı stres-test etti.
+
+**Mesaj aksiyonları menüsü (`MessageItem.tsx`):** `AccountMenu.tsx`'in
+`useDismissableMenu` deseni aynen kopyalandı. Onay UI'ı ("are you sure?"/
+yes/cancel) ve "reported" span'ı menünün DIŞINDA kaldı (aktif/persistan
+durum, hover'dan bağımsız). Gerçek bir implementasyon-öncesi bulgu: Plan
+agent'ı `canViewHistory = isMine || moderator` invaryantını doğrulayıp
+"⋯" tetikleyicisinin sil-onayı açıkken bile asla kaybolmadığını kanıtladı;
+AYRICA `startEditing()`'in `isConfirmingDelete`'i temizlemediği küçük bir
+yan-bug'ı önceden buldu, düzeltmeyle birlikte gönderildi. Gerçek bir
+implementasyon-sırası bulgu (agent'ın ÖNGÖREMEDİĞİ): menünün "hep yukarı
+aç" statik tasarımı, listenin en üstündeki bir satırda gerçek bir
+Playwright ölçümüyle (`getBoundingClientRect()`, y:-34) viewport dışına
+taştığı kanıtlandı — açılış anında dinamik ölçüme geçirildi. 6 test dosyası
+`role="menuitem"` geçişine güncellendi (bazı `toHaveCount(0)`'lar da önce
+menü açılarak anlamlı hale getirildi).
+
+**Şifre basılı-tutma (`PasswordInput.tsx`):** inline SVG göz ikonu
+(Avatar.tsx konvansiyonları, piksel-ızgara DEĞİL — tanınabilir glyph
+gerekiyordu). Üç girdi modu simetrik down/up + `hasTrackedPressRef`
+bayrağıyla ekran-okuyucu sentetik click'i (down/up üretmeden gelen)
+zarif biçimde toggle'a düşürüldü. Yeni `password-input.spec.ts` (6 test,
+önceden SIFIR kapsam) iki gerçek Playwright gotcha'sı buldu: React
+`onMouseLeave`'in bubbling `mouseout`u dinlediği (ham `mouseleave`
+`dispatchEvent`'i tetiklemiyor) ve erişilebilir adı show/hide arasında
+değişen bir butonun TEK bir locator'a sabitlenemeyeceği (her adımda
+güncel adla yeniden sorgulanmalı). Ayrıca `aria-label`'ın "password"
+kelimesini İÇERMEMESİ gerektiği doğrulandı — mevcut testlerin HER YERDE
+kullandığı `getByLabel("password")` ile substring çakışırdı.
+
+**Yan bulgu (implementasyon sırasında, ayrı commit):** `seed.ts`'in dev
+kullanıcı `upsert`'lerinin `update` dalı `emailVerifiedAt`'i hiç set
+etmiyordu — yerel doğrulama sırasında keşfedilip düzeltildi, CI'ı
+etkilemiyor (CI her koşuda taze DB'de `create` dalını kullanır).
+
+**Doğrulama:** her iki dal için `npm run lint && npm run typecheck` +
+`npx playwright test` (tam mock'lu süit, 119/119 dahil 6 yeni test) +
+ilgili `e2e-fullstack` dosyaları + gerçek Playwright ekran görüntüleriyle
+görsel doğrulama (menü konumu hem alt hem üst satırda, göz ikonunun iki
+durumu).
