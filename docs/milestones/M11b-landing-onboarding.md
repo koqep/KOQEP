@@ -64,6 +64,9 @@ oldu — routing geçişi 2026-08-30 kapsam turunda tahmin edilenle uyumlu
 - [ ] **Slice C — Onboarding netleştirmesi.** Kullanıcıyla netleştir: madde
       2'nin genişlemesi yeterli mi, yoksa post-signup ayrı bir "ilk mesajını
       yaz" rehberi mi isteniyor — netleşmeden boyut/görev kesinleşmez.
+- [x] **Slice D — Legal sayfaların görsel dili landing'le hizalanması.**
+      Tamamlandı (2026-08-31), `feat/legal-pages-visual` dalında (main'den,
+      `feat/landing-page`'den BAĞIMSIZ). Detay Plan notları'nda.
 
 ## Risks
 - ~~Slice A: "animasyonlu arka plan" görsel bir karar, kod yazılmadan önce
@@ -182,3 +185,53 @@ düzeltildi:**
 reseed olmadan tekrar koşulunca başarısız oluyor, KOD REGRESYONU DEĞİL,
 bkz. STATE.md Tuzaklar). Görsel doğrulama: masaüstü + 375px mobil + canvas
 animasyonu + TR/EN toggle, gerçek Playwright ekran görüntüsüyle onaylandı.
+
+### Slice D (2026-08-31) — legal sayfalara landing görsel dili
+
+Kullanıcı terms/privacy'nin (4 dosya: TR/EN × terms/privacy) landing'in
+renk/tipografi/buton stilini VE animasyonlu ASCII arka planını almasını
+istedi. Kapsam turu (`AskUserQuestion`, 4 karar, hepsi önerilen seçenek)
+sonrası implementasyon planı onaylandı, `feat/legal-pages-visual` dalında
+(main'den, `feat/landing-page`'den BAĞIMSIZ — ayrı PR olarak incelensin
+diye kullanıcı onayladı) uygulandı, 2 commit:
+
+- `0770683` — yeni `LegalPageShell.tsx` (`"use client"`, KOQEP marka
+  bloğu + pill-buton footer + `AsciiBackground` — sayfa metni `children`
+  olarak server component kalıyor) + 4 sayfa dosyası bu shell'i kullanacak
+  şekilde güncellendi.
+- `2ea7a1a` — `legal-pages.spec.ts`'e marka bloğu+canvas testi, yeni
+  `mobile-viewport.spec.ts` 375px testi.
+
+**Kararlar (hepsi önerilen seçenek):** KOQEP logo+imleç+alt-başlık
+eklendi; "buton stili" = mevcut iki footer linkinin (ana sayfaya dön/dil
+değiştir) landing'in pill/outline buton görünümünü alması; canvas
+`absolute` DEĞİL `fixed` (legal sayfalar 3000+px, `absolute` 4-5x hücre
+maliyeti olurdu); paylaşılan `LegalPageShell.tsx` (sayfa metni `children`
+olarak kalıyor, DRY ihlali yok).
+
+**Gerçek bug, ekran görüntüsüyle bulundu (plandan sapma):** `AsciiBackground`
++ `className="fixed inset-0"` (`h-full w-full` OLMADAN) canvas'ı sadece
+kendi içsel 300×150 boyutunda, sol-üst köşede bıraktı — `canvas` bir
+"replaced element", `position:fixed`+`inset:0` TEK BAŞINA (width/height
+`auto` iken) onu viewport'a GERMİYOR (CSS2.1 §10.3.8). `LandingPage.tsx`'in
+`absolute` varyantı bunu `h-full w-full`'u className'e dahil ederek zaten
+doğru yapıyordu, `fixed`'e geçerken bu iki class'ı taşımayı unuttum — ilk
+ekran görüntüsü sorunu kanıtladı, `h-full w-full` eklenip düzeltildi,
+sonraki ekran görüntüsü (masaüstü + scroll edilmiş + 375px mobil) canvas'ın
+artık tam viewport'u kapladığını VE sayfa kaydırılınca yerinde SABİT
+kaldığını (transform-containing-block tuzağına düşmediğini) doğruladı.
+
+**Drive-by düzeltme:** Türkçe terms/privacy sayfaları önceden HİÇBİR
+`lang` override'ı taşımıyordu (sadece İngilizce sürümler `lang="en"`
+taşıyordu) — kök `<html lang="en">` olduğu için TR sayfalar işaretlenmemiş
+kalıyordu (WCAG 3.1.2). `LegalPageShell`'in `lang` prop'u ile TR sayfalar
+artık `lang="tr"` alıyor, EN sayfalar hiç override almıyor (kök zaten
+`en` — `LandingPage.tsx`'in deseniyle aynı).
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz, `npm run build` başarılı
+(4 route hâlâ `○ Static`), mock'lu Playwright süiti 126/126 yeşil (2 kez
+koşuldu, canvas-boyut bugu düzeltildikten SONRA), `apps/api` testleri
+319/319 (proje kuralı, etkilenmiyor ama bir kez koşuldu). Görsel doğrulama:
+masaüstü üst/scroll edilmiş + 375px mobil üst/footer, gerçek Playwright
+ekran görüntüsüyle onaylandı — bug BU doğrulama adımında yakalandı, teste
+güvenip atlanmadı.

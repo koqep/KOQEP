@@ -126,3 +126,21 @@ test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
   expect(box?.width).toBeGreaterThan(374);
   expect(box?.width).toBeLessThan(376);
 });
+
+// M11b Slice D: legal sayfalar artık LegalPageShell.tsx'in KOQEP marka
+// bloğu + pill-buton footer'ını taşıyor - landing_375px testiyle aynı
+// kategoride, temsili olarak /terms üzerinde doğrulanıyor. Sayfa uzun
+// (3000+px) olduğu için footer başlangıçta viewport dışında - önce
+// scrollIntoViewIfNeeded ile scroll edilip ORADA taşma kontrol ediliyor.
+test("legal_sayfa_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
+  await page.goto("/terms");
+
+  await expect(page.getByText("KOQEP", { exact: true })).toBeInViewport();
+
+  const homeLink = page.getByRole("link", { name: "ana sayfaya dön" });
+  await homeLink.scrollIntoViewIfNeeded();
+  await expect(homeLink).toBeInViewport();
+  await expect(
+    page.getByRole("link", { name: "Switch to English" }),
+  ).toBeInViewport();
+});

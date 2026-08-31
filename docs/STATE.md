@@ -3,17 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-31 (M11a main'de; M11b Slice A tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-08-31 (M11a+M11b Slice A main'de; M11b Slice D tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü. Merge sırasında CI'da bulunan `backfill-room-members.ts`'in P2003 retry bug'ı da düzeltildi — bkz. Tuzaklar.
-- **2026-08-31: M11b Slice A (landing sayfası + `/app` routing geçişi) TAMAMLANDI, `feat/landing-page` dalında, main'e push/merge EDİLMEDİ.** `/` artık saf statik pazarlama landing'i (canvas ASCII arka plan, TR/EN kutusu, 3 özellik kutusu), eski `page.tsx` mantığı değişmeden `/app`'e taşındı. 34 test dosyası + `landing.spec.ts` yeniden yazımı + yeni mobil test güncellendi, mock'lu süit 124/124 + fullstack 8/8 (2 bilinen dev-fixture testi hariç) yeşil. Detay `docs/milestones/M11b-landing-onboarding.md`.
+- **M11b Slice A (landing sayfası + `/app` routing geçişi) main'de** (PR #106, kullanıcı merge etti) — `/` saf statik pazarlama landing'i, eski auth/oda mantığı `/app`'e taşındı.
+- **2026-08-31: M11b Slice D (legal sayfalara landing görsel dili) TAMAMLANDI, `feat/legal-pages-visual` dalında (main'den, Slice A'dan BAĞIMSIZ), main'e push/merge EDİLMEDİ.** terms/privacy (4 dosya) artık paylaşılan `LegalPageShell.tsx` ile KOQEP marka bloğu + pill-buton footer + `fixed` ASCII arka planı taşıyor. Mock'lu süit 126/126 (2 kez) + `apps/api` 319/319 yeşil. Detay `docs/milestones/M11b-landing-onboarding.md`.
 - Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12 sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/landing-page` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Görev:** `feat/legal-pages-visual` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
 - **Sonraki adım:** push sonrası M11b Slice B (kaydırma-onaylı terms modalı) ya da Slice C (onboarding netleştirmesi) seçilip plan modu başlatılacak.
 
 ## Bilinen sorunlar / teknik borç
@@ -24,11 +25,9 @@
 - Render Postgres'in RAM/CPU/depolamasının 500 kullanıcıya yeteceği ÖLÇÜLEMEDİ — somut tetikleyici `docs/BACKLOG.md` A18'de.
 - Geri bildirim `mailto:` hedefi kişisel gelen kutusu — somut tetikleyici `docs/BACKLOG.md` A19'da.
 - Moderasyon eylemlerinde SEBEP artık var ama itiraz/dispute yolu YOK — `THREAT-MODEL.md` satır 41, founder Faz 1 moderasyon hacmine göre erkene çekip çekmeyeceğine karar verecek.
-- `TrafficLogWriter`'ın `ws:disconnect` bağlamında ara sıra "Response from the Engine was empty" loglaması — fire-and-forget, test KIRMIYOR, kök neden netleşmedi (2026-08-29 araştırıldı, P2003 retry'ı zaten doğru davranıyor, ayrı bir engine-seviyesi arıza).
 
 ## Yakın zamanda alınan kararlar
 - Access token bellek-içi (React state), refresh token httpOnly cookie'de — bkz. ADR-0002 + Addendum.
-- 2026-08-19 — production `DATABASE_URL`'ine `connection_limit=30` EKLENDİ (founder, doğrulanmış: `max_connections=100`, Basic-256mb).
 - 2026-08-21 — mute/içerik-kaldırma `reason`'ı ZORUNLU (opsiyonel değil) — AC "bildirim SEBEP içeriyor" diyor; self-delete mute kontrolü YOK (yeni içerik eklemiyor).
 
 ## Tuzaklar (Claude buraya düşmesin)
@@ -57,4 +56,5 @@
 - **Tailwind `invisible` (`visibility:hidden`) bir elemanı Playwright'ın actionability kontrolü için TIKLANAMAZ yapar** — `group-hover:visible` gibi hover-reveal deseni bir butona uygulanınca (M10 Slice C'nin saat deseni, M11a Slice F'de avatar/edit/delete/history/report'a genişletildi), o butonu doğrudan `.click()`'leyen HER test önce ata elemanı (`.hover()`) hover'lamalı yoksa 30sn timeout'ta sessizce patlar — `toHaveCount(0)` gibi DOM-varlık kontrolleri etkilenmez, sadece `.click()`/`toBeVisible()` etkilenir.
 - **Prisma `createMany` + FK bağımlı bir toplu insert, kaynak-okuma ile insert arasında bir satır silinirse P2003 ile patlar — TEK SEFERLİK "filtrele + tekrar dene" bunu KURTARAMAZ**, çünkü retry'ın KENDİ okuma-yazma penceresi de aynı şekilde yarışa açık. `backfillRoomMembers` (TÜM kullanıcıları/odaları tarayan bir script) `delete-account.e2e-spec.ts` gibi gerçek satır silen dosyalarla AYNI DB'yi paylaşınca bunu CI'da (paralel VE `--runInBand` tam-seri koşumda BİLE) üretti. Kalıcı çözüm: P2003'te toplu retry yerine SATIR SATIR dene, her satırın P2003'ünü (o an gerçekten geçersiz, atla) ve P2002'sini (zaten var, atla) ayrı yut — her satırın FK kontrolü kendi insert'iyle atomik olduğu için yarış penceresi tek bir round-trip'e iner (`backfill-room-members.ts`, 2026-08-29, CI'da bulundu).
 - **Bir dropdown/menü paneli için "hep şu yönde aç" gibi STATİK bir yön varsayımı, kaydırılabilir bir listede kolayca viewport'un dışına taşar** — mesaj aksiyonları menüsü "hep yukarı aç" diye tasarlandı (AccountMenu'nün "hep aşağı"sının tersi), ama listenin EN ÜSTÜNDEKİ bir satırda bunu gerçek bir Playwright ölçümüyle (`getBoundingClientRect()`, y:-34) viewport dışına ittiği bulundu. Kalıcı çözüm: yönü AÇILIŞ ANINDA trigger'ın `getBoundingClientRect().top`'unu viewport'a göre ölçüp dinamik seç (`MessageItem.tsx`, 2026-08-29) — yeni bir overlay/menü eklerken ASLA tek yönü statik varsayma, özellikle `overflow-y-auto` bir konteyner içindeyse.
+- **`canvas`/`img` gibi bir "replaced element"de `position:fixed`+`inset-0` TEK BAŞINA viewport'a GERMEZ.** CSS2.1 §10.3.8: absolute/fixed konumlu bir replaced element'te `width`/`height` `auto` ise kullanılan boyut İÇSEL boyuttur (canvas'ta 300×150 varsayılan), `top/right/bottom/left:0` YOK SAYILIR — normal (replaced OLMAYAN) elemanlarda `inset-0`'ın verdiği "gerin" davranışı burada ÇALIŞMAZ. `h-full w-full`'u da className'e eklemek ŞART (`LegalPageShell.tsx`'te `absolute`'tan `fixed`'e geçerken bu unutulup canvas sol-üstte küçük bir kutuda kaldı, gerçek ekran görüntüsüyle bulundu, 2026-08-31).
 - **CSS `vertical-align`/`align-middle` bir FLEX ITEM üzerinde NO-OP'tur** (spec gereği, flex item'larda `vertical-align` yok sayılır — hizalama SADECE `align-items`/`align-self` ile yapılır). Aynı "ikon+metin satıriçi hizala" ihtiyacı, ebeveyn `flex` mi değil mi göre TAMAMEN FARKLI çözüm gerektirir: flex'te `align-self`/`items-center`, normal akışta (flex OLMAYAN buton/span) `align-middle` gerçekten çalışır — ikisine AYNI class'ı körlemesine uygulama (M10 Faz 2 Slice D+E'nin SVG-avatar revizyonunda `MessageItem.tsx` flex, `AccountMenu.tsx` değil — bir Plan agent'ı ikisini AYRI ele almazsa `MessageItem`'daki fix'in sessizce hiçbir şey yapmayacağını buldu).

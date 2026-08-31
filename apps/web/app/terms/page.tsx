@@ -1,11 +1,16 @@
-import Link from "next/link";
-
 import { FEEDBACK_EMAIL } from "../../lib/contact";
+import LegalPageShell from "../components/LegalPageShell";
 
 export default function TermsPage() {
   return (
-    <main className="animate-fade-in mx-auto max-w-2xl p-4 text-neutral-400">
-      <h1 className="mb-2 text-neutral-400">
+    <LegalPageShell
+      subtitle="metin tabanlı sohbet · davetle"
+      lang="tr"
+      homeLabel="ana sayfaya dön"
+      switchHref="/terms/en"
+      switchLabel="Switch to English"
+    >
+      <h1 className="mb-2 text-neutral-200">
         <span className="text-muted">#</span> kullanım şartları
       </h1>
 
@@ -302,15 +307,6 @@ export default function TermsPage() {
           </p>
         </section>
       </div>
-
-      <p className="mt-8 flex gap-4 text-xs">
-        <Link href="/" className="text-muted hover:text-neutral-400">
-          ana sayfaya dön
-        </Link>
-        <Link href="/terms/en" className="text-muted hover:text-neutral-400">
-          Switch to English
-        </Link>
-      </p>
-    </main>
+    </LegalPageShell>
   );
 }
