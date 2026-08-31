@@ -34,7 +34,7 @@ async function login(
     }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -134,7 +134,7 @@ test("editedAt_dolu_mesajda_duzenlendi_gostergesi_gorunur_bosta_gorunmez", async
     }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

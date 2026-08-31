@@ -7,7 +7,7 @@ async function login(page: import("@playwright/test").Page) {
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

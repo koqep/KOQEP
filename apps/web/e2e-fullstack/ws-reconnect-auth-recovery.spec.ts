@@ -48,7 +48,7 @@ test("ws_baglantisi_gecersiz_token_yuzunden_reddedilince_refresh_ile_kendini_top
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("dev@koqep.local");
   await page.getByLabel("password").fill("dev-local-only-password");
   await page.getByRole("button", { name: "log in" }).click();

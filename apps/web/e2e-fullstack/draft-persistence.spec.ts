@@ -47,7 +47,7 @@ function waitForDraftStorageValue(page: Page, expected: string): Promise<void> {
 test("taslak_oda_degistirince_kaybolmuyor_gonderilince_sadece_aktif_odanin_taslagi_temizlenir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await loginAsDevUser(page);
 
   const generalButton = page.getByRole("button", { name: "#general" });
@@ -83,7 +83,7 @@ test("taslak_oda_degistirince_kaybolmuyor_gonderilince_sadece_aktif_odanin_tasla
 test("taslak_localStorage_a_debounce_lu_yaziliyor_cikis_yapinca_tumu_silinir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await loginAsDevUser(page);
 
   const input = page.getByPlaceholder("write a message...");

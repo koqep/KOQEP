@@ -52,7 +52,7 @@ test("daha_eski_mesajlari_yukle_butonu_calisir_ve_tukenince_kaybolur", async ({
     });
   });
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

@@ -1,13 +1,28 @@
 import { test, expect } from "@playwright/test";
 import { mockAuthSuccess, mockAuthRefreshUnavailable } from "./support/auth-mocks";
 
+// M11b Slice A: yeni landing sayfası (3 sütunlu özellik ızgarası + TR/EN
+// kutusu + iki CTA butonu) 375px'te taşmadan görünmeli - M6 Slice D'nin
+// AYNI kategoride gerçek bir regresyon bulduğu yer burası, bilerek atlanmadı.
+test("landing_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("button", { name: "TR" })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "EN" })).toBeInViewport();
+  await expect(page.getByRole("link", { name: "log in" })).toBeInViewport();
+  await expect(page.getByRole("link", { name: "sign up" })).toBeInViewport();
+  await expect(
+    page.getByText("Invite-only entry", { exact: true }),
+  ).toBeInViewport();
+});
+
 // M6 Slice D: RoomHeader.tsx'in üç flex satırı (header/nav/aksiyon div'i)
 // flex-wrap OLMADAN 375px'te taşıyordu - bu test önce KIRMIZI çıkıp
 // gerçek taşmayı kanıtladı, flex-wrap eklenince YEŞİLE döndü
 // (testing.md: önce hatayı gösteren test, sonra düzeltme).
 test("giris_formu_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
   await mockAuthRefreshUnavailable(page);
-  await page.goto("/");
+  await page.goto("/app");
 
   await expect(page.getByLabel("email")).toBeInViewport();
   await expect(page.getByLabel("password")).toBeInViewport();
@@ -31,7 +46,7 @@ test("topbar_375px_genislikte_tasmadan_gorunur", async ({ page }) => {
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -63,7 +78,7 @@ test("mobil_oda_listesi_hamburger_ile_acilir_oda_secilince_kapanir", async ({
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -94,7 +109,7 @@ test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

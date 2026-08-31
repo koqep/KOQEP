@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 test("fare_basili_tutunca_sifre_gorunur_birakinca_gizlenir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const input = page.getByLabel("password");
   // Erişilebilir ad show/hide arasında değiştiği için TEK bir locator
   // referansı yeterli değil - her adımda GÜNCEL adla yeniden sorgula
@@ -29,7 +29,7 @@ test("fare_basili_tutunca_sifre_gorunur_birakinca_gizlenir", async ({
 test("fare_basiliyken_disari_surukleyince_sifre_gizlenir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const input = page.getByLabel("password");
   const showToggle = page.getByRole("button", { name: "show" });
   const hideToggle = page.getByRole("button", { name: "hide" });
@@ -49,7 +49,7 @@ test("fare_basiliyken_disari_surukleyince_sifre_gizlenir", async ({
 test("klavye_space_basili_tutunca_sifre_gorunur_birakinca_gizlenir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const input = page.getByLabel("password");
   const toggle = page.getByRole("button", { name: "show" });
 
@@ -64,7 +64,7 @@ test("klavye_space_basili_tutunca_sifre_gorunur_birakinca_gizlenir", async ({
 test("klavye_enter_basili_tutunca_sifre_gorunur_birakinca_gizlenir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const input = page.getByLabel("password");
   const toggle = page.getByRole("button", { name: "show" });
 
@@ -83,7 +83,7 @@ test("klavye_enter_basili_tutunca_sifre_gorunur_birakinca_gizlenir", async ({
 test("down_up_izlenmeden_gelen_click_toggle_olarak_davranir_ekran_okuyucu_zarif_bozulma", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const input = page.getByLabel("password");
   const showToggle = page.getByRole("button", { name: "show" });
   const hideToggle = page.getByRole("button", { name: "hide" });
@@ -98,7 +98,7 @@ test("down_up_izlenmeden_gelen_click_toggle_olarak_davranir_ekran_okuyucu_zarif_
 test("gercek_fare_tiklamasi_cift_tetiklenmeden_momentary_davranir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const input = page.getByLabel("password");
   const toggle = page.getByRole("button", { name: "show" });
 

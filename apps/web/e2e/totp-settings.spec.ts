@@ -9,7 +9,7 @@ async function loginWithoutTotp(page: import("@playwright/test").Page) {
   await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -46,7 +46,7 @@ async function loginWithTotpEnabled(page: import("@playwright/test").Page) {
   await mockAuthRefreshUnavailable(page);
   await mockRoomEndpoints(page);
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

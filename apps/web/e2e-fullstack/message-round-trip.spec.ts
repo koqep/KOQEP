@@ -23,8 +23,8 @@ test("mesaj_diger_sekmede_gercek_zamanli_gorunur_ve_reload_sonrasi_kalicidir", a
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
-  await pageA.goto("/");
-  await pageB.goto("/");
+  await pageA.goto("/app");
+  await pageB.goto("/app");
   await loginAsDevUser(pageA);
   await loginAsDevUser(pageB);
 

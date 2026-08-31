@@ -33,7 +33,7 @@ test("oda_degistirince_mesaj_listesi_yeni_odaya_gore_guncellenir", async ({
     });
   });
 
-  await page.goto("/");
+  await page.goto("/app");
 
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");

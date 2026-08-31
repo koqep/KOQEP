@@ -57,7 +57,7 @@ test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
     });
   });
 
-  await page.goto("/");
+  await page.goto("/app");
 
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
@@ -99,7 +99,7 @@ test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

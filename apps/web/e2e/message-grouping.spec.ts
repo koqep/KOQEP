@@ -42,7 +42,7 @@ async function loginWithMessages(
     }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -251,7 +251,7 @@ test("load_older_ile_onceden_grup_basi_olan_mesaj_devam_mesajina_doner", async (
     });
   });
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

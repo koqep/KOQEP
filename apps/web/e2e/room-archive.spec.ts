@@ -20,7 +20,7 @@ test("arsivi_goster_toggle_ile_arsivlenmis_oda_gorunur_ve_salt_okunur_composer_g
     route.fulfill({ json: { messages: [], nextCursor: null } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

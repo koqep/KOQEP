@@ -58,7 +58,7 @@ test("odalari_kesfet_acilinca_uye_olunmayan_aktif_odalar_listelenir_katilinca_sw
     await route.fulfill({ json: room() });
   });
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -128,7 +128,7 @@ test("kesif_listesi_daha_fazla_goster_ile_sayfalanir", async ({ page }) => {
     },
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -185,7 +185,7 @@ test("cekirdek_olmayan_bir_odadan_switcher_uzerinden_ayrilinabilir_cekirdek_odad
     await route.fulfill({ json: { ok: true } });
   });
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();

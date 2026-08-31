@@ -4,7 +4,7 @@ import {
   mockRoomEndpoints,
 } from "./support/auth-mocks";
 
-// Bu dosyadaki HER test page.goto("/") çağırıyor - page.tsx'in mount-time
+// Bu dosyadaki HER test page.goto("/app") çağırıyor - page.tsx'in mount-time
 // sessiz-refresh bootstrap'ı (M7a Slice A) bu yüzden her testte tetikleniyor,
 // mocklanmazsa gerçek ağa düşer/asılı kalır.
 test.beforeEach(async ({ page }) => {
@@ -18,7 +18,7 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "don't have an account? sign up" }).click();
 
   await page.getByLabel("invite code").fill("DEV-INVITE-1");
@@ -41,7 +41,7 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
 test("onay_kutusu_isaretlenmeden_kayit_butonu_devre_disi_kalir", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "don't have an account? sign up" }).click();
 
   await page.getByLabel("invite code").fill("DEV-INVITE-1");
@@ -57,7 +57,7 @@ test("onay_kutusu_isaretlenmeden_kayit_butonu_devre_disi_kalir", async ({
 test("kayit_ekraninda_kullanim_sartlari_ve_gizlilik_linkleri_dogru_hedefe_gider", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "don't have an account? sign up" }).click();
 
   await expect(page.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
@@ -80,7 +80,7 @@ test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {
     }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("dogrulanmamis@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -105,7 +105,7 @@ test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({
     }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("yanlis-sifre");
   await page.getByRole("button", { name: "log in" }).click();
@@ -138,7 +138,7 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   });
   await mockRoomEndpoints(page);
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
@@ -157,7 +157,7 @@ test("sifremi_unuttum_gonderince_notr_mesaj_gosterir", async ({ page }) => {
     route.fulfill({ json: { ok: true } }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "forgot your password?" }).click();
 
   await expect(page.getByLabel("password")).toHaveCount(0);

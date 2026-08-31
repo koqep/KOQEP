@@ -16,7 +16,7 @@ test("gecerli_oturumla_sayfaya_girince_giris_formu_gorunmeden_oda_gorunumune_gec
   );
   await mockRoomEndpoints(page);
 
-  await page.goto("/");
+  await page.goto("/app");
 
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
   await expect(page.getByLabel("email")).toHaveCount(0);
@@ -29,7 +29,7 @@ test("gecersiz_oturumla_sayfaya_girince_giris_formu_gorunur", async ({
     route.fulfill({ status: 401, json: {} }),
   );
 
-  await page.goto("/");
+  await page.goto("/app");
 
   await expect(page.getByLabel("email")).toBeVisible();
   await expect(page.getByPlaceholder("write a message...")).toHaveCount(0);
@@ -57,7 +57,7 @@ test("sayfa_reload_sonrasi_oturum_hala_acik_giris_formuna_donmez", async ({
   });
   await mockRoomEndpoints(page);
 
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
