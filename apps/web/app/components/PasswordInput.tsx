@@ -109,12 +109,18 @@ export default function PasswordInput({ label, ...inputProps }: Props) {
   return (
     <div className="flex flex-col gap-1 text-muted">
       <label htmlFor={id}>{label}</label>
-      <div className="flex items-center gap-2">
+      {/* Göz ikonu input'un YANINDA değil İÇİNDE (absolute, sağda) duruyor -
+          bir flex satırında input+buton yan yana dizmek, butonun kendi
+          genişliği kadar input'u SIKIŞTIRIYORDU (flex-item'ların varsayılan
+          shrink davranışı), email/username gibi buton taşımayan alanlardan
+          GÖZLE FARK EDİLİR ölçüde dar görünüyordu (kullanıcı bulup bildirdi,
+          gerçek bir Playwright ekran görüntüsüyle doğrulandı). */}
+      <div className="relative">
         <input
           {...inputProps}
           id={id}
           type={isVisible ? "text" : "password"}
-          className={inputClassName}
+          className={inputClassName + " w-full pr-8"}
         />
         <button
           type="button"
@@ -144,7 +150,7 @@ export default function PasswordInput({ label, ...inputProps }: Props) {
           onKeyUp={handleKeyUp}
           onBlur={hideAndResetFlag}
           onClick={handleClick}
-          className="shrink-0 p-1 text-muted hover:text-neutral-400"
+          className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-neutral-400"
         >
           <EyeIcon slashed={!isVisible} />
         </button>
