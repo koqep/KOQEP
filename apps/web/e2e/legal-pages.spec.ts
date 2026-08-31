@@ -73,3 +73,16 @@ test("kullanim_sartlari_sayfalari_arasinda_dil_degistirme_linki_dogru_calisir", 
   await page.getByRole("link", { name: "Türkçe sürüm" }).click();
   await expect(page).toHaveURL("/terms");
 });
+
+// M11b Slice D: legal sayfalar artık landing'in görsel dilini (KOQEP marka
+// bloğu + ASCII canvas arka planı, LegalPageShell.tsx) paylaşıyor - temsili
+// olarak /terms üzerinde doğrulanıyor (4 sayfa da aynı shell'i kullanıyor).
+test("legal_sayfada_koqep_marka_blogu_ve_dekoratif_canvas_gorunur", async ({
+  page,
+}) => {
+  await page.goto("/terms");
+
+  await expect(page.getByText("KOQEP", { exact: true })).toBeVisible();
+  const canvas = page.locator("canvas");
+  await expect(canvas).toHaveAttribute("aria-hidden", "true");
+});
