@@ -45,7 +45,11 @@ async function main(): Promise<void> {
 
   const devUser = await prisma.user.upsert({
     where: { email: DEV_USER_EMAIL },
-    update: { passwordHash },
+    // update dalı emailVerifiedAt'i de set ETMELİ - sadece passwordHash
+    // güncellemek, bir satırın emailVerifiedAt'i (ör. eski/bozuk bir
+    // seed'den) null KALMIŞSA bunu sonraki hiçbir reseed'in ONARAMAMASI
+    // demekti (create dalı sadece İLK oluşturmada çalışıyor).
+    update: { passwordHash, emailVerifiedAt: new Date() },
     create: {
       email: DEV_USER_EMAIL,
       username: DEV_USER_USERNAME,
@@ -75,7 +79,7 @@ async function main(): Promise<void> {
   const passwordHash2 = await argon2.hash(DEV_USER_2_PASSWORD);
   await prisma.user.upsert({
     where: { email: DEV_USER_2_EMAIL },
-    update: { passwordHash: passwordHash2 },
+    update: { passwordHash: passwordHash2, emailVerifiedAt: new Date() },
     create: {
       email: DEV_USER_2_EMAIL,
       username: DEV_USER_2_USERNAME,
@@ -96,7 +100,11 @@ async function main(): Promise<void> {
   };
   await prisma.user.upsert({
     where: { email: DEV_USER_LEVELUP_EMAIL },
-    update: { passwordHash: passwordHash3, ...levelUpFields },
+    update: {
+      passwordHash: passwordHash3,
+      emailVerifiedAt: new Date(),
+      ...levelUpFields,
+    },
     create: {
       email: DEV_USER_LEVELUP_EMAIL,
       username: DEV_USER_LEVELUP_USERNAME,

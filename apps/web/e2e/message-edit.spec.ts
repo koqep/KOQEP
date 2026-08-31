@@ -46,20 +46,24 @@ test("kendi_mesajinda_duzenle_ve_gecmis_butonlari_gorunur_duzenle_formu_dolu_aci
 }) => {
   await login(page, "user", "test");
 
-  // M11a Slice F: edit/history butonları artık satır hover/focus'ta
-  // görünür (Slice C'nin saat deseni) - önce satırı hover'lamak gerekiyor.
+  // M11a devamı: edit/history artık "message actions" ("⋯") menüsünün
+  // içinde - önce satırı hover'layıp tetikleyiciye tıklamak gerekiyor.
   await page.getByText("test mesajı").hover();
-  await expect(page.getByRole("button", { name: "edit" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "history" })).toBeVisible();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "edit" })).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "history" }),
+  ).toBeVisible();
 
-  await page.getByRole("button", { name: "edit" }).click();
+  await page.getByRole("menuitem", { name: "edit" }).click();
 
   await expect(page.getByLabel("edit message")).toHaveValue("test mesajı");
 
   await page.getByRole("button", { name: "cancel" }).click();
 
   await page.getByText("test mesajı").hover();
-  await expect(page.getByRole("button", { name: "edit" })).toBeVisible();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "edit" })).toBeVisible();
 });
 
 test("baskasinin_mesajinda_sirali_kullanici_ne_duzenle_ne_gecmis_gorur", async ({
@@ -67,8 +71,14 @@ test("baskasinin_mesajinda_sirali_kullanici_ne_duzenle_ne_gecmis_gorur", async (
 }) => {
   await login(page, "user", "baskasi");
 
-  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "history" })).toHaveCount(0);
+  // Trigger yine de render edilir (report menü öğesi mevcut) - assertion'ın
+  // anlamlı olması için ÖNCE menüyü aç, aksi halde trivially geçerdi.
+  await page.getByText("test mesajı").hover();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "edit" })).toHaveCount(0);
+  await expect(
+    page.getByRole("menuitem", { name: "history" }),
+  ).toHaveCount(0);
 });
 
 test("baskasinin_mesajinda_moderator_gecmisi_gorur_ama_duzenleyemez", async ({
@@ -77,8 +87,11 @@ test("baskasinin_mesajinda_moderator_gecmisi_gorur_ama_duzenleyemez", async ({
   await login(page, "moderator", "baskasi");
 
   await page.getByText("test mesajı").hover();
-  await expect(page.getByRole("button", { name: "edit" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "history" })).toBeVisible();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "edit" })).toHaveCount(0);
+  await expect(
+    page.getByRole("menuitem", { name: "history" }),
+  ).toBeVisible();
 });
 
 test("editedAt_dolu_mesajda_duzenlendi_gostergesi_gorunur_bosta_gorunmez", async ({
@@ -146,7 +159,8 @@ test("gecmis_butonuna_basinca_onceki_icerik_listelenir", async ({ page }) => {
   );
 
   await page.getByText("test mesajı").hover();
-  await page.getByRole("button", { name: "history" }).click();
+  await page.getByRole("button", { name: "message actions" }).click();
+  await page.getByRole("menuitem", { name: "history" }).click();
 
   await expect(page.getByText("eski içerik")).toBeVisible();
 });
