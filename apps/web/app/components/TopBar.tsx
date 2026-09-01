@@ -12,6 +12,7 @@ interface Props {
   username: string | null;
   onOpenProfile: (username: string) => void;
   onOpenSettings: () => void;
+  onOpenFeedback: () => void;
   onLogout: () => void;
 }
 
@@ -25,6 +26,7 @@ export default function TopBar({
   username,
   onOpenProfile,
   onOpenSettings,
+  onOpenFeedback,
   onLogout,
 }: Props) {
   return (
@@ -68,6 +70,7 @@ export default function TopBar({
           username={username}
           onOpenProfile={onOpenProfile}
           onOpenSettings={onOpenSettings}
+          onOpenFeedback={onOpenFeedback}
           onLogout={onLogout}
         />
       </div>
