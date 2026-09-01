@@ -131,3 +131,37 @@
 .animate-panel-slide-out-left {
   animation: panel-slide-out-left var(--motion-duration-base) var(--motion-ease-standard) both;
 }
+
+/* M13 Slice A: CenteredModal.tsx'in açılış/kapanış motion'ı - ortada bir
+   pencere için slide anlamsız, fade+scale kullanılıyor. Backdrop için
+   YENİ bir animasyon icat edilmedi, mevcut panel-backdrop-in/out (sadece
+   opacity, pozisyondan bağımsız) aynen yeniden kullanılıyor. */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.animate-modal-in {
+  animation: modal-in var(--motion-duration-base) var(--motion-ease-standard) both;
+}
+
+.animate-modal-out {
+  animation: modal-out var(--motion-duration-base) var(--motion-ease-standard) both;
+}

@@ -2,17 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { listInvites, type InviteDto } from "../../lib/api";
-import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
-  onClose: () => void;
-  titleId: string;
 }
 
-export default function InviteView({ accessToken, onClose, titleId }: Props) {
+export default function InviteView({ accessToken }: Props) {
   const [invites, setInvites] = useState<InviteDto[] | null>(null);
-  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   useEffect(() => {
     let cancelled = false;
@@ -30,19 +26,6 @@ export default function InviteView({ accessToken, onClose, titleId }: Props) {
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> invites
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted hover:text-neutral-400"
-        >
-          close
-        </button>
-      </div>
-
       <p className="mb-4 text-muted">
         if someone you invited gets moderated (muted), one of your unused
         invites gets revoked; if you have no unused invites left, your next

@@ -3,13 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { createRoom, ApiError, type Room } from "../../lib/api";
 import { inputClassName } from "./formStyles";
-import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
   onCreated: (room: Room) => void;
-  onClose: () => void;
-  titleId: string;
 }
 
 // create-room.dto.ts'teki MAX_ROOM_NAME_LENGTH/MAX_ROOM_DESCRIPTION_LENGTH
@@ -20,17 +17,11 @@ const MAX_ROOM_NAME_LENGTH = 60;
 const MAX_ROOM_DESCRIPTION_LENGTH = 200;
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
-export default function CreateRoomView({
-  accessToken,
-  onCreated,
-  onClose,
-  titleId,
-}: Props) {
+export default function CreateRoomView({ accessToken, onCreated }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,19 +52,6 @@ export default function CreateRoomView({
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> new room
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted hover:text-neutral-400"
-        >
-          close
-        </button>
-      </div>
-
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
           room name

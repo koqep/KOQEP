@@ -9,20 +9,16 @@ import {
   type BlockedUser,
 } from "../../lib/api";
 import { inputClassName } from "./formStyles";
-import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
-  onClose: () => void;
-  titleId: string;
 }
 
-export default function BlockedUsersView({ accessToken, onClose, titleId }: Props) {
+export default function BlockedUsersView({ accessToken }: Props) {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[] | null>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   useEffect(() => {
     let cancelled = false;
@@ -73,19 +69,6 @@ export default function BlockedUsersView({ accessToken, onClose, titleId }: Prop
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> blocked
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted hover:text-neutral-400"
-        >
-          close
-        </button>
-      </div>
-
       <form onSubmit={handleBlock} className="mb-6 flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
           email

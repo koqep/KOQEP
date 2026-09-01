@@ -33,6 +33,7 @@ import TopBar from "./TopBar";
 import RoomSidebar from "./RoomSidebar";
 import ChatPanel from "./ChatPanel";
 import SidePanel, { SIDE_PANEL_TITLE_ID } from "./SidePanel";
+import CenteredModal from "./CenteredModal";
 
 // M10 Faz 2 Slice B: "sidebar" (mobil oda listesi overlay'i) diğer
 // panellerle AYNI activePanel/requestClosePanel/SidePanel hattını
@@ -41,6 +42,10 @@ import SidePanel, { SIDE_PANEL_TITLE_ID } from "./SidePanel";
 // tekrar riske atardı. M10 Faz 2 Slice D+E: "profile" de AYNI hatta, ama
 // bu türün EKSTRA bir bilgi (hangi kullanıcı) taşıması gerekiyor - bkz.
 // aşağıdaki viewingProfileUsername.
+// M13 Slice A: "sidebar"/"moderation" ESKİ SidePanel mekanizmasında
+// kalıyor (kullanıcı onayı - navigasyon deseni/sık-aksiyonlu içerik,
+// ortada-modal'a uygun değil), diğer 7 (+ henüz eklenmeyen "feedback",
+// Slice C) CenteredModal'a geçiyor - bkz. PANEL_TITLES.
 type ActivePanel =
   | "none"
   | "totp"
@@ -52,6 +57,22 @@ type ActivePanel =
   | "moderation"
   | "sidebar"
   | "profile";
+
+type CenteredModalPanel = Exclude<ActivePanel, "none" | "sidebar" | "moderation">;
+
+// CenteredModal'ın paylaşılan "KOQEP · {title}" başlığı için - eskiden
+// her panel bileşeni kendi başlığını üretiyordu, artık şell'in
+// sorumluluğu (bkz. CenteredModal.tsx). Metinler bugünkü panel
+// başlıklarıyla BİREBİR aynı, bu slice bir kopya değişikliği DEĞİL.
+const PANEL_TITLES: Record<CenteredModalPanel, string> = {
+  totp: "two-factor authentication",
+  blocked: "blocked",
+  invites: "invites",
+  "delete-account": "delete account",
+  "create-room": "new room",
+  "discover-rooms": "discover rooms",
+  profile: "profile",
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -815,85 +836,71 @@ export default function RoomView({
       </div>
 
       {isPanelOpen && (
-        <SidePanel
-          isClosing={isPanelClosing}
-          onRequestClose={requestClosePanel}
-          side={activePanel === "sidebar" ? "left" : "right"}
-        >
-          {activePanel === "sidebar" ? (
-            <RoomSidebar
-              titleId={SIDE_PANEL_TITLE_ID}
-              onClose={requestClosePanel}
-              rooms={rooms}
-              activeRoom={activeRoom}
-              onRoomSwitch={(room) => void handleRoomSwitch(room)}
-              onLeaveRoom={(room) => void handleLeaveRoom(room)}
-              showArchived={showArchived}
-              onToggleShowArchived={() => void handleToggleShowArchived()}
-            />
-          ) : activePanel === "totp" ? (
-            <TotpSettingsView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              initialEnabled={totpEnabled}
-              onEnabledChange={setTotpEnabled}
-              onClose={requestClosePanel}
-            />
-          ) : activePanel === "blocked" ? (
-            <BlockedUsersView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              onClose={requestClosePanel}
-            />
-          ) : activePanel === "invites" ? (
-            <InviteView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              onClose={requestClosePanel}
-            />
-          ) : activePanel === "delete-account" ? (
-            <DeleteAccountView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              onDeleted={onLoggedOut}
-              onClose={requestClosePanel}
-            />
-          ) : activePanel === "create-room" ? (
-            <CreateRoomView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              onCreated={(room) => {
-                setRooms((prev) => [...prev, room]);
-                void handleRoomSwitch(room);
-              }}
-              onClose={requestClosePanel}
-            />
-          ) : activePanel === "discover-rooms" ? (
-            <DiscoverRoomsView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              onJoined={(room) => {
-                setRooms((prev) => [...prev, room]);
-                void handleRoomSwitch(room);
-              }}
-              onClose={requestClosePanel}
-            />
-          ) : activePanel === "moderation" ? (
-            <ModerationQueueView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              onClose={requestClosePanel}
-              onQueueCountChange={setOpenReportCount}
-            />
-          ) : activePanel === "profile" && viewingProfileUsername ? (
-            <ProfileView
-              titleId={SIDE_PANEL_TITLE_ID}
-              accessToken={accessToken}
-              username={viewingProfileUsername}
-              onClose={requestClosePanel}
-            />
-          ) : null}
-        </SidePanel>
+        activePanel === "sidebar" || activePanel === "moderation" ? (
+          <SidePanel
+            isClosing={isPanelClosing}
+            onRequestClose={requestClosePanel}
+            side={activePanel === "sidebar" ? "left" : "right"}
+          >
+            {activePanel === "sidebar" ? (
+              <RoomSidebar
+                titleId={SIDE_PANEL_TITLE_ID}
+                onClose={requestClosePanel}
+                rooms={rooms}
+                activeRoom={activeRoom}
+                onRoomSwitch={(room) => void handleRoomSwitch(room)}
+                onLeaveRoom={(room) => void handleLeaveRoom(room)}
+                showArchived={showArchived}
+                onToggleShowArchived={() => void handleToggleShowArchived()}
+              />
+            ) : (
+              <ModerationQueueView
+                titleId={SIDE_PANEL_TITLE_ID}
+                accessToken={accessToken}
+                onClose={requestClosePanel}
+                onQueueCountChange={setOpenReportCount}
+              />
+            )}
+          </SidePanel>
+        ) : (
+          <CenteredModal
+            isClosing={isPanelClosing}
+            onRequestClose={requestClosePanel}
+            title={PANEL_TITLES[activePanel as CenteredModalPanel]}
+          >
+            {activePanel === "totp" ? (
+              <TotpSettingsView
+                accessToken={accessToken}
+                initialEnabled={totpEnabled}
+                onEnabledChange={setTotpEnabled}
+              />
+            ) : activePanel === "blocked" ? (
+              <BlockedUsersView accessToken={accessToken} />
+            ) : activePanel === "invites" ? (
+              <InviteView accessToken={accessToken} />
+            ) : activePanel === "delete-account" ? (
+              <DeleteAccountView accessToken={accessToken} onDeleted={onLoggedOut} />
+            ) : activePanel === "create-room" ? (
+              <CreateRoomView
+                accessToken={accessToken}
+                onCreated={(room) => {
+                  setRooms((prev) => [...prev, room]);
+                  void handleRoomSwitch(room);
+                }}
+              />
+            ) : activePanel === "discover-rooms" ? (
+              <DiscoverRoomsView
+                accessToken={accessToken}
+                onJoined={(room) => {
+                  setRooms((prev) => [...prev, room]);
+                  void handleRoomSwitch(room);
+                }}
+              />
+            ) : activePanel === "profile" && viewingProfileUsername ? (
+              <ProfileView accessToken={accessToken} username={viewingProfileUsername} />
+            ) : null}
+          </CenteredModal>
+        )
       )}
     </main>
   );
