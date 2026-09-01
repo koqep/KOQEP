@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { FEEDBACK_EMAIL } from "../../lib/contact";
-import { SmallAvatar } from "./Avatar";
 import { useDismissableMenu } from "./useDismissableMenu";
 
 interface Props {
@@ -63,8 +62,7 @@ export default function AccountMenu({
         onClick={() => setIsOpen((value) => !value)}
         className="text-muted hover:text-neutral-400"
       >
-        <SmallAvatar seed={username} className="align-middle" /> account{" "}
-        <span aria-hidden="true">▾</span>
+        account <span aria-hidden="true">▾</span>
       </button>
       {isOpen && (
         <div

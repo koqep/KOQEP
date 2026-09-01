@@ -61,6 +61,21 @@ export default function ProfileView({ accessToken, username }: Props) {
           <p>
             level {profile.level} — {profile.totalXp} XP
           </p>
+          {/* M13 Slice E: seviye/XP çubuğu - yüzde backend'de hesaplanıyor
+              (XP_PER_LEVEL frontend'e hiç açılmıyor, ADR-0002). */}
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round(profile.xpProgressPercent)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="xp progress to next level"
+            className="mt-1 h-1 w-40 border border-neutral-800"
+          >
+            <div
+              className="h-full bg-neutral-200"
+              style={{ width: `${profile.xpProgressPercent}%` }}
+            />
+          </div>
         </div>
       )}
     </section>
