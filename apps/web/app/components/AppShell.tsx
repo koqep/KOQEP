@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import AuthPageShell from "./AuthPageShell";
 import AuthView from "./AuthView";
 import RoomView from "./RoomView";
 import { refreshAccessToken, setAccessTokenRefreshedListener } from "../../lib/api";
@@ -66,7 +67,7 @@ export default function AppShell() {
 
   if (!accessToken) {
     return (
-      <main className="animate-fade-in mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 p-4">
+      <AuthPageShell>
         <AuthView
           initialMode={initialMode}
           onAuthenticated={(tokens, nextTotpEnabled) => {
@@ -74,7 +75,7 @@ export default function AppShell() {
             setTotpEnabled(nextTotpEnabled);
           }}
         />
-      </main>
+      </AuthPageShell>
     );
   }
 

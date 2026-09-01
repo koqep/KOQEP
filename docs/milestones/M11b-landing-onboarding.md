@@ -67,6 +67,9 @@ oldu — routing geçişi 2026-08-30 kapsam turunda tahmin edilenle uyumlu
 - [x] **Slice D — Legal sayfaların görsel dili landing'le hizalanması.**
       Tamamlandı (2026-08-31), `feat/legal-pages-visual` dalında (main'den,
       `feat/landing-page`'den BAĞIMSIZ). Detay Plan notları'nda.
+- [x] **Slice E — Login/register (AuthView.tsx) görsel yeniden tasarımı.**
+      Tamamlandı (2026-09-01), `feat/auth-visual-redesign` dalında (main'den,
+      Slice D'den BAĞIMSIZ). Detay Plan notları'nda.
 
 ## Risks
 - ~~Slice A: "animasyonlu arka plan" görsel bir karar, kod yazılmadan önce
@@ -235,3 +238,143 @@ koşuldu, canvas-boyut bugu düzeltildikten SONRA), `apps/api` testleri
 masaüstü üst/scroll edilmiş + 375px mobil üst/footer, gerçek Playwright
 ekran görüntüsüyle onaylandı — bug BU doğrulama adımında yakalandı, teste
 güvenip atlanmadı.
+
+### Slice E kapsam turu (2026-09-01) — login/register görsel yeniden tasarımı
+
+Kullanıcı Claude Design'da `/app`'in giriş/kayıt kartı için landing/legal
+ile AYNI görsel dilde bir tasarım üretti: üstte KOQEP marka bloğu + TR/EN
+kutusu, altta tek kartlı sekmeli (giriş/kayıt) form, kart dışı altta
+"ana sayfaya dön"/"yardım" linkleri, aynı `AsciiBackground.tsx` (daha
+düşük opaklıkla). `AuthView.tsx`/`AppShell.tsx`/`PasswordInput.tsx` okunarak
+doğrulanan bulgular:
+
+**State/handler mantığı DEĞİŞMEDEN JSX/stil değişimi — MÜMKÜN, doğrulandı.**
+`AuthView.tsx`'in `mode`/`totpRequired`/`resetRequested`/`signupComplete`
+state'i ve `handleSubmit`/`switchMode` mantığı JSX'ten TAMAMEN ayrık — sadece
+`return` bloğu değişecek. **Ama üçüncü bir mod var, tasarımda YOK:**
+`mode` sadece `"login"`/`"signup"` değil, `"forgot-password"` de var (bugün
+"forgot your password?" linkiyle girilen ayrı bir ekran). Sekmeli tasarım
+SADECE giriş/kayıt'ı kapsıyor — `forgot-password` durumunun sekme
+çubuğuyla nasıl bir arada duracağı tasarımda BELİRTİLMEMİŞ, açık karar.
+
+**`PasswordInput.tsx` DEĞİŞİKLİKSİZ yeniden kullanılabilir** — zaten
+`inputClassName`'i (kart içi diğer alanlarla aynı stil) kullanıyor, zaten
+tam genişlik (`w-full pr-8`) davranışı doğru (M11a'nın width-bug düzeltmesi).
+
+**AsciiBackground `fixed`+`h-full`+`w-full` deseni — Slice D'nin bulduğu
+hatayı BAŞTAN doğru kurmak için:** `AppShell.tsx`'in auth dalı bugün
+`<main className="animate-fade-in mx-auto flex min-h-dvh max-w-sm ...">`
+— `LegalPageShell.tsx`'teki AYNI kural burada da geçerli: canvas bu
+`animate-fade-in` taşıyan `<main>`'in KARDEŞİ olmalı (İÇİNDE değil), VE
+`className`'i `pointer-events-none fixed inset-0 h-full w-full` olmalı
+(SADECE `fixed inset-0` canvas'ı 300×150 içsel boyutta sol-üstte bırakır,
+STATE.md Tuzaklar'da artık yazılı).
+
+**Component sınırı önerisi:** legal sayfalardaki `LegalPageShell.tsx`
+deseniyle tutarlı — dış chrome (KOQEP marka bloğu + TR/EN kutusu +
+AsciiBackground + alt linkler) `AppShell.tsx`'in auth dalına (ya da yeni
+küçük bir `AuthPageShell.tsx`'e) yerleşir, `AuthView.tsx` SADECE kart
+içeriğini (sekmeler + form) üretmeye devam eder — bugünkü "shell dış
+chrome'u taşır, iç bileşen kendi içeriğini üretir" ayrımı korunur.
+
+**Test etkisi — Slice D'den (0 dosya) FARKLI, gerçek bir maliyet var:**
+`getByLabel("email")`/`getByLabel("password")` DEĞİŞMEZSE (etiket metni
+aynı kalır, sadece placeholder EKLENİR — hiçbir test placeholder kontrol
+etmiyor, grep ile doğrulandı) VE "log in"/"sign up" buton erişilebilir adı
+AYNEN KALIRSA (LandingPage.tsx'in `<span aria-hidden="true">&gt; </span>log
+in` deseniyle — "> " süsü `aria-hidden` içinde, erişilebilir ada
+KARIŞMIYOR), 35 dosyanın PAYLAŞILAN login-boilerplate'i (auth-mocks.ts
+SADECE ağ mock'unu merkezîleştiriyor, UI adımlarını DEĞİL — her dosya
+KENDİ `getByLabel(...).fill()`/`getByRole("button",{name:"log in"})`
+adımlarını tekrarlıyor) ETKİLENMEZ. **Ama mod-değiştirme kontrolü
+KESİNLİKLE değişiyor** — bugünkü "don't have an account? sign up" metni
+tasarımda "kayıt ol'a geç" (kısa, sekme-benzeri) oluyor, bu METİN
+DEĞİŞİYOR — grep ile TAM olarak 2 dosya bunu kullanıyor
+(`auth.spec.ts` 3 test, `e2e-fullstack/invite-issuance.spec.ts` 1 kullanım)
++ `auth.spec.ts`'in "forgot your password?"/"back to login" testi (aynı
+dosya). **Toplam gerçek test maliyeti: ~2 dosya, TAHMİN EDİLENDEN çok daha
+küçük** — ilk bakışta "35 dosya login yapıyor" korkusu yanlış çıktı, çünkü
+asıl riskli metin (mod-değiştirme linki) sadece 2 dosyada kullanılıyor.
+
+**TR/EN switcher — landing/legal'den FARKLI, gerçek bir komplikasyon
+bulundu:** `AuthView.tsx` BUGÜN tamamen İngilizce ama bunun bir kısmı
+YANILTICI bir görünüm — `err.message` (satır 88) BACKEND'İN HAM hata
+mesajını gösteriyor, ve `AuthService`'in yorum satırı (81-83) bunu doğruluyor:
+"Backend'in ham mesajı Türkçe (A20, backend hata metinleri henüz
+çevrilmedi)". `auth.spec.ts`'in KENDİSİ bunu kanıtlıyor —
+`E-posta veya şifre hatalı.` (satır 113) TÜRKÇE bir backend mesajını
+BİREBİR bekliyor. Yani BUGÜN BİLE, "İngilizce" arayüzde birçok gerçek hata
+(yanlış şifre, geçersiz davet kodu, rate-limit vb.) TÜRKÇE görünüyor —
+SADECE `TOTP_REQUIRED`/`EMAIL_NOT_VERIFIED` gibi BİLİNEN kodlar frontend'in
+kendi İngilizce mesajıyla override ediliyor. Bir TR/EN kutusu eklemek, bu
+İKİ konudan birine düşer: (a) SADECE statik metni (sekme etiketleri,
+prompt satırı, alt-başlık) çevirmek — ama kullanıcı "EN" seçse bile birçok
+gerçek hata YİNE Türkçe kalır (YANILTICI, "İngilizce seçtim ama hata
+Türkçe" şikayeti riski), (b) hata mesajlarını da kapsayan TAM bir çeviri —
+bu A20'nin (backend hata metinleri i18n) kapsamı, BU turun BOYUTUNU
+KATLAR. `docs/BACKLOG.md` A27'nin reddettiği "yarım no-op" riskinden
+DAHA CİDDİ bir versiyon — landing/legal'de HİÇ dinamik/backend-kaynaklı
+metin yoktu, burada VAR.
+
+**Açık kararlar (implementasyon planından ÖNCE netleşmeli, aşağıda
+`AskUserQuestion` ile soruldu):**
+1. TR/EN kutusu bu turda eklensin mi (yukarıdaki backend-mesaj
+   komplikasyonuyla), yoksa sayfa şimdilik İngilizce mi kalsın?
+2. `forgot-password` modu sekmeli tasarımda nasıl görünsün — sekme çubuğu
+   TAMAMEN gizlenip SADECE reset formu mu gösterilsin (bugünkü davranışın
+   birebir chrome'lu hali), yoksa sekmeler görünür ama pasif mi kalsın?
+
+**Kaba saat tahmini:** shell/kart restructuring (~2-3h) + sekme mekanizması
++ forgot-password entegrasyonu (~1-2h) + AsciiBackground `fixed` kurulumu
+(~0.5h, Slice D'den öğrenilen doğru desenle) + ~2 test dosyasının mod-
+değiştirme metni güncellemesi (~0.5h) + görsel doğrulama (login+register+
+forgot-password × masaüstü/mobil, ekran görüntüsü) (~1.5-2h) ≈ **~6-8h**
+(TR/EN kararına göre ±1-2h) — Slice D'ye yakın, Slice A'dan küçük.
+
+**Kararlar (2026-09-01, `AskUserQuestion` ile netleşti — ikisi de önerilen
+seçenek):**
+1. TR/EN kutusu BU TURDA EKLENMİYOR — sayfa İngilizce kalıyor, yanıltıcı
+   kısmi-çeviri riski (backend hata mesajları hâlâ Türkçe dönebiliyor, A20
+   henüz yapılmadı) hiç oluşmuyor. TR/EN, A20 tamamlanınca ayrıca ele
+   alınabilir.
+2. `forgot-password` modunda sekme çubuğu TAMAMEN gizleniyor — bugünkü
+   davranışın birebir aynısı (sadece reset formu + "girişe dön" linki),
+   yeni chrome ile ama mantık değişmiyor.
+
+### Slice E implementasyonu (2026-09-01) — tamamlandı
+
+Plan modu (Explore agent + doğrudan araştırma, kod okuyarak stres-test
+etti) → kullanıcı onayı ("Onaylıyorum, uygula. İkincil buton kararı (her
+iki sekmede de simetrik) doğru varsayım, onaylıyorum.") → uygulama,
+`feat/auth-visual-redesign` dalında (main'den, `feat/legal-pages-visual`'dan
+BAĞIMSIZ) 2 commit:
+
+- `beb50df` — yeni `AuthPageShell.tsx` (`LegalPageShell.tsx`'in aynı
+  deseni) + `AppShell.tsx`'in auth dalı onu kullanacak şekilde güncellendi
+  + `AuthView.tsx`'in SADECE `return` bloğu yeniden yazıldı (state/handler
+  mantığı DEĞİŞMEDEN) — kod tabanında İLK `role="tablist"`/`"tab"`
+  kullanımı (WAI-ARIA APG'nin tam roving-tabindex/ok-tuşu navigasyonu
+  bilerek İCAT EDİLMEDİ, native Tab+Enter/Space yeterli kabul edildi).
+- `04ed45c` — `auth.spec.ts` (3 satır) + `invite-issuance.spec.ts` (1
+  satır) mod-değiştirme seçicisi güncellendi + 3 yeni test.
+
+**Çeviri kararları (plandan, implementasyona ONAYLANMIŞ haliyle girdi):**
+"giriş yap"→"log in", "kayıt ol"→"sign up", "kayıt ol'a geç"→"sign up"
+(landing'in KENDİ "+ sign up" outline CTA'sıyla birebir), "ana sayfaya
+dön"→"back to home", "yardım"→"help", placeholder'lar İngilizce örneklere
+çevrildi (`you@example.com`, `captain_49`).
+
+**İkincil mod-değiştirme butonu simetrik uygulandı** (kullanıcı onayı) —
+brief SADECE login sekmesi için "kayıt ol'a geç" yazmıştı, register
+sekmesi için tekrarlamamıştı; bugünkü davranışla (her iki yönde de
+switch-butonu) tutarlılık için HER İKİ sekmede de eklendi.
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz, `npm run build` başarılı
+(`/app` hâlâ `○ Static`), mock'lu Playwright süiti 129/129 yeşil (34+3
+yeni test dahil), `e2e-fullstack` 10/10 (yerel Postgres `docker compose
+up`+migrate+seed+backfill zinciriyle taze hazırlandı — `invite-issuance.
+spec.ts`'in gerçek sekme tıklamasıyla signup akışı DOĞRULANDI), `apps/api`
+319/319. Görsel doğrulama: login/signup/forgot-password × masaüstü/375px
+mobil, gerçek Playwright ekran görüntüsüyle onaylandı — kart taşmıyor,
+aktif sekme görsel olarak ayırt edilebilir, canvas `opacity-50` ile
+landing'den gerçekten daha soluk.
