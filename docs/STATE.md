@@ -3,19 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-01 (M11a+M11b (A/D/E) main'de; M13 Slice A tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-01 (M11a+M11b (A/D/E)+M13 Slice A main'de; M13 Slice D tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü. Merge sırasında CI'da bulunan `backfill-room-members.ts`'in P2003 retry bug'ı da düzeltildi — bkz. Tuzaklar.
-- **M11b Slice A/D/E main'de** (PR #106-108, kullanıcı merge etti) — landing, legal sayfalar, `/app`'in giriş/kayıt ekranı hepsi aynı görsel dili taşıyor.
-- **2026-09-01: YENİ M13 Slice A (panel mekanizması: SidePanel → ortada modal, 7 panel) TAMAMLANDI, `feat/centered-modal-panels` dalında (main'den, M11b'den BAĞIMSIZ), push bekliyor.** Yeni `CenteredModal.tsx` — `SidePanel.tsx`'in `useFocusTrap`/portal mantığı DEĞİŞMEDEN yeniden kullanıldı, ortada+fade-scale+`bg-black/80`+paylaşılan "KOQEP · başlık" + ✕. `moderation`/mobil `sidebar` ESKİ mekanizmada KALDI (iki mekanizma bir arada). Plan modunda kapsam turunda YAKALANMAMIŞ bir kırılma bulundu: `side-panel.spec.ts` TOTP'yi temsilci kullanıyordu, TOTP taşınınca `moderation`'a geçirildi. Mock'lu süit 135/135 + fullstack 8/10 (2 bilinen dev-fixture testi hariç) + `apps/api` 319/319 yeşil. Detay `docs/milestones/M13-panel-redesign.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12, M13 Slice B/C/D sırada.
+- **M11b Slice A/D/E + M13 Slice A main'de** (PR #106-109, kullanıcı merge etti) — landing/legal/login aynı görsel dili taşıyor; panel mekanizması (`CenteredModal.tsx`, 7 panel) ortada-modal'a geçti, `moderation`/mobil `sidebar` ESKİ `SidePanel` mekanizmasında kaldı.
+- **2026-09-01: M13 Slice D (panel + login İÇERİK görsel dili: buton/input) TAMAMLANDI, `feat/panel-content-styling` dalında (main'den, BAĞIMSIZ), push bekliyor.** `formStyles.ts`'e `filledInputClassName` eklendi (`inputClassName` DEĞİŞMEDEN — moderasyon/mesaj-düzenleme/oda-arama etkilenmiyor), panellerin+login'in input'ları dolgu aldı, birincil form-submit butonları landing'in solid CTA'sına geçti (delete-account'ın 2 butonu KIRMIZI kaldı). Mock'lu süit 135/135 + fullstack 8/10 (2 bilinen dev-fixture testi hariç) + `apps/api` 319/319 yeşil. Detay `docs/milestones/M13-panel-redesign.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12, M13 Slice B/C/E sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/centered-modal-panels` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M13 Slice B (AccountMenu "settings" paneli) ya da başka bir milestone seçilip plan modu başlatılacak.
+- **Görev:** `feat/panel-content-styling` (main'den, 1 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M13 Slice B (AccountMenu "settings" paneli), Slice C (feedback paneli) ya da Slice E (profile layout, artık Slice D'nin buton/input tabanı üzerine kurulabilir) seçilip plan modu başlatılacak.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

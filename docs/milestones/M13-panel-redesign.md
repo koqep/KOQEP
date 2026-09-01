@@ -54,8 +54,12 @@ taşındı).
       Detay Plan notları'nda.
 - [ ] **Slice B — AccountMenu "settings" paneli.**
 - [ ] **Slice C — Yeni feedback paneli.**
-- [ ] **Slice D — Profile paneli görsel yeniden tasarımı** (yeni istatistik
-      YOK — sadece görsel dil + ASCII avatar + seviye/XP çubuğu).
+- [x] **Slice D — Panel + login içerik görsel dili (buton/input).**
+      Tamamlandı (2026-09-01), `feat/panel-content-styling` dalında.
+      Detay Plan notları'nda.
+- [ ] **Slice E — Profile paneli görsel yeniden tasarımı** (yeni istatistik
+      YOK — sadece görsel dil + ASCII avatar + seviye/XP çubuğu; eski
+      "Slice D").
 
 ## Risks
 - **Test blast radius'u bu oturumun EN BÜYÜĞÜ** — 12 e2e dosyası panel
@@ -272,3 +276,132 @@ SidePanel, DEĞİŞMEDİĞİNİ doğrulamak için) gerçek Playwright ekran
 görüntüsüyle onaylandı — backdrop opaklığı, ortalanma, ✕ butonu, başlık
 formatı, moderation'ın hâlâ sağdan kayan+`# moderation`+"close" metniyle
 göründüğü gözle teyit edildi.
+
+### Slice D kapsam turu (2026-09-01) — panel + login içerik görsel dili
+
+Kullanıcı Slice A'nın SADECE dış kabuğu (konum/arka plan/başlık)
+değiştirdiğini, panel İÇERİKLERİNİN (form alanları, butonlar, input
+stilleri) hâlâ eski tasarımda olduğunu belirtti — landing/login/legal'in
+görsel diline (pill butonlar, `#0a0a0a` input arka planı, ince gri
+çerçeveler) geçmesi istendi. Kod okunarak doğrulanan bulgular, ikisi
+gerçek bir sürpriz:
+
+**"Pill buton" iddiası kod tabanıyla ÇELİŞİYORDU.** Landing'in CTA'ları,
+`AuthView.tsx`'in submit/secondary butonları, `LegalPageShell.tsx`'in
+footer linkleri — ÜÇÜ de KÖŞELİ (`rounded` class'ı kod tabanının
+TAMAMINDA hiç kullanılmıyor, tek istisna `MessageContent.tsx`'in inline
+kod bloğu, `rounded` = 0.25rem, pill DEĞİL). Yani "pill" gevşek bir
+tanımdı — `AskUserQuestion` ile netleşti: asıl istenen landing/login/
+legal'in ZATEN kullandığı köşeli solid (`bg-neutral-200`) + outline
+(`border-neutral-800`) buton çiftini panellere taşımak, YENİ bir şekil
+icat edilmiyor.
+
+**"`#0a0a0a` input arka planı" da HİÇBİR yerde yoktu — landing'de hiç
+input yok, legal'de hiç input yok, `AuthView.tsx`'in KENDİ input'ları
+bile panellerle AYNI paylaşılan `inputClassName`'i (`bg-transparent`,
+dolgu YOK) kullanıyor.** Yani bu istek bir MEVCUT deseni tekrarlamak
+değil, GERÇEKTEN yeni bir karardı. `#0a0a0a` kendisi de yeni bir renk
+DEĞİL — Tailwind'in `neutral-950`'siyle BİREBİR aynı (zaten
+`bg-neutral-950`/`text-neutral-950` olarak kod tabanında kullanılıyor,
+ör. `AuthView.tsx`'in submit butonunun metin rengi).
+
+**"İnce gri çerçeveler" ZATEN mevcut** — `inputClassName`
+(`formStyles.ts`) zaten `border border-neutral-800` taşıyor, panellerin
+KENDİ butonları da zaten aynı `border-neutral-800`/`hover:border-neutral-600`
+paletini kullanıyor. Bu üçüncü ayak, en az değişiklik gerektiren.
+
+**Gerçek risk — `inputClassName` 11 dosyada paylaşılıyor, SADECE 7
+panel+login DEĞİL:** grep ile doğrulandı — `MessageItem.tsx` (mesaj
+DÜZENLEME input'u, sohbet akışının İÇİNDE, panel bile değil),
+`ModerationQueueView.tsx`/`AssignModeratorSection.tsx`/
+`RoomModerationSection.tsx` (moderasyon formları) ve `RoomSidebar.tsx`
+(oda arama kutusu) de AYNI sabiti kullanıyor. Moderasyon + sidebar,
+Slice A'da BİLEREK eski mekanizmada/görsel dilde bırakılmıştı —
+paylaşılan `inputClassName`'in KENDİSİNİ değiştirmek bu kararı KISMEN
+tersine çevirirdi (mekanizma değil ama görsel dil değişirdi).
+
+**Açık kararlar (implementasyon planından ÖNCE netleşmeli, `AskUserQuestion`
+ile soruldu — hepsi önerilen seçenek):**
+1. "Pill" = mevcut köşeli solid/outline çifti (YENİ bir şekil icat
+   edilmiyor, sadece panellere taşınıyor).
+2. Input dolgusu HER YERDE (`formStyles.ts`'in `inputClassName`'i
+   KENDİSİ değişiyor) — panel+login+mesaj düzenleme+moderasyon+oda arama
+   AYNI anda etkileniyor.
+3. Ardından ayrı bir soruyla netleşti: `inputClassName`'in KENDİSİ
+   DEĞİL, SADECE panel+login input'larına YENİ bir ek class (ör.
+   `inputClassName + " bg-neutral-950"`) eklensin — mesaj
+   düzenleme/moderasyon/oda arama DOKUNULMAZ, Slice A'nın "moderasyon+
+   sidebar eski kalıyor" kararıyla TUTARLI. (Not: kullanıcı önce "her
+   yerde" dedi, SONRA blast radius'un 11 dosyaya (moderasyon/sidebar/
+   mesaj-düzenleme dahil) yayıldığı gösterilince "sadece panel+login"e
+   daraltıldı — iki soru birbirini takip etti, ikinci soru ilkini
+   netleştirdi.)
+
+**Kapsam (netleşen haliyle):**
+- 7 panel (`CreateRoomView`/`DiscoverRoomsView`/`ProfileView`/
+  `TotpSettingsView`/`BlockedUsersView`/`InviteView`/`DeleteAccountView`)
+  + `AuthView.tsx` (M11b Slice E, YENİ tamamlandı — bu slice ONA DA
+  dokunuyor, cross-milestone bir dokunuş).
+- Panellerin/login'in input'ları: `inputClassName`'in ÜSTÜNE
+  `bg-neutral-950` eklenir (`formStyles.ts` DEĞİŞMİYOR).
+- Panellerin BİRİNCİL form-submit butonları (create/block/enable/start
+  setup/turn off authenticator/saved it) landing'in solid CTA
+  desenine (`bg-neutral-200 px-4 py-1.5 text-neutral-950
+  hover:bg-neutral-100`) geçiyor. `DeleteAccountView`'ın İKİ butonu
+  (`delete my account`/`permanently delete my account`) KIRMIZI/
+  destructive renklendirmesini KORUYOR (sadece boyut/padding
+  hizalanıyor, `bg-neutral-200`'e DÖNÜŞMÜYOR — tehlike rengi
+  seyreltilmemeli).
+- Liste-içi satır aksiyonları (`join`/`unblock`/`show more`) DEĞİŞMİYOR
+  — bunlar panelin "birincil" eylemi değil, mevcut sade metin-link stili
+  KALIYOR (yeni bir buton hiyerarşisi icat edilmiyor).
+
+**Test etkisi — SIFIR beklenen risk:** grep ile doğrulandı, 7 panelin
+HİÇBİR butonu/input'u className/style/renk üzerinden test edilmiyor —
+TÜMÜ `getByRole("button", {name: <görünür metin>})` ile metin üzerinden
+seçiliyor, hiçbir buton metni DEĞİŞMİYOR (sadece className). Aynı düşük-
+risk deseni bu oturumun önceki slice'larında (D/E) zaten doğrulanmıştı.
+
+**Kaba saat tahmini:** 7 panel + AuthView'ın buton/input className
+güncellemesi (~2-3h) + görsel doğrulama (7 panel + login, masaüstü+375px
+mobil, ekran görüntüsü) (~1.5-2h) ≈ **~4-5h** — bu oturumun en küçük
+slice'larından biri, saf className değişikliği.
+
+### Slice D implementasyonu (2026-09-01) — tamamlandı
+
+Plan modu (mevcut araştırma yeterliydi, yeni Explore agent'ı gerekmedi —
+tek bir ek kontrol: `PasswordInput.tsx`'in TÜM tüketicileri) → kullanıcı
+onayı → uygulama, `feat/panel-content-styling` dalında (main'den, diğer
+M13 slice'larından BAĞIMSIZ) 1 commit (`14edd32`):
+
+- `formStyles.ts`'e `filledInputClassName` eklendi (`inputClassName`
+  DEĞİŞMEDEN).
+- `PasswordInput.tsx`'e opsiyonel `filled` prop'u eklendi (varsayılan
+  `false`) — plan modunda `PasswordInput.tsx`'in 4 tüketicisi olduğu
+  bulundu (`AuthView.tsx`/`DeleteAccountView.tsx` kapsamda,
+  `ResetPasswordView.tsx`/`AssignModeratorSection.tsx` DEĞİL) — opt-in
+  prop deseni bu ikisinin davranışını DEĞİŞTİRMEDEN korudu.
+- 5 panel dosyası (`CreateRoomView`/`TotpSettingsView`/`BlockedUsersView`/
+  `DeleteAccountView`) + `AuthView.tsx`: input'lar `filledInputClassName`'e,
+  birincil form-submit butonları landing'in solid CTA'sına geçti.
+  `DeleteAccountView`'ın 2 butonu KIRMIZI kaldı (sadece padding
+  hizalandı). `ProfileView.tsx`/`InviteView.tsx`/`DiscoverRoomsView.tsx`:
+  değişiklik yok (input/buton içermiyor ya da liste-aksiyonu-only).
+
+**Görsel doğrulamada bulunan, kod DEĞİŞİKLİĞİ gerektirmeyen bir gözlem:**
+`filledInputClassName`'in `bg-neutral-950` dolgusu, hem `CenteredModal.tsx`
+hem `AuthPageShell.tsx`'in KENDİ arka planı ZATEN `bg-neutral-950`
+olduğu için ekran görüntülerinde GÖRSEL OLARAK ayırt edilmiyor — input'un
+tek belirgin sınırı hâlâ `border-neutral-800` çerçevesi (`#0a0a0a`
+kararı LİTERAL olarak doğru uygulandı, sadece pratik kontrastı bu
+bağlamda düşük). Kullanıcıya ekran görüntüsüyle bildirildi, kod
+DEĞİŞTİRİLMEDİ — daha açık bir dolgu (ör. `neutral-900`) istenirse ayrı
+bir küçük düzeltme.
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz, `npm run build` başarılı,
+mock'lu Playwright süiti 135/135 yeşil (öngörülen SIFIR risk doğrulandı),
+`e2e-fullstack` 8/10 (2 bilinen dev-fixture testi hariç, KOD REGRESYONU
+DEĞİL), `apps/api` 319/319. Görsel doğrulama: create-room (dolgulu
+input + solid CTA), login ekranı (email + `PasswordInput`'un `filled`
+hali), delete-account (2 kırmızı butonun rengini KORUDUĞU) gerçek
+Playwright ekran görüntüsüyle onaylandı.
