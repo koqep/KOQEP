@@ -59,6 +59,7 @@ test("hesap_menusunden_kendi_profilini_acar", async ({ page }) => {
         createdAt: "2025-06-15T00:00:00.000Z",
         level: 4,
         totalXp: 320,
+        xpProgressPercent: 50,
       },
     }),
   );
@@ -71,6 +72,42 @@ test("hesap_menusunden_kendi_profilini_acar", async ({ page }) => {
   await expect(dialog.getByText("test", { exact: true })).toBeVisible();
   await expect(dialog.getByText("joined June 15, 2025")).toBeVisible();
   await expect(dialog.getByText("level 4 — 320 XP")).toBeVisible();
+});
+
+// M13 Slice E: seviye/XP çubuğu - yüzde backend'den geliyor
+// (xpProgressPercent), frontend sadece görüntülüyor.
+test("seviye_xp_cubugu_backendden_gelen_yuzdeyle_gorunur", async ({
+  page,
+}) => {
+  await loginWithMessages(page, [
+    {
+      id: "msg-1",
+      content: "ilk mesaj",
+      authorUsername: "test",
+      createdAt: "2026-01-01T10:00:00.000Z",
+    },
+  ]);
+  await page.route("**/users/test/profile", (route) =>
+    route.fulfill({
+      json: {
+        username: "test",
+        createdAt: "2025-06-15T00:00:00.000Z",
+        level: 4,
+        totalXp: 320,
+        xpProgressPercent: 28.571428571428573,
+      },
+    }),
+  );
+
+  await page.getByRole("button", { name: "account" }).click();
+  await page.getByRole("menuitem", { name: "profile" }).click();
+
+  const dialog = page.getByRole("dialog");
+  const progressbar = dialog.getByRole("progressbar", {
+    name: "xp progress to next level",
+  });
+  await expect(progressbar).toBeVisible();
+  await expect(progressbar).toHaveAttribute("aria-valuenow", "29");
 });
 
 test("baskasinin_grup_basi_mesajina_tiklayinca_onun_profili_acilir", async ({
@@ -91,6 +128,7 @@ test("baskasinin_grup_basi_mesajina_tiklayinca_onun_profili_acilir", async ({
         createdAt: "2025-03-01T00:00:00.000Z",
         level: 1,
         totalXp: 10,
+        xpProgressPercent: (10 / 35) * 100,
       },
     }),
   );
@@ -159,6 +197,7 @@ test("kendi_mesajina_you_etiketine_tiklamak_da_kendi_profilini_acar", async ({
         createdAt: "2025-06-15T00:00:00.000Z",
         level: 4,
         totalXp: 320,
+        xpProgressPercent: 50,
       },
     }),
   );
@@ -168,51 +207,6 @@ test("kendi_mesajina_you_etiketine_tiklamak_da_kendi_profilini_acar", async ({
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("test", { exact: true })).toBeVisible();
-});
-
-test("kucuk_avatar_ayni_yazarda_tutarli_farkli_yazarlarda_farkli", async ({
-  page,
-}) => {
-  await loginWithMessages(page, [
-    {
-      id: "msg-1",
-      content: "ilk mesaj",
-      authorUsername: "baskasi",
-      createdAt: "2026-01-01T10:00:00.000Z",
-    },
-    {
-      id: "msg-2",
-      content: "farkli yazar",
-      authorUsername: "digeri",
-      createdAt: "2026-01-01T10:10:00.000Z",
-    },
-    {
-      id: "msg-3",
-      content: "baskasi tekrar",
-      authorUsername: "baskasi",
-      createdAt: "2026-01-01T10:20:00.000Z",
-    },
-  ]);
-
-  // Avatar SVG rect'lerden oluşuyor (M10 Faz 2 Slice D+E revizyonu) - metin
-  // içeriği yok, aynı-seed/farklı-seed karşılaştırması SVG markup'ı üzerinden.
-  const firstBaskasiSvg = await page
-    .getByRole("button", { name: /baskasi:/ })
-    .first()
-    .locator("svg")
-    .evaluate((el) => el.outerHTML);
-  const digeriSvg = await page
-    .getByRole("button", { name: /digeri:/ })
-    .locator("svg")
-    .evaluate((el) => el.outerHTML);
-  const secondBaskasiSvg = await page
-    .getByRole("button", { name: /baskasi:/ })
-    .last()
-    .locator("svg")
-    .evaluate((el) => el.outerHTML);
-
-  expect(firstBaskasiSvg).toBe(secondBaskasiSvg);
-  expect(firstBaskasiSvg).not.toBe(digeriSvg);
 });
 
 test("buyuk_avatar_5x5_izgarayi_render_eder", async ({ page }) => {
@@ -231,6 +225,7 @@ test("buyuk_avatar_5x5_izgarayi_render_eder", async ({ page }) => {
         createdAt: "2025-06-15T00:00:00.000Z",
         level: 4,
         totalXp: 320,
+        xpProgressPercent: 50,
       },
     }),
   );

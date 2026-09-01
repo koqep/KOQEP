@@ -69,6 +69,31 @@ describe('UsersService', () => {
       createdAt,
       level: 3,
       totalXp: 150,
+      xpProgressPercent: (10 / 35) * 100, // 150 % 35 = 10
+    });
+  });
+
+  // M13 Slice E: XP_PER_LEVEL frontend'e hiç açılmıyor - yüzde burada
+  // hesaplanıp gönderiliyor, tam kata denk gelen bir totalXp (bir sonraki
+  // seviyeye YENİ geçmiş) %0 dönmeli.
+  it('getPublicProfile_xpProgressPercent_tam_seviye_katinda_sifir_doner', async () => {
+    const prismaMock: Partial<PrismaService> = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          username: 'tazekullanici',
+          createdAt: new Date('2026-01-01'),
+          level: 2,
+          totalXp: 70, // 2 * 35, tam kat
+        }),
+      } as unknown as PrismaService['user'],
+    };
+
+    const service = buildService(prismaMock);
+
+    await expect(
+      service.getPublicProfile('tazekullanici'),
+    ).resolves.toMatchObject({
+      xpProgressPercent: 0,
     });
   });
 
