@@ -17,10 +17,13 @@ async function loginWithoutTotp(page: import("@playwright/test").Page) {
 }
 
 // M10 Faz 2 Slice B: "two-factor authentication" artık TopBar'ın
-// "account ▾" açılır menüsünün İÇİNDE - önce menüyü açmak gerekiyor.
+// "account ▾" açılır menüsünün İÇİNDE. M13 Slice B: artık DOĞRUDAN bir
+// menuitem DEĞİL - önce "settings" panelini açmak, SONRA oradaki
+// (role="menuitem" DEĞİL role="button") satıra tıklamak gerekiyor.
 async function openTotpPanel(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
+  await page.getByRole("menuitem", { name: "settings" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
 }
 
 async function loginWithTotpEnabled(page: import("@playwright/test").Page) {

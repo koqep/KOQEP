@@ -13,10 +13,12 @@ async function login(page: import("@playwright/test").Page) {
 }
 
 // M10 Faz 2 Slice B: "invites" artık TopBar'ın "account ▾" açılır menüsünün
-// İÇİNDE - önce menüyü açmak gerekiyor.
+// İÇİNDE - önce menüyü açmak gerekiyor. M13 Slice B: artık "settings"
+// panelinin İÇİNDE (role="button", role="menuitem" DEĞİL).
 async function openInvitesPanel(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "invites" }).click();
+  await page.getByRole("menuitem", { name: "settings" }).click();
+  await page.getByRole("button", { name: "invites" }).click();
 }
 
 test("henuz_kazanilmis_davet_yoksa_aciklayici_bos_durum_gosterir", async ({
