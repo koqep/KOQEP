@@ -11,10 +11,7 @@ interface Props {
   onOpenModeration: () => void;
   username: string | null;
   onOpenProfile: (username: string) => void;
-  onOpenTotp: () => void;
-  onOpenBlocked: () => void;
-  onOpenInvites: () => void;
-  onOpenDeleteAccount: () => void;
+  onOpenSettings: () => void;
   onLogout: () => void;
 }
 
@@ -27,10 +24,7 @@ export default function TopBar({
   onOpenModeration,
   username,
   onOpenProfile,
-  onOpenTotp,
-  onOpenBlocked,
-  onOpenInvites,
-  onOpenDeleteAccount,
+  onOpenSettings,
   onLogout,
 }: Props) {
   return (
@@ -73,10 +67,7 @@ export default function TopBar({
         <AccountMenu
           username={username}
           onOpenProfile={onOpenProfile}
-          onOpenTotp={onOpenTotp}
-          onOpenBlocked={onOpenBlocked}
-          onOpenInvites={onOpenInvites}
-          onOpenDeleteAccount={onOpenDeleteAccount}
+          onOpenSettings={onOpenSettings}
           onLogout={onLogout}
         />
       </div>
