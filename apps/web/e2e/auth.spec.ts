@@ -19,7 +19,7 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
   );
 
   await page.goto("/app");
-  await page.getByRole("button", { name: "don't have an account? sign up" }).click();
+  await page.getByRole("tab", { name: "sign up" }).click();
 
   await page.getByLabel("invite code").fill("DEV-INVITE-1");
   await page.getByLabel("email").fill("yeni@koqep.local");
@@ -42,7 +42,7 @@ test("onay_kutusu_isaretlenmeden_kayit_butonu_devre_disi_kalir", async ({
   page,
 }) => {
   await page.goto("/app");
-  await page.getByRole("button", { name: "don't have an account? sign up" }).click();
+  await page.getByRole("tab", { name: "sign up" }).click();
 
   await page.getByLabel("invite code").fill("DEV-INVITE-1");
   await page.getByLabel("email").fill("yeni@koqep.local");
@@ -58,7 +58,7 @@ test("kayit_ekraninda_kullanim_sartlari_ve_gizlilik_linkleri_dogru_hedefe_gider"
   page,
 }) => {
   await page.goto("/app");
-  await page.getByRole("button", { name: "don't have an account? sign up" }).click();
+  await page.getByRole("tab", { name: "sign up" }).click();
 
   await expect(page.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
     "href",
@@ -170,4 +170,41 @@ test("sifremi_unuttum_gonderince_notr_mesaj_gosterir", async ({ page }) => {
 
   await page.getByRole("button", { name: "back to login" }).click();
   await expect(page.getByRole("button", { name: "log in" })).toBeVisible();
+});
+
+// M11b Slice E: giriş/kayıt artık sekmeli bir kart - aktif sekme
+// aria-selected="true" taşımalı, tıklanınca form alanları değişmeli.
+test("sekme_secili_durumu_dogru_yansitir_ve_tiklaninca_form_degisir", async ({
+  page,
+}) => {
+  await page.goto("/app");
+
+  const loginTab = page.getByRole("tab", { name: "log in" });
+  const signupTab = page.getByRole("tab", { name: "sign up" });
+  await expect(loginTab).toHaveAttribute("aria-selected", "true");
+  await expect(signupTab).toHaveAttribute("aria-selected", "false");
+  await expect(page.getByLabel("invite code")).toHaveCount(0);
+
+  await signupTab.click();
+  await expect(loginTab).toHaveAttribute("aria-selected", "false");
+  await expect(signupTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("invite code")).toBeVisible();
+});
+
+test("sifremi_unuttum_modunda_sekme_cubugu_gizlenir", async ({ page }) => {
+  await page.goto("/app");
+
+  await page.getByRole("button", { name: "forgot your password?" }).click();
+  await expect(page.getByRole("tablist")).toHaveCount(0);
+});
+
+// M11b Slice A/D'deki AYNI desen: dekoratif ASCII arka planı ekran
+// okuyucudan gizli olmalı.
+test("dekoratif_canvas_arka_plani_ekran_okuyucudan_gizli", async ({
+  page,
+}) => {
+  await page.goto("/app");
+
+  const canvas = page.locator("canvas");
+  await expect(canvas).toHaveAttribute("aria-hidden", "true");
 });

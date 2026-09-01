@@ -57,9 +57,7 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
   const newUserContext = await browser.newContext();
   const newUserPage = await newUserContext.newPage();
   await newUserPage.goto("/app");
-  await newUserPage
-    .getByRole("button", { name: "don't have an account? sign up" })
-    .click();
+  await newUserPage.getByRole("tab", { name: "sign up" }).click();
 
   await newUserPage.getByLabel("invite code").fill(code as string);
   await newUserPage
