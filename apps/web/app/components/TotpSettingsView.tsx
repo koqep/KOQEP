@@ -10,14 +10,11 @@ import {
   type TotpSetup,
 } from "../../lib/api";
 import { inputClassName } from "./formStyles";
-import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
   initialEnabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
-  onClose: () => void;
-  titleId: string;
 }
 
 // M6 Slice D: qrcode-terminal SADECE ASCII üretiyordu (telefon kamerasıyla
@@ -30,8 +27,6 @@ export default function TotpSettingsView({
   accessToken,
   initialEnabled,
   onEnabledChange,
-  onClose,
-  titleId,
 }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [setup, setSetup] = useState<TotpSetup | null>(null);
@@ -40,7 +35,6 @@ export default function TotpSettingsView({
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   function markEnabled(value: boolean) {
     setEnabled(value);
@@ -106,19 +100,6 @@ export default function TotpSettingsView({
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> two-factor authentication
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted hover:text-neutral-400"
-        >
-          close
-        </button>
-      </div>
-
       {recoveryCodes ? (
         <div className="flex flex-col gap-3">
           <p className="text-red-400">

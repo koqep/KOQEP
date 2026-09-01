@@ -4,21 +4,13 @@ import { useState, type FormEvent } from "react";
 import { deleteAccount, ApiError } from "../../lib/api";
 import { inputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
-import { useFocusOnMount } from "./useFocusOnMount";
 
 interface Props {
   accessToken: string;
   onDeleted: () => void;
-  onClose: () => void;
-  titleId: string;
 }
 
-export default function DeleteAccountView({
-  accessToken,
-  onDeleted,
-  onClose,
-  titleId,
-}: Props) {
+export default function DeleteAccountView({ accessToken, onDeleted }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
@@ -29,7 +21,6 @@ export default function DeleteAccountView({
   const [redactMessageContent, setRedactMessageContent] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const headingRef = useFocusOnMount<HTMLHeadingElement>();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,19 +51,6 @@ export default function DeleteAccountView({
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> delete account
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted hover:text-neutral-400"
-        >
-          close
-        </button>
-      </div>
-
       {confirming ? (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <p className="text-red-400">This is permanent.</p>
