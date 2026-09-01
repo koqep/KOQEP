@@ -44,11 +44,12 @@ taşındı).
       feedback/log out üst seviyede kalıyor (feedback Slice C'nin işi,
       henüz gerçek bir panel değil — bu yüzden "settings" altına
       TAŞINMADI).
-- [ ] Yeni bir "feedback" paneli var (bugünkü düz `mailto:` linkinin
-      YERİNE) — açıklama + e-posta gösterimi + "e-posta yaz" butonu.
-- [ ] Profile paneli: seviye/XP/katılma tarihi ile zenginleşiyor — mesaj
+- [x] Yeni bir "feedback" paneli var (bugünkü düz `mailto:` linkinin
+      YERİNE) — açıklama + e-posta gösterimi + "write an email" butonu.
+- [x] Profile paneli: seviye/XP/katılma tarihi ile zenginleşiyor — mesaj
       sayısı/davet sayısı/"davet eden" BU TURDA YOK (kapsam dışı, yukarı
-      bkz.).
+      bkz.). Slice E'de tamamlandı, checkbox o sırada işaretlenmemişti —
+      şimdi düzeltildi.
 
 ## Tasks
 - [x] **Slice A — Panel mekanizması (SidePanel → ortada modal, 8 panel).**
@@ -57,7 +58,8 @@ taşındı).
 - [x] **Slice B — AccountMenu "settings" paneli.** Tamamlandı
       (2026-09-01), `feat/account-settings-panel` dalında. Detay Plan
       notları'nda.
-- [ ] **Slice C — Yeni feedback paneli.**
+- [x] **Slice C — Yeni feedback paneli.** Tamamlandı (2026-09-01),
+      `feat/feedback-panel` dalında. Detay Plan notları'nda.
 - [x] **Slice D — Panel + login içerik görsel dili (buton/input).**
       Tamamlandı (2026-09-01), `feat/panel-content-styling` dalında.
       Detay Plan notları'nda.
@@ -516,3 +518,54 @@ paneli (4 satır) + settings'ten `totp`'a geçişin ANİMASYONSUZ/akıcı
 olduğu VE odağın gerçekten alt-panelin başlığına düştüğü (odak-fix'inin
 gerçekten çalıştığının kanıtı, `toBeFocused()` assertion'ıyla da
 doğrulandı) gerçek Playwright ekran görüntüsüyle onaylandı.
+
+### Slice C implementasyonu (2026-09-01) — tamamlandı
+
+Kapsam net, plan modunda yeni bir Explore/Plan agent'ı GEREKMEDİ (Slice B
+zaten AYNI panel mekanizması + `AccountMenu`→`TopBar`→`RoomView` plumbing
+hattını inşa etmişti, bu slice AYNI deseni 6. panel olarak uyguladı) —
+tek araştırma: mevcut mailto linkinin (`AccountMenu.tsx`) ve panellerin
+solid-CTA buton deseninin (Slice D, `bg-neutral-200 px-4 py-1.5
+text-neutral-950 hover:bg-neutral-100`) kod OKUNARAK doğrulanması.
+
+Uygulama, `feat/feedback-panel` dalında (main'den, diğer M13
+slice'larından BAĞIMSIZ) 2 commit:
+- `1ca7f91` — yeni `FeedbackView.tsx` (statik panel — `accessToken`
+  gerekmiyor, veri çekmiyor): açıklama paragrafı + `FEEDBACK_EMAIL`
+  metni (`select-all font-mono`) + Slice D'nin solid CTA sınıfını
+  taşıyan bir "write an email" `mailto:` linki. `AccountMenu.tsx`'in
+  `feedback` satırı `<a href="mailto:...">`'dan `settings`'le AYNI
+  desende bir `<button role="menuitem" onClick={() =>
+  select(onOpenFeedback)}>`'a değişti — artık DOĞRUDAN harici linke
+  gitmiyor, panel açıyor. `FEEDBACK_EMAIL` importu `AccountMenu.tsx`'ten
+  `FeedbackView.tsx`'e taşındı. `RoomView.tsx`'e `"feedback"`
+  `ActivePanel` değeri + `PANEL_TITLES` girdisi + ternary dalı eklendi.
+- `634ef28` — test dosyaları (aşağıda).
+
+`FEEDBACK_EMAIL` sabiti (`docs/BACKLOG.md` A19'un bilinçli kısıtı,
+kişisel gelen kutusu) DEĞİŞMEDİ — sadece sunum değişti (linkin
+`href`'inde gizli → panelde görünür metin + buton).
+
+**Test değişiklikleri:** yeni `apps/web/e2e/feedback-panel.spec.ts`
+(panel açılıyor + açıklama/e-posta görünüyor, "write an email"
+butonunun `href`'i doğru, kapat butonu sohbet ekranına dönüyor) +
+`clickable-links.spec.ts`'in bir yorum satırı güncellendi (feedback
+artık menüde bir `<a>` değil, gerçek mailto: linki panelin içinde —
+assertion'ın KENDİSİ değişmedi).
+
+**Ayrıca bu turda fark edilip düzeltildi:** M13'ün 4. acceptance
+criteria'sı ("profile paneli seviye/XP/katılma tarihi ile
+zenginleşiyor") Slice E'de zaten TAMAMLANMIŞTI (`ProfileView.tsx`
+level/XP/join-date'i zaten gösteriyor) ama checkbox o sırada
+işaretlenmemiş kalmıştı — bu turda düzeltildi.
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz (her adımdan sonra),
+`npm run build` başarılı, mock'lu Playwright süiti 140/140 yeşil (İKİ
+tam koşum — 3 yeni test eklendi), `e2e-fullstack` 10/10 (reseed
+sonrası), `apps/api` 320/320 (bu slice backend'e hiç dokunmuyor,
+etkilenmedi). Görsel doğrulama: account menüsünde `feedback` girişinin
+artık düz bir menü öğesi olduğu (mailto linki DEĞİL) + feedback
+panelinin (açıklama + e-posta + "write an email" butonu, Slice D'nin
+solid CTA'sıyla tutarlı) gerçek Playwright ekran görüntüsüyle onaylandı.
+
+**M13'ün TÜM dilimleri (A/B/C/D/E) artık tamamlandı.**
