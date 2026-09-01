@@ -96,10 +96,25 @@ test("mobil_oda_listesi_hamburger_ile_acilir_oda_secilince_kapanir", async ({
 
 // M10 Faz 2 Slice A: SidePanel'in w-full max-w-md kombinasyonu 375px'te
 // AYRI bir media query olmadan doğal olarak tam ekrana düşmeli.
-// M10 Faz 2 Slice B: "two-factor authentication" artık "account ▾"
-// menüsünün içinde - önce menüyü açmak gerekiyor.
+// M13 Slice A: temsilci artık "moderation" - TOTP CenteredModal'a
+// taşındı (bilerek FARKLI mobil davranış, kendi testi
+// centered-modal.spec.ts'te), SidePanel'de SADECE moderation + mobil
+// sidebar kaldı.
 test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
   await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "moderator",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/moderation/reports", (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route("**/rooms", (route) =>
     route.fulfill({
       json: [{ id: "room-1", name: "genel", status: "active" }],
@@ -115,8 +130,7 @@ test("side_panel_375px_genislikte_tam_ekrana_genisler", async ({ page }) => {
   await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 
-  await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 

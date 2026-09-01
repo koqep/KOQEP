@@ -1,16 +1,29 @@
 import { test, expect } from "@playwright/test";
 import { mockAuthSuccess, mockRoomEndpoints } from "./support/auth-mocks";
 
-// M10 Faz 2 Slice A: panel mekanizması (SidePanel) 7 farklı panelin ortak
-// sarmalayıcısı - TOTP panelini temsilci olarak kullanıyoruz, panel-özel
-// içerik zaten kendi spec dosyasında (totp-settings.spec.ts) test ediliyor.
-// M10 Faz 2 Slice B: TOTP artık "account ▾" menüsünün içinde - dönen
-// "trigger" artık menuitem DEĞİL, "account" butonunun kendisi (menuitem
-// panel açılır açılmaz DOM'dan kalkıyor, AccountMenu.tsx'in select()'i
-// odağı ÖNCE "account" butonuna veriyor - bkz. o dosyadaki yorum).
-async function loginAndOpenTotpPanel(page: import("@playwright/test").Page) {
+// M10 Faz 2 Slice A: panel mekanizması (SidePanel) ortak sarmalayıcı -
+// bir panelin TEMSİLCİ olarak kullanılması yeterli, panel-özel içerik
+// zaten kendi spec dosyasında test ediliyor.
+// M13 Slice A: temsilci artık "moderation" - TOTP (eski temsilci)
+// CenteredModal'a taşındı (bkz. centered-modal.spec.ts), SidePanel'de
+// SADECE moderation + mobil sidebar kaldı. Moderatör mock deseni
+// room-moderation.spec.ts'in login()'inden ödünç alındı.
+async function loginAndOpenModerationPanel(page: import("@playwright/test").Page) {
   await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "moderator",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/moderation/reports", (route) =>
+    route.fulfill({ json: [] }),
+  );
 
   await page.goto("/app");
   await page.getByLabel("email").fill("test@koqep.local");
@@ -18,15 +31,14 @@ async function loginAndOpenTotpPanel(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "log in" }).click();
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
 
-  const trigger = page.getByRole("button", { name: "account" });
+  const trigger = page.getByRole("button", { name: "moderation" });
   await trigger.click();
-  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   return trigger;
 }
 
 test("escape_ile_panel_kapanir_ve_odak_tetikleyiciye_doner", async ({ page }) => {
-  const trigger = await loginAndOpenTotpPanel(page);
+  const trigger = await loginAndOpenModerationPanel(page);
 
   await page.keyboard.press("Escape");
 
@@ -35,7 +47,7 @@ test("escape_ile_panel_kapanir_ve_odak_tetikleyiciye_doner", async ({ page }) =>
 });
 
 test("backdrop_tiklamasiyla_panel_kapanir", async ({ page }) => {
-  await loginAndOpenTotpPanel(page);
+  await loginAndOpenModerationPanel(page);
 
   // Panel sağda max-w-md - sol tarafta kalan backdrop'a tıkla.
   await page.mouse.click(10, 10);
@@ -44,7 +56,7 @@ test("backdrop_tiklamasiyla_panel_kapanir", async ({ page }) => {
 });
 
 test("panel_acikken_arka_plan_gorunur_ama_etkilesimsiz", async ({ page }) => {
-  await loginAndOpenTotpPanel(page);
+  await loginAndOpenModerationPanel(page);
 
   // Görünür kalıyor (dim, unmount olmuyor).
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
@@ -54,7 +66,7 @@ test("panel_acikken_arka_plan_gorunur_ama_etkilesimsiz", async ({ page }) => {
 });
 
 test("tab_dongusu_panel_icinde_kalir", async ({ page }) => {
-  const trigger = await loginAndOpenTotpPanel(page);
+  const trigger = await loginAndOpenModerationPanel(page);
   const dialog = page.getByRole("dialog");
 
   const focusable = dialog.locator(
@@ -78,6 +90,19 @@ test("panel_kapanip_acilinca_mesaj_listesi_scroll_pozisyonu_korunur", async ({
   page,
 }) => {
   await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "moderator",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/moderation/reports", (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route("**/rooms", (route) =>
     route.fulfill({
       json: [{ id: "room-1", name: "test-oda", status: "active" }],
@@ -107,8 +132,7 @@ test("panel_kapanip_acilinca_mesaj_listesi_scroll_pozisyonu_korunur", async ({
   await expect(page.getByText("mesaj 0")).toBeInViewport();
 
   // Panel aç/kapat - kırmızı test bunu unmount/remount'ta kaybederdi.
-  await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
+  await page.getByRole("button", { name: "moderation" }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
