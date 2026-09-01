@@ -29,6 +29,7 @@ import CreateRoomView from "./CreateRoomView";
 import DiscoverRoomsView from "./DiscoverRoomsView";
 import ModerationQueueView from "./ModerationQueueView";
 import ProfileView from "./ProfileView";
+import SettingsView from "./SettingsView";
 import TopBar from "./TopBar";
 import RoomSidebar from "./RoomSidebar";
 import ChatPanel from "./ChatPanel";
@@ -46,6 +47,11 @@ import CenteredModal from "./CenteredModal";
 // kalıyor (kullanıcı onayı - navigasyon deseni/sık-aksiyonlu içerik,
 // ortada-modal'a uygun değil), diğer 7 (+ henüz eklenmeyen "feedback",
 // Slice C) CenteredModal'a geçiyor - bkz. PANEL_TITLES.
+// M13 Slice B: "settings" AccountMenu'nün eski 4 ayrı öğesinin (totp/
+// blocked/invites/delete-account) yerine açılan bir gezinme paneli -
+// SettingsView'daki bir satıra tıklamak activePanel'i DOĞRUDAN o hedefe
+// çeviriyor (settings→totp gibi), CenteredModal UNMOUNT OLMUYOR (ikisi
+// de AYNI ternary dalına düşüyor), sadece title/children değişiyor.
 type ActivePanel =
   | "none"
   | "totp"
@@ -56,7 +62,8 @@ type ActivePanel =
   | "discover-rooms"
   | "moderation"
   | "sidebar"
-  | "profile";
+  | "profile"
+  | "settings";
 
 type CenteredModalPanel = Exclude<ActivePanel, "none" | "sidebar" | "moderation">;
 
@@ -72,6 +79,7 @@ const PANEL_TITLES: Record<CenteredModalPanel, string> = {
   "create-room": "new room",
   "discover-rooms": "discover rooms",
   profile: "profile",
+  settings: "settings",
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -780,10 +788,7 @@ export default function RoomView({
           onOpenModeration={() => setActivePanel("moderation")}
           username={myProfile?.username ?? null}
           onOpenProfile={handleViewProfile}
-          onOpenTotp={() => setActivePanel("totp")}
-          onOpenBlocked={() => setActivePanel("blocked")}
-          onOpenInvites={() => setActivePanel("invites")}
-          onOpenDeleteAccount={() => setActivePanel("delete-account")}
+          onOpenSettings={() => setActivePanel("settings")}
           onLogout={() => void handleLogout()}
         />
 
@@ -898,6 +903,8 @@ export default function RoomView({
               />
             ) : activePanel === "profile" && viewingProfileUsername ? (
               <ProfileView accessToken={accessToken} username={viewingProfileUsername} />
+            ) : activePanel === "settings" ? (
+              <SettingsView onNavigate={setActivePanel} />
             ) : null}
           </CenteredModal>
         )

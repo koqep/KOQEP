@@ -1,8 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useFocusOnMount } from "./useFocusOnMount";
 import { useFocusTrap } from "./useFocusTrap";
 
 // M13 Slice A: SidePanel.tsx'in devamı DEĞİL, ikisi bir arada yaşıyor -
@@ -32,7 +31,20 @@ export default function CenteredModal({
   const containerRef = useFocusTrap<HTMLDivElement>({
     onEscape: onRequestClose,
   });
-  const headingRef = useFocusOnMount<HTMLHeadingElement>();
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // M13 Slice B: useFocusOnMount (mount'ta BİR KEZ, [] dep) burada
+  // YETERSİZ - "settings" panelinden bir alt-panele (ör. "totp") geçiş
+  // AYNI CenteredModal örneğini korur (activePanel iki değer arasında
+  // "none"'a hiç uğramadan değişir, bileşen unmount OLMAZ), yani mount
+  // effect'i BİR DAHA ateşlenmez - odak, kaldırılan eski satırın
+  // butonundan document.body'e sessizce düşerdi. `[title]`'a bağlı bu
+  // effect HEM ilk mount'ta (her effect ilk render sonrası da çalışır)
+  // HEM her sonraki title değişiminde (yeni bir panele geçişte) başlığa
+  // odaklanıyor - tek effect, iki durumu da kapsıyor.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [title]);
 
   // document.body'e portal - SidePanel.tsx'teki AYNI containing-block
   // gerekçesi (RoomView.tsx'in <main>'i animate-fade-in taşıyor, bkz.

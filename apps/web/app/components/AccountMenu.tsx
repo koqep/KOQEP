@@ -7,10 +7,7 @@ import { useDismissableMenu } from "./useDismissableMenu";
 interface Props {
   username: string | null;
   onOpenProfile: (username: string) => void;
-  onOpenTotp: () => void;
-  onOpenBlocked: () => void;
-  onOpenInvites: () => void;
-  onOpenDeleteAccount: () => void;
+  onOpenSettings: () => void;
   onLogout: () => void;
 }
 
@@ -20,10 +17,7 @@ const menuItemClassName =
 export default function AccountMenu({
   username,
   onOpenProfile,
-  onOpenTotp,
-  onOpenBlocked,
-  onOpenInvites,
-  onOpenDeleteAccount,
+  onOpenSettings,
   onLogout,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,26 +81,10 @@ export default function AccountMenu({
           <button
             role="menuitem"
             type="button"
-            onClick={() => select(onOpenTotp)}
+            onClick={() => select(onOpenSettings)}
             className={menuItemClassName}
           >
-            two-factor authentication
-          </button>
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => select(onOpenBlocked)}
-            className={menuItemClassName}
-          >
-            blocked
-          </button>
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => select(onOpenInvites)}
-            className={menuItemClassName}
-          >
-            invites
+            settings
           </button>
           <a
             role="menuitem"
@@ -116,14 +94,6 @@ export default function AccountMenu({
           >
             feedback
           </a>
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => select(onOpenDeleteAccount)}
-            className="px-2 py-1 text-left text-muted hover:text-red-400"
-          >
-            delete account
-          </button>
           <button
             role="menuitem"
             type="button"

@@ -39,9 +39,11 @@ taşındı).
       ile kapanıyor — moderation ve mobil sidebar ESKİ mekanizmada
       kalıyor. Mevcut 7 panel (new room/explore/profile/2FA/blocked/
       invites/delete account) taşındı; feedback HENÜZ yok (Slice C).
-- [ ] `AccountMenu.tsx`: invites/blocked/feedback/delete account/2FA
-      "settings" panelinde (KENDİ paneli olarak açılıyor, flyout DEĞİL);
-      profile ve log out üst seviyede kalıyor.
+- [x] `AccountMenu.tsx`: invites/blocked/delete account/2FA "settings"
+      panelinde (KENDİ paneli olarak açılıyor, flyout DEĞİL); profile/
+      feedback/log out üst seviyede kalıyor (feedback Slice C'nin işi,
+      henüz gerçek bir panel değil — bu yüzden "settings" altına
+      TAŞINMADI).
 - [ ] Yeni bir "feedback" paneli var (bugünkü düz `mailto:` linkinin
       YERİNE) — açıklama + e-posta gösterimi + "e-posta yaz" butonu.
 - [ ] Profile paneli: seviye/XP/katılma tarihi ile zenginleşiyor — mesaj
@@ -52,7 +54,9 @@ taşındı).
 - [x] **Slice A — Panel mekanizması (SidePanel → ortada modal, 8 panel).**
       Tamamlandı (2026-09-01), `feat/centered-modal-panels` dalında.
       Detay Plan notları'nda.
-- [ ] **Slice B — AccountMenu "settings" paneli.**
+- [x] **Slice B — AccountMenu "settings" paneli.** Tamamlandı
+      (2026-09-01), `feat/account-settings-panel` dalında. Detay Plan
+      notları'nda.
 - [ ] **Slice C — Yeni feedback paneli.**
 - [x] **Slice D — Panel + login içerik görsel dili (buton/input).**
       Tamamlandı (2026-09-01), `feat/panel-content-styling` dalında.
@@ -457,3 +461,58 @@ oranda dolduğu (Slice D'nin input-dolgusu gözleminin AKSİNE, bu çubuk
 kendi `border-neutral-800` çerçevesine karşı NET görünür kontrast
 taşıyor), mesaj satırında/hesap menüsü tetikleyicisinde avatar glyph'inin
 ARTIK HİÇ görünmediği, gerçek Playwright ekran görüntüsüyle onaylandı.
+
+### Slice B kapsam turu + implementasyonu (2026-09-01) — tamamlandı
+
+Kapsam turunda `AskUserQuestion` ile 2 karar netleşti:
+1. **`feedback` ÜST SEVİYEDE KALIYOR** — kullanıcının bu tur mesajındaki
+   4 öğelik listede zaten YOKTU (henüz gerçek bir panel değil, mailto
+   linki olarak kalıyor — Slice C'nin işi).
+2. **"← back to settings" YOK** — her panel kendi ✕'iyle TAMAMEN
+   kapanıyor, sadece bir "settings" basamağı EKLENİYOR.
+
+Plan modunda doğrulanan mimari düzeltme: `AccountMenu` `RoomView.tsx`'te
+DEĞİL `TopBar.tsx`'te render ediliyor — plumbing 3 dosyaya yayıldı
+(`AccountMenu.tsx`→`TopBar.tsx`→`RoomView.tsx`).
+
+Uygulama, `feat/account-settings-panel` dalında (main'den, diğer M13
+slice'larından BAĞIMSIZ) 2 commit:
+- `13aaf3f` — yeni `SettingsView.tsx` (4 satır, `role="button"` — bu
+  panel `role="dialog"`, `role="menu"` DEĞİL, `role="menuitem"` burada
+  GEÇERSİZ ARIA olurdu); `AccountMenu.tsx`'in eski 4 ayrı öğesi
+  (two-factor authentication/blocked/invites/delete account) TEK bir
+  `settings` menuitem'ine indirgendi; `RoomView.tsx`'e `"settings"`
+  `ActivePanel` değeri + `activePanel` doğrudan `"settings"`'ten bir
+  alt-panele (`onNavigate={setActivePanel}`, kontravaryans sayesinde
+  cast'siz) geçiyor.
+- `93e56d4` — test dosyaları (aşağıda).
+
+**Plan modunda YAKALANMAMIŞ, implementasyon sırasında koddan
+akıl yürütülerek bulunan bir odak-yönetimi bug'ı (henüz başarısız bir
+test görülmeden, salt reasoning ile):** `CenteredModal.tsx`
+`useFocusOnMount()`'u ([] bağımlılıklı, SADECE mount'ta ateşlenen bir
+effect) kullanıyordu. `"settings"`→`"totp"` gibi bir geçiş her ikisinin
+de `RoomView.tsx`'in AYNI ternary dalına düşmesi yüzünden `CenteredModal`'ı
+UNMOUNT ETMİYOR (`activePanel` `"none"`'a hiç uğramadan değişiyor) — bu,
+uygulamanın tarihinde İLK KEZ ortaya çıkan bir senaryo (`inert=
+{isPanelOpen}` önceden HER panel geçişini `"none"` üzerinden zorluyordu).
+Mount effect'i bir daha ateşlenmediği için başlık odağı SESSİZCE
+`document.body`'e düşerdi. **Çözüm:** `CenteredModal.tsx`'te paylaşılan
+hook'un YERİNE LOKAL bir `useRef` + `useEffect(() => {...}, [title])`
+— hem ilk mount'ta (her effect ilk render sonrası da çalışır) hem her
+sonraki title değişiminde (yeni panele geçişte) başlığa odaklanıyor.
+Paylaşılan `useFocusOnMount` hook'unun KENDİSİ değiştirilmedi (`
+RoomSidebar.tsx`/`ModerationQueueView.tsx` bu senaryoyu YAŞAMIYOR).
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz (her adımdan sonra),
+`npm run build` başarılı (apps/web+apps/api), mock'lu Playwright süiti
+137/137 yeşil (İKİ tam koşum — 2 yeni test eklendi: settings paneli 4
+satırının `role="button"` olduğu + eski üst-seviye menuitem'lerin artık
+YOK olduğu regresyon-koruması), `e2e-fullstack` 10/10 (reseed sonrası,
+KOD REGRESYONU DEĞİL geçen slice'lardaki 8/10 sadece reseed edilmemiş
+dev-fixture tüketimiydi), `apps/api` 320/320. Görsel doğrulama: account
+menüsünde artık TEK `settings` girişi (eski 4 öğe YOK) + settings
+paneli (4 satır) + settings'ten `totp`'a geçişin ANİMASYONSUZ/akıcı
+olduğu VE odağın gerçekten alt-panelin başlığına düştüğü (odak-fix'inin
+gerçekten çalıştığının kanıtı, `toBeFocused()` assertion'ıyla da
+doğrulandı) gerçek Playwright ekran görüntüsüyle onaylandı.

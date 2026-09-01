@@ -38,9 +38,12 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
     timeout: 10000,
   });
 
-  // M10 Faz 2 Slice B: "invites" artık "account ▾" menüsünün içinde.
+  // M10 Faz 2 Slice B: "invites" artık "account ▾" menüsünün içinde. M13
+  // Slice B: artık "settings" panelinin İÇİNDE (role="button", role=
+  // "menuitem" DEĞİL).
   await inviterPage.getByRole("button", { name: "account" }).click();
-  await inviterPage.getByRole("menuitem", { name: "invites" }).click();
+  await inviterPage.getByRole("menuitem", { name: "settings" }).click();
+  await inviterPage.getByRole("button", { name: "invites" }).click();
   // GET /invites en yeniden eskiye sıralıyor - az önce kazanılan davet
   // her zaman ilk satır, önceki bir koşudan kalan satırlardan etkilenmez.
   // M10 Faz 2 Slice A: panel artık overlay (SidePanel), arkadaki ChatPanel
@@ -89,9 +92,11 @@ test("seviye_atlayinca_kazanilan_kod_gercek_signupta_gercekten_calisir", async (
     timeout: 15000,
   });
   await expect(inviterPage.getByLabel("email")).toHaveCount(0);
-  // M10 Faz 2 Slice B: "invites" artık "account ▾" menüsünün içinde.
+  // M10 Faz 2 Slice B: "invites" artık "account ▾" menüsünün içinde. M13
+  // Slice B: artık "settings" panelinin İÇİNDE.
   await inviterPage.getByRole("button", { name: "account" }).click();
-  await inviterPage.getByRole("menuitem", { name: "invites" }).click();
+  await inviterPage.getByRole("menuitem", { name: "settings" }).click();
+  await inviterPage.getByRole("button", { name: "invites" }).click();
   await expect(
     inviterPage
       .getByRole("dialog")

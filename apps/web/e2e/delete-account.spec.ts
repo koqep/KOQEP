@@ -13,10 +13,12 @@ async function login(page: import("@playwright/test").Page) {
 }
 
 // M10 Faz 2 Slice B: "delete account" artık TopBar'ın "account ▾" açılır
-// menüsünün İÇİNDE - önce menüyü açmak gerekiyor.
+// menüsünün İÇİNDE - önce menüyü açmak gerekiyor. M13 Slice B: artık
+// "settings" panelinin İÇİNDE (role="button", role="menuitem" DEĞİL).
 async function openDeleteAccountPanel(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "delete account" }).click();
+  await page.getByRole("menuitem", { name: "settings" }).click();
+  await page.getByRole("button", { name: "delete account" }).click();
 }
 
 test("panel_acilir_onay_adimindan_sonra_form_gorunur", async ({ page }) => {

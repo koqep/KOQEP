@@ -16,10 +16,13 @@ async function login(page: import("@playwright/test").Page) {
 // İÇİNDE - önce menüyü açmak gerekiyor (menü öğeleri sadece menü açıkken
 // DOM'a render ediliyor, AccountMenu.tsx). Menü öğeleri role="menuitem"
 // TAŞIYOR (doğru WAI-ARIA semantiği) - bu, <button>'ın implicit "button"
-// rolünü EZER, getByRole("menuitem", ...) kullanılmalı.
+// rolünü EZER, getByRole("menuitem", ...) kullanılmalı. M13 Slice B: artık
+// "settings" panelinin İÇİNDE - o panelin satırları role="button" (düz,
+// SettingsView.tsx bir role="menu" konteyneri DEĞİL).
 async function openBlockedPanel(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "blocked" }).click();
+  await page.getByRole("menuitem", { name: "settings" }).click();
+  await page.getByRole("button", { name: "blocked" }).click();
 }
 
 test("liste_bosken_bos_durum_mesaji_gosterir", async ({ page }) => {
@@ -168,14 +171,15 @@ test("bir_panelden_digerine_gecmek_icin_once_kapatmak_gerekir", async ({
   );
 
   await page.getByRole("button", { name: "account" }).click();
-  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
+  await page.getByRole("menuitem", { name: "settings" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
   await expect(
     page.getByRole("button", { name: "start setup" }),
   ).toBeVisible();
 
   // "account ▾" tetikleyicisi de arka planda (aynı inert sarmalayıcının
   // İÇİNDE) - TOTP paneli açıkken TIKLANAMAZ (dolayısıyla menü açılıp
-  // "blocked" öğesi DOM'a hiç render edilemez), panel değişmez.
+  // "settings" öğesi DOM'a hiç render edilemez), panel değişmez.
   await expect(
     page.locator("[inert]").getByRole("button", { name: "account" }),
   ).toBeVisible();

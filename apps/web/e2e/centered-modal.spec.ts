@@ -5,6 +5,8 @@ import { mockAuthSuccess, mockRoomEndpoints } from "./support/auth-mocks";
 // side-panel.spec.ts'in AYNI 4 testi (TOTP eskiden SidePanel'in temsilciydi,
 // şimdi CenteredModal'ın temsilcisi) + kendi mobil taşma testi. Panel-özel
 // içerik zaten kendi spec dosyasında (totp-settings.spec.ts) test ediliyor.
+// M13 Slice B: TOTP artık DOĞRUDAN bir menuitem DEĞİL - önce "settings"
+// panelini açmak, SONRA oradaki (role="button") satıra tıklamak gerekiyor.
 async function loginAndOpenTotpModal(page: import("@playwright/test").Page) {
   await mockAuthSuccess(page);
   await mockRoomEndpoints(page);
@@ -17,7 +19,8 @@ async function loginAndOpenTotpModal(page: import("@playwright/test").Page) {
 
   const trigger = page.getByRole("button", { name: "account" });
   await trigger.click();
-  await page.getByRole("menuitem", { name: "two-factor authentication" }).click();
+  await page.getByRole("menuitem", { name: "settings" }).click();
+  await page.getByRole("button", { name: "two-factor authentication" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   return trigger;
 }
