@@ -9,7 +9,7 @@ import {
   ApiError,
   type TokenPair,
 } from "../../lib/api";
-import { inputClassName } from "./formStyles";
+import { filledInputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
 
 type Mode = "login" | "signup" | "forgot-password";
@@ -177,7 +177,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                   onChange={(event) => setInviteCode(event.target.value)}
                   required
                   placeholder="XXXX-XXXX"
-                  className={inputClassName}
+                  className={filledInputClassName}
                 />
                 <span className="text-xs text-muted">
                   Ask someone already on KOQEP for an invite code.
@@ -193,7 +193,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 placeholder="you@example.com"
-                className={inputClassName}
+                className={filledInputClassName}
               />
             </label>
 
@@ -209,7 +209,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                   maxLength={24}
                   pattern="[a-zA-Z0-9_-]+"
                   placeholder="captain_49"
-                  className={inputClassName}
+                  className={filledInputClassName}
                 />
               </label>
             )}
@@ -222,6 +222,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                 required
                 minLength={8}
                 maxLength={200}
+                filled
               />
             )}
 
@@ -235,7 +236,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                   required
                   // eslint-disable-next-line jsx-a11y/no-autofocus -- login denemesi sonucu beliren alan, sayfa yüklenirken sürpriz odak sıçraması değil.
                   autoFocus
-                  className={inputClassName}
+                  className={filledInputClassName}
                 />
               </label>
             )}
