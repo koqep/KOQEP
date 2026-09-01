@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { deleteAccount, ApiError } from "../../lib/api";
-import { inputClassName } from "./formStyles";
+import { filledInputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
 
 interface Props {
@@ -73,6 +73,7 @@ export default function DeleteAccountView({ accessToken, onDeleted }: Props) {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
+            filled
             // eslint-disable-next-line jsx-a11y/no-autofocus -- "delete my account"a tıklandıktan sonra beliren onay alanı, sürpriz odak sıçraması değil.
             autoFocus
           />
@@ -84,7 +85,7 @@ export default function DeleteAccountView({ accessToken, onDeleted }: Props) {
                 value={totpCode}
                 onChange={(event) => setTotpCode(event.target.value)}
                 required
-                className={inputClassName}
+                className={filledInputClassName}
               />
             </label>
           )}
@@ -92,7 +93,7 @@ export default function DeleteAccountView({ accessToken, onDeleted }: Props) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 self-start border border-red-900 px-3 py-1 text-red-400 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-2 self-start border border-red-900 px-4 py-1.5 text-red-400 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             permanently delete my account
           </button>
@@ -107,7 +108,7 @@ export default function DeleteAccountView({ accessToken, onDeleted }: Props) {
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="self-start border border-red-900 px-3 py-1 text-red-400 hover:border-red-700"
+            className="self-start border border-red-900 px-4 py-1.5 text-red-400 hover:border-red-700"
           >
             delete my account
           </button>

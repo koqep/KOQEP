@@ -8,7 +8,7 @@ import {
   ApiError,
   type BlockedUser,
 } from "../../lib/api";
-import { inputClassName } from "./formStyles";
+import { filledInputClassName } from "./formStyles";
 
 interface Props {
   accessToken: string;
@@ -77,14 +77,14 @@ export default function BlockedUsersView({ accessToken }: Props) {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className={inputClassName}
+            className={filledInputClassName}
           />
         </label>
         {error && <p className="text-red-400">{error}</p>}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
+          className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
           block
         </button>

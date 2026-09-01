@@ -7,7 +7,7 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent,
 } from "react";
-import { inputClassName } from "./formStyles";
+import { inputClassName, filledInputClassName } from "./formStyles";
 
 interface Props
   extends Omit<
@@ -15,6 +15,10 @@ interface Props
     "type" | "className" | "id"
   > {
   label: string;
+  // M13 Slice D: panel+login'in dolgulu input diline geçişi - varsayılan
+  // false, ResetPasswordView.tsx/AssignModeratorSection.tsx (bu slice'ın
+  // kapsamı DIŞINDA) hiçbir şey geçirmediği için davranışları DEĞİŞMİYOR.
+  filled?: boolean;
 }
 
 // Avatar.tsx'in konvansiyonlarını izliyor (aria-hidden, açık width/height,
@@ -53,7 +57,7 @@ function EyeIcon({ slashed }: { slashed: boolean }) {
 // AT sentetik click'i) toggle'lıyor - fare/dokunma/klavye kullanıcıları
 // momentary davranışı alır, ekran-okuyucu kullanıcıları toggle'a "zarif
 // biçimde" düşer (sessiz başarısızlık değil).
-export default function PasswordInput({ label, ...inputProps }: Props) {
+export default function PasswordInput({ label, filled, ...inputProps }: Props) {
   const [isVisible, setIsVisible] = useState(false);
   const id = useId();
   const hasTrackedPressRef = useRef(false);
@@ -120,7 +124,7 @@ export default function PasswordInput({ label, ...inputProps }: Props) {
           {...inputProps}
           id={id}
           type={isVisible ? "text" : "password"}
-          className={inputClassName + " w-full pr-8"}
+          className={(filled ? filledInputClassName : inputClassName) + " w-full pr-8"}
         />
         <button
           type="button"

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { createRoom, ApiError, type Room } from "../../lib/api";
-import { inputClassName } from "./formStyles";
+import { filledInputClassName } from "./formStyles";
 
 interface Props {
   accessToken: string;
@@ -61,7 +61,7 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
             onChange={(event) => setName(event.target.value)}
             maxLength={MAX_ROOM_NAME_LENGTH}
             required
-            className={inputClassName}
+            className={filledInputClassName}
           />
         </label>
         <label className="flex flex-col gap-1 text-muted">
@@ -71,14 +71,14 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             maxLength={MAX_ROOM_DESCRIPTION_LENGTH}
-            className={inputClassName}
+            className={filledInputClassName}
           />
         </label>
         {error && <p className="text-red-400">{error}</p>}
         <button
           type="submit"
           disabled={isSubmitting || name.length === 0}
-          className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
+          className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
           create
         </button>

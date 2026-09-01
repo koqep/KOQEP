@@ -9,7 +9,7 @@ import {
   ApiError,
   type TotpSetup,
 } from "../../lib/api";
-import { inputClassName } from "./formStyles";
+import { filledInputClassName } from "./formStyles";
 
 interface Props {
   accessToken: string;
@@ -113,7 +113,7 @@ export default function TotpSettingsView({
           <button
             type="button"
             onClick={handleAcknowledgeRecoveryCodes}
-            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600"
+            className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100"
           >
             saved it
           </button>
@@ -128,14 +128,14 @@ export default function TotpSettingsView({
               value={totpCode}
               onChange={(event) => setTotpCode(event.target.value)}
               required
-              className={inputClassName}
+              className={filledInputClassName}
             />
           </label>
           {error && <p className="text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
             turn off authenticator
           </button>
@@ -159,14 +159,14 @@ export default function TotpSettingsView({
               required
               // eslint-disable-next-line jsx-a11y/no-autofocus -- TOTP kurulumu başlatıldıktan sonra beliren alan, sürpriz odak sıçraması değil.
               autoFocus
-              className={inputClassName}
+              className={filledInputClassName}
             />
           </label>
           {error && <p className="text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
             enable
           </button>
@@ -179,7 +179,7 @@ export default function TotpSettingsView({
             type="button"
             onClick={() => void handleStartSetup()}
             disabled={isSubmitting}
-            className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
+            className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
             start setup
           </button>

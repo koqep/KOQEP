@@ -6,3 +6,10 @@
 // tek kalın çizgi değil iki ayrı eşmerkezli şekil olarak okunuyor.
 export const inputClassName =
   "border border-neutral-800 bg-transparent px-2 py-1 text-neutral-200 outline-none focus-visible:border-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-100 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950";
+
+// M13 Slice D: panel+login input'ları için dolgu varyantı - inputClassName'in
+// KENDİSİ değişmiyor (moderasyon/mesaj-düzenleme/oda-arama gibi diğer
+// tüketicileri ETKİLENMEMELİ, Slice A'nın "moderasyon/sidebar eski
+// kalıyor" kararıyla tutarlı) - SADECE panellerin/login'in kendi
+// input'ları bunu EKSTRA olarak kullanıyor.
+export const filledInputClassName = inputClassName + " bg-neutral-950";
