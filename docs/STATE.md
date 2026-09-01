@@ -3,19 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-01 (M11a+M11b Slice A/D main'de; M11b Slice E tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-01 (M11a+M11b (A/D/E) main'de; M13 Slice A tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü. Merge sırasında CI'da bulunan `backfill-room-members.ts`'in P2003 retry bug'ı da düzeltildi — bkz. Tuzaklar.
-- **M11b Slice A+D main'de** (PR #106/#107, kullanıcı merge etti) — `/` saf statik pazarlama landing'i, terms/privacy `LegalPageShell.tsx` ile aynı görsel dili taşıyor.
-- **2026-09-01: M11b Slice E (giriş/kayıt görsel yeniden tasarımı) TAMAMLANDI, `feat/auth-visual-redesign` dalında (main'den, Slice D'den BAĞIMSIZ), main'e push/merge EDİLMEDİ.** `/app`'in giriş/kayıt ekranı artık `AuthPageShell.tsx` + sekmeli kart (kod tabanında İLK `role="tablist"`) + landing'in CTA stili. TR/EN kutusu BU TURDA eklenmedi (backend hata mesajları hâlâ Türkçe dönebiliyor, A20 henüz yapılmadı). Mock'lu süit 129/129 + fullstack 10/10 + `apps/api` 319/319 yeşil. Detay `docs/milestones/M11b-landing-onboarding.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12 sırada.
+- **M11b Slice A/D/E main'de** (PR #106-108, kullanıcı merge etti) — landing, legal sayfalar, `/app`'in giriş/kayıt ekranı hepsi aynı görsel dili taşıyor.
+- **2026-09-01: YENİ M13 Slice A (panel mekanizması: SidePanel → ortada modal, 7 panel) TAMAMLANDI, `feat/centered-modal-panels` dalında (main'den, M11b'den BAĞIMSIZ), push bekliyor.** Yeni `CenteredModal.tsx` — `SidePanel.tsx`'in `useFocusTrap`/portal mantığı DEĞİŞMEDEN yeniden kullanıldı, ortada+fade-scale+`bg-black/80`+paylaşılan "KOQEP · başlık" + ✕. `moderation`/mobil `sidebar` ESKİ mekanizmada KALDI (iki mekanizma bir arada). Plan modunda kapsam turunda YAKALANMAMIŞ bir kırılma bulundu: `side-panel.spec.ts` TOTP'yi temsilci kullanıyordu, TOTP taşınınca `moderation`'a geçirildi. Mock'lu süit 135/135 + fullstack 8/10 (2 bilinen dev-fixture testi hariç) + `apps/api` 319/319 yeşil. Detay `docs/milestones/M13-panel-redesign.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12, M13 Slice B/C/D sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/auth-visual-redesign` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M11b Slice B (kaydırma-onaylı terms modalı) ya da Slice C (onboarding netleştirmesi) seçilip plan modu başlatılacak.
+- **Görev:** `feat/centered-modal-panels` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M13 Slice B (AccountMenu "settings" paneli) ya da başka bir milestone seçilip plan modu başlatılacak.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
