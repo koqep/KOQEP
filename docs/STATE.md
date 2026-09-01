@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-08-31 (M11a+M11b Slice A main'de; M11b Slice D tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-01 (M11a+M11b Slice A/D main'de; M11b Slice E tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü. Merge sırasında CI'da bulunan `backfill-room-members.ts`'in P2003 retry bug'ı da düzeltildi — bkz. Tuzaklar.
-- **M11b Slice A (landing sayfası + `/app` routing geçişi) main'de** (PR #106, kullanıcı merge etti) — `/` saf statik pazarlama landing'i, eski auth/oda mantığı `/app`'e taşındı.
-- **2026-08-31: M11b Slice D (legal sayfalara landing görsel dili) TAMAMLANDI, `feat/legal-pages-visual` dalında (main'den, Slice A'dan BAĞIMSIZ), main'e push/merge EDİLMEDİ.** terms/privacy (4 dosya) artık paylaşılan `LegalPageShell.tsx` ile KOQEP marka bloğu + pill-buton footer + `fixed` ASCII arka planı taşıyor. Mock'lu süit 126/126 (2 kez) + `apps/api` 319/319 yeşil. Detay `docs/milestones/M11b-landing-onboarding.md`.
+- **M11b Slice A+D main'de** (PR #106/#107, kullanıcı merge etti) — `/` saf statik pazarlama landing'i, terms/privacy `LegalPageShell.tsx` ile aynı görsel dili taşıyor.
+- **2026-09-01: M11b Slice E (giriş/kayıt görsel yeniden tasarımı) TAMAMLANDI, `feat/auth-visual-redesign` dalında (main'den, Slice D'den BAĞIMSIZ), main'e push/merge EDİLMEDİ.** `/app`'in giriş/kayıt ekranı artık `AuthPageShell.tsx` + sekmeli kart (kod tabanında İLK `role="tablist"`) + landing'in CTA stili. TR/EN kutusu BU TURDA eklenmedi (backend hata mesajları hâlâ Türkçe dönebiliyor, A20 henüz yapılmadı). Mock'lu süit 129/129 + fullstack 10/10 + `apps/api` 319/319 yeşil. Detay `docs/milestones/M11b-landing-onboarding.md`.
 - Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12 sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/legal-pages-visual` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Görev:** `feat/auth-visual-redesign` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
 - **Sonraki adım:** push sonrası M11b Slice B (kaydırma-onaylı terms modalı) ya da Slice C (onboarding netleştirmesi) seçilip plan modu başlatılacak.
 
 ## Bilinen sorunlar / teknik borç
