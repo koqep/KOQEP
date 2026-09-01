@@ -6,6 +6,7 @@ import {
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { INVALID_TOKEN_CODE } from './auth.service';
+import { XP_PER_LEVEL } from './reputation.service';
 
 export interface UserProfile {
   email: string;
@@ -25,6 +26,10 @@ export interface PublicUserProfile {
   createdAt: Date;
   level: number;
   totalXp: number;
+  // M13 Slice E: seviye/XP çubuğu için - XP_PER_LEVEL frontend'e HİÇ
+  // açılmıyor (ADR-0002: web istemcisi iş mantığı sahibi değil), yüzde
+  // burada hesaplanıp gönderiliyor.
+  xpProgressPercent: number;
 }
 
 @Injectable()
@@ -66,6 +71,9 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı.');
     }
-    return user;
+    return {
+      ...user,
+      xpProgressPercent: ((user.totalXp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100,
+    };
   }
 }

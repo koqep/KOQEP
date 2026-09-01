@@ -294,6 +294,7 @@ export interface PublicUserProfile {
   createdAt: string;
   level: number;
   totalXp: number;
+  xpProgressPercent: number;
 }
 
 export function getPublicProfile(

@@ -57,9 +57,8 @@ taşındı).
 - [x] **Slice D — Panel + login içerik görsel dili (buton/input).**
       Tamamlandı (2026-09-01), `feat/panel-content-styling` dalında.
       Detay Plan notları'nda.
-- [ ] **Slice E — Profile paneli görsel yeniden tasarımı** (yeni istatistik
-      YOK — sadece görsel dil + ASCII avatar + seviye/XP çubuğu; eski
-      "Slice D").
+- [x] **Slice E — Profile paneli görsel yeniden tasarımı.** Tamamlandı
+      (2026-09-01), `feat/profile-layout` dalında. Detay Plan notları'nda.
 
 ## Risks
 - **Test blast radius'u bu oturumun EN BÜYÜĞÜ** — 12 e2e dosyası panel
@@ -405,3 +404,56 @@ DEĞİL), `apps/api` 319/319. Görsel doğrulama: create-room (dolgulu
 input + solid CTA), login ekranı (email + `PasswordInput`'un `filled`
 hali), delete-account (2 kırmızı butonun rengini KORUDUĞU) gerçek
 Playwright ekran görüntüsüyle onaylandı.
+
+### Slice E kapsam + implementasyon (2026-09-01) — tamamlandı
+
+Kullanıcının orijinal M13 tasarımı profile paneli için ASCII avatar +
+seviye/XP çubuğu + "profili düzenle" istiyordu. Plan modunda `AskUser
+Question` ile 3 YENİ bulgu netleşti:
+
+1. **Mevcut `LargeAvatar` GERÇEKTEN ASCII DEĞİL** — M10 Faz 2 Slice D+E
+   BİLEREK unicode karakterlerden (░▒▓█) gerçek SVG'ye (25 rect, 5x5
+   ızgara) geçirmişti. Geri dönmek bu kararı tersine çevirir VE 2 testi
+   kırardı (25-rect sayım testi, SVG outerHTML karşılaştırma testi).
+   **Karar: `LargeAvatar` AYNEN kaldı, DOKUNULMADI.**
+2. **"Profili düzenle" için SIFIR backend desteği var** (`@Patch`/`@Put`
+   grep'i `apps/api/src/api`'de sıfır sonuç — hiçbir updateProfile
+   servisi/endpoint'i yok). **Karar: bu turdan ÇIKARILDI**, milestone'un
+   kendi "sadece görsel dil" notuyla tutarlı.
+3. **XP yüzdesi için `XP_PER_LEVEL` (35) backend-only** —
+   `reputation.service.ts`'te tanımlı, frontend'e hiç açılmamış. **Karar:
+   backend hesaplayıp `PublicUserProfile`'a EKLİYOR** (yeni migration
+   YOK — DB kolonu değil, sorgu-zamanlı hesaplanan alan).
+
+**Kullanıcının kendi isteğiyle kapsam genişledi:** küçük avatar
+(`SmallAvatar`) mesaj satırlarından VE hesap menüsü tetikleyicisinden
+TAMAMEN kaldırıldı. Ayrı bir kapsam turu GEREKMEDİĞİ değerlendirildi —
+SADECE 2 dosyada kullanılıyordu (`MessageItem.tsx`, `AccountMenu.tsx`),
+her ikisinde de zaten `aria-hidden` dekoratif bir SVG (tıklanabilirliğe
+hiç katkı vermiyor), backend'e hiç dokunmuyor.
+
+**Uygulama**, `feat/profile-layout` dalında (main'den, diğer M13
+slice'larından BAĞIMSIZ — bu oturumda bir M13 slice'ının İLK KEZ
+backend'e dokunduğu dal) 2 commit:
+- `24dd8b3` — `UsersService.getPublicProfile` artık `xpProgressPercent`
+  hesaplayıp dönüyor (`XP_PER_LEVEL` `reputation.service.ts`'ten import
+  edildi), `lib/api.ts`'in tip aynası güncellendi, `ProfileView.tsx`'e
+  `role="progressbar"` ile bir XP çubuğu eklendi (mevcut metin satırları
+  AYNEN kaldı, sadece altına yeni bir eleman eklendi — mevcut testleri
+  KIRMAMAK için), `SmallAvatar` `MessageItem.tsx`+`AccountMenu.tsx`'ten
+  kaldırıldı (tıklanabilirlik metin etiketinden geliyor, DEĞİŞMEDİ).
+- `59d8812` — `users.service.spec.ts`'e 1 güncelleme + 1 yeni test
+  (`xpProgressPercent` hesaplaması, tam-seviye-katında %0 durumu),
+  `profile-panel.spec.ts`'te `kucuk_avatar_...` testi SİLİNDİ (SmallAvatar
+  kaldırılınca test edecek SVG kalmadı), mock'lara `xpProgressPercent`
+  eklendi, yeni bir progress-bar testi eklendi.
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz (apps/api VE apps/web),
+`npm run build` başarılı, mock'lu Playwright süiti 135/135 yeşil (net
+test sayısı DEĞİŞMEDİ — 1 silindi, 1 eklendi), `apps/api` 320/320,
+`e2e-fullstack` 8/10 (2 bilinen dev-fixture testi hariç, KOD REGRESYONU
+DEĞİL). Görsel doğrulama: profile panelinde XP çubuğunun GERÇEKTEN doğru
+oranda dolduğu (Slice D'nin input-dolgusu gözleminin AKSİNE, bu çubuk
+kendi `border-neutral-800` çerçevesine karşı NET görünür kontrast
+taşıyor), mesaj satırında/hesap menüsü tetikleyicisinde avatar glyph'inin
+ARTIK HİÇ görünmediği, gerçek Playwright ekran görüntüsüyle onaylandı.

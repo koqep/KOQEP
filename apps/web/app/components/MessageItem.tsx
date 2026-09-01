@@ -5,7 +5,6 @@ import { MAX_MESSAGE_LENGTH } from "./RoomView";
 import MessageContent from "./MessageContent";
 import type { MessageEdit } from "../../lib/api";
 import { inputClassName } from "./formStyles";
-import { SmallAvatar } from "./Avatar";
 import { useDismissableMenu } from "./useDismissableMenu";
 
 const menuItemClassName =
@@ -213,20 +212,18 @@ export default function MessageItem({
           {isGroupStart &&
             (clickableAuthorUsername ? (
               // M10 Faz 2 Slice D+E: {authorLabel}: metni KENDİ ayrı
-              // <span>'inde KALIYOR (avatar glyph'iyle BİRLEŞTİRİLMİYOR) -
-              // message-grouping.spec.ts'in getByText("baskasi:", {exact:
-              // true}) sorguları birleştirilmiş bir string'de eşleşmeyi
-              // kaybederdi. Kendi mesajını tıklamak da AYNI mekanizmayla
-              // kendi profiline açılır - authorLabel M11a Slice A'dan beri
-              // isMine farketmeksizin her zaman gerçek kullanıcı adı.
+              // <span>'inde KALIYOR - message-grouping.spec.ts'in
+              // getByText("baskasi:", {exact: true}) sorguları birleştirilmiş
+              // bir string'de eşleşmeyi kaybederdi. Kendi mesajını tıklamak
+              // da AYNI mekanizmayla kendi profiline açılır - authorLabel
+              // M11a Slice A'dan beri isMine farketmeksizin her zaman gerçek
+              // kullanıcı adı. M13 Slice E: küçük avatar glyph'i kaldırıldı,
+              // tıklanabilirlik SADECE metin etiketinden geliyor.
               <button
                 type="button"
                 onClick={() => onViewProfile(clickableAuthorUsername)}
-                className="flex items-baseline gap-1 text-muted hover:text-neutral-400"
+                className="text-muted hover:text-neutral-400"
               >
-                <span className="invisible group-hover:visible group-focus-within:visible">
-                  <SmallAvatar seed={clickableAuthorUsername} />
-                </span>
                 <span>{authorLabel}:</span>
               </button>
             ) : (
