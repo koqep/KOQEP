@@ -12,6 +12,10 @@ export interface UserExportDto {
     totalXp: number;
     level: number;
     termsAcceptedAt: Date | null;
+    // M9 Slice B: HAM (çözümlenmemiş) değer - null = "hiç açıkça set
+    // edilmedi", UserProfile.locale'in aksine burada DEFAULT_LOCALE'e
+    // düşürülmüyor (KVKK dışa aktarımı gerçek DB durumunu yansıtmalı).
+    locale: string | null;
   };
   messages: Array<{
     id: string;
@@ -70,6 +74,7 @@ export class MeService {
         totalXp: user.totalXp,
         level: user.level,
         termsAcceptedAt: user.termsAcceptedAt,
+        locale: user.locale,
       },
       // Bir oda hard-delete edilince ona ait TÜM mesajlar da AYNI
       // transaction'da siliniyor (rooms.service.ts, Message.roomId'nin

@@ -21,6 +21,7 @@ import {
   type MessageEdit,
   type Room,
 } from "../../lib/api";
+import { storeLocale } from "../../lib/i18n";
 import TotpSettingsView from "./TotpSettingsView";
 import BlockedUsersView from "./BlockedUsersView";
 import InviteView from "./InviteView";
@@ -371,6 +372,9 @@ export default function RoomView({
         getCurrentUser(accessToken)
           .then((profile) => {
             if (!cancelled) setMyProfile(profile);
+            // M9 Slice B: giriş sonrası localStorage artık sadece bir ayna -
+            // User.locale otorite, buraya SADECE senkron tutmak için yazılır.
+            storeLocale(profile.locale);
           })
           .catch(() => {
             // Profil alınamazsa düzenle/geçmiş butonları hiç görünmez -

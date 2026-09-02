@@ -46,6 +46,13 @@ model User {
   // kanıtlamaz. Mevcut kullanıcılar bu onayı hiç vermedi, null kalması
   // DOĞRU (bu onayın hiç sorulmadığı bir kullanıcıyı doğru yansıtıyor).
   termsAcceptedAt DateTime?
+  // M9 Slice B: NULLABLE, varsayılan YOK (bilerek) - null = "hiç açıkça
+  // set edilmedi". "Giriş anında localStorage'daki tercih TEK SEFERLİK
+  // senkronlanır" kararı (docs/milestones/M9-i18n.md) bu ayrımı
+  // GEREKTİRİYOR: null iken gelen bir ipucu senkronlanır, DOLU bir
+  // değer varsa hiçbir ipucu onu ezmez. Okuyan taraf `?? DEFAULT_LOCALE`
+  // ile çözümler (apps/api/src/db/locale.constants.ts).
+  locale String?
   // M5 Slice E: davetçi hesap verebilirliği (B15) - kullanılmamış daveti
   // olmayan bir davetçi için susturma sonucu biriken borç. Bir sonraki
   // grantInvites çağrısı bunu önce karşılar, kalan (varsa) gerçek davet

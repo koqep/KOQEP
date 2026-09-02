@@ -7,6 +7,7 @@ import { UserRole } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { INVALID_TOKEN_CODE } from './auth.service';
 import { XP_PER_LEVEL } from './reputation.service';
+import { Locale, DEFAULT_LOCALE, isValidLocale } from '../db/locale.constants';
 
 export interface UserProfile {
   email: string;
@@ -16,6 +17,10 @@ export interface UserProfile {
   totalXp: number;
   mutedUntil: Date | null;
   muteReason: string | null;
+  // M9 Slice B: HER ZAMAN çözümlenmiş/dolu (null asla dışarı sızmaz) -
+  // getProfile'ın kendisi user.locale ?? DEFAULT_LOCALE'i uyguluyor, JWT'nin
+  // 15dk bayatlığından BAĞIMSIZ her zaman taze.
+  locale: Locale;
 }
 
 // M10 Faz 2 Slice D+E: başkasının profili için PUBLIC-SAFE alan seti -
@@ -47,6 +52,7 @@ export class UsersService {
         totalXp: true,
         mutedUntil: true,
         muteReason: true,
+        locale: true,
       },
     });
     if (!user) {
@@ -55,7 +61,21 @@ export class UsersService {
         message: 'Geçersiz veya süresi dolmuş token.',
       });
     }
-    return user;
+    return {
+      ...user,
+      locale: isValidLocale(user.locale) ? user.locale : DEFAULT_LOCALE,
+    };
+  }
+
+  // M9 Slice B: kullanıcı ayarlardan dilini değiştirdiğinde çağrılıyor
+  // (PATCH /users/me/locale, BlocksController) - login()'in TEK SEFERLİK
+  // senkronundan FARKLI, burası her zaman EZER (kullanıcının kendi bilinçli
+  // seçimi).
+  async updateLocale(userId: string, locale: Locale): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { locale },
+    });
   }
 
   async getPublicProfile(username: string): Promise<PublicUserProfile> {

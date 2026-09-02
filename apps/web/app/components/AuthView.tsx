@@ -11,6 +11,7 @@ import {
 } from "../../lib/api";
 import { filledInputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
+import { readStoredLocale, detectBrowserLocale } from "../../lib/i18n";
 
 type Mode = "login" | "signup" | "forgot-password";
 
@@ -71,6 +72,9 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
         email,
         password,
         ...(totpRequired ? { totpCode } : {}),
+        // M9 Slice B: giriş anında localStorage'daki tercih - backend
+        // SADECE User.locale henüz null'sa kullanır (tek seferlik senkron).
+        localeHint: readStoredLocale() ?? detectBrowserLocale(),
       });
       onAuthenticated(tokens, totpRequired);
     } catch (err) {

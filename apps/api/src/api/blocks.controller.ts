@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -10,6 +11,7 @@ import {
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { BlockUserDto } from './dto/block-user.dto';
+import { UpdateLocaleDto } from './dto/update-locale.dto';
 import { BlocksService } from '../services/blocks.service';
 import {
   UsersService,
@@ -28,6 +30,19 @@ export class BlocksController {
   @Get('me')
   getMe(@Req() req: AuthenticatedRequest): Promise<UserProfile> {
     return this.usersService.getProfile(req.user.sub);
+  }
+
+  // M9 Slice B: kullanıcının kendi dilini ayarlardan değiştirmesi için -
+  // User.locale'in zaten SAHİBİ olduğu için doğal yer burası. Kötüye
+  // kullanılabilir bir eylem değil, ek bir throttler guard gerekmiyor
+  // (sadece controller-seviyesi JwtAuthGuard).
+  @Patch('me/locale')
+  async updateLocale(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateLocaleDto,
+  ): Promise<{ ok: true }> {
+    await this.usersService.updateLocale(req.user.sub, dto.locale);
+    return { ok: true };
   }
 
   // M10 Faz 2 Slice D+E: başkasının profili - public-safe alan seti,
