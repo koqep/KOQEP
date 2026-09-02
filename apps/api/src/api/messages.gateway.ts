@@ -252,6 +252,15 @@ export class MessagesGateway
         // aynı yapısal hata deseni, client'ta "salt-okunur" mesajı gösterir.
         throw new WsException({ status: 'error', code: 'ROOM_ARCHIVED' });
       }
+      if (error instanceof ForbiddenException) {
+        // M11c Slice A: şifreli bir odaya join'den geçmeden mesaj gönderme
+        // denemesi - normal UI akışı (her zaman join'den geçiyor) BUNA HİÇ
+        // ulaşmaz, sadece API'yi doğrudan çağıran biri için. handleMessageEdit'in
+        // KENDİ ForbiddenException dalıyla (sessizce yut, "yazarı değilsin")
+        // KARIŞMIYOR - ayrı handler, ayrı catch bloğu; sendMessage'ın BU
+        // NOKTADAN sonra fırlatabileceği TEK ForbiddenException kaynağı bu.
+        throw new WsException({ status: 'error', code: 'ROOM_ACCESS_DENIED' });
+      }
       // Beklenmeyen (ornegin yazarin User satiri artik yok - silinmis
       // kullanicinin soketi SocketRegistryService tarafindan proaktif
       // kapatildigi icin pratikte ulasilamaz olmasi hedefleniyor) -

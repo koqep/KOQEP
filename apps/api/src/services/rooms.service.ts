@@ -2,7 +2,9 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
+import * as argon2 from 'argon2';
 import { Prisma, RoomStatus } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { SocketRegistryService } from './socket-registry.service';
@@ -24,6 +26,8 @@ export interface RoomSummary {
   lastActivityAt: Date;
   status: RoomStatus;
   announcement: string | null;
+  // M11c Slice A: hash'in KENDİSİ asla dışarı sızmıyor - sadece varlığı.
+  hasPassword: boolean;
 }
 
 export interface RoomPage {
@@ -31,14 +35,48 @@ export interface RoomPage {
   nextCursor: string | null;
 }
 
-const ROOM_SUMMARY_SELECT = {
+// M11c Slice A: passwordHash dahil - RoomSummary'nin hasPassword'ünü
+// TÜRETMEK için gerekli, ama ham hash asla döndürülmüyor (bkz. toRoomSummary).
+// export - room-moderation.service.ts KENDİ ayrı (artık kaldırılmış)
+// kopyasını tutmak yerine bunu doğrudan yeniden kullanıyor.
+export const ROOM_SUMMARY_SELECT = {
   id: true,
   name: true,
   description: true,
   lastActivityAt: true,
   status: true,
   announcement: true,
+  passwordHash: true,
 } as const;
+
+type RoomSummaryRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  lastActivityAt: Date;
+  status: RoomStatus;
+  announcement: string | null;
+  passwordHash: string | null;
+};
+
+export function toRoomSummary(room: RoomSummaryRow): RoomSummary {
+  const { passwordHash, ...rest } = room;
+  return { ...rest, hasPassword: passwordHash !== null };
+}
+
+// auth.service.ts'in module-level verifyPasswordSafely'siyle AYNI desen
+// (try/catch, bozuk/eşleşmeyen hash'te sessizce false) - burada YEREL,
+// auth'unki gibi paylaşılan bir dosyaya çıkarılmıyor.
+async function verifyRoomPasswordSafely(
+  hash: string,
+  password: string,
+): Promise<boolean> {
+  try {
+    return await argon2.verify(hash, password);
+  } catch {
+    return false;
+  }
+}
 
 interface PurgeCandidate {
   id: string;
@@ -78,7 +116,7 @@ export class RoomsService {
     userId: string,
     includeArchived = false,
   ): Promise<RoomSummary[]> {
-    return this.prisma.room.findMany({
+    const rows = await this.prisma.room.findMany({
       where: {
         status: includeArchived ? { in: ['active', 'archived'] } : 'active',
         members: { some: { userId } },
@@ -86,6 +124,7 @@ export class RoomsService {
       select: ROOM_SUMMARY_SELECT,
       orderBy: { name: 'asc' },
     });
+    return rows.map(toRoomSummary);
   }
 
   // Bugünkü, üyelikten TAMAMEN bağımsız davranış - `RoomModerationSection`
@@ -98,13 +137,14 @@ export class RoomsService {
   // kullanıcının kararı) - "benim odalarım" (listRooms) BİLEREK alfabetik
   // kalıyor, switcher'ın buton konumu sabit tutulmalı (kas hafızası).
   async listAllRooms(includeArchived = false): Promise<RoomSummary[]> {
-    return this.prisma.room.findMany({
+    const rows = await this.prisma.room.findMany({
       where: {
         status: includeArchived ? { in: ['active', 'archived'] } : 'active',
       },
       select: ROOM_SUMMARY_SELECT,
       orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
     });
+    return rows.map(toRoomSummary);
   }
 
   // Üye olunmayan aktif odalar - `includeArchived`'ı BİLEREK yok sayıyor
@@ -131,10 +171,10 @@ export class RoomsService {
     });
 
     const hasMore = rows.length > limit;
-    const rooms = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore ? rooms[rooms.length - 1].name : null;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? page[page.length - 1].name : null;
 
-    return { rooms, nextCursor };
+    return { rooms: page.map(toRoomSummary), nextCursor };
   }
 
   // Idempotent: zaten üyeyse yeni bir satır YARATMADAN mevcut olanı döner
@@ -142,11 +182,33 @@ export class RoomsService {
   // butonuna iki kez basmak bir hata değil). `createRoom`'un kurucu için
   // yaptığı AYNI anlık-soket-join'i burada da uygulanıyor - reconnect
   // beklemeden gerçek zamanlı teslimat.
-  async joinRoom(userId: string, roomId: string): Promise<RoomSummary> {
+  // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifreli
+  // bir oda için (passwordHash dolu) doğru şifre şart. Zaten üye olan biri
+  // (ör. idempotent tekrar-katılma) şifre İSTENMİYOR - sadece İLK katılımda
+  // doğrulanıyor, bir kez kanıtlanan üyelik yeniden sorgulanmıyor.
+  async joinRoom(
+    userId: string,
+    roomId: string,
+    password?: string,
+  ): Promise<RoomSummary> {
     const room = await this.prisma.room.findUniqueOrThrow({
       where: { id: roomId },
       select: ROOM_SUMMARY_SELECT,
     });
+
+    if (room.passwordHash) {
+      const existingMembership = await this.prisma.roomMember.findUnique({
+        where: { userId_roomId: { userId, roomId } },
+      });
+      if (!existingMembership) {
+        const isValid =
+          password !== undefined &&
+          (await verifyRoomPasswordSafely(room.passwordHash, password));
+        if (!isValid) {
+          throw new UnauthorizedException('Şifre hatalı.');
+        }
+      }
+    }
 
     await this.prisma.roomMember.upsert({
       where: { userId_roomId: { userId, roomId } },
@@ -158,7 +220,7 @@ export class RoomsService {
       await socket.join(roomId);
     }
 
-    return room;
+    return toRoomSummary(room);
   }
 
   // Çekirdek odalar (CORE_ROOM_NAMES) AYRILAMAZ - herkesin ortak buluşma
@@ -195,6 +257,7 @@ export class RoomsService {
     userId: string,
     name: string,
     description?: string,
+    password?: string,
   ): Promise<RoomSummary> {
     // Case-insensitive ön kontrol - auth.service.ts'in username'de zaten
     // kurduğu aynı desen (DB'deki unique index case-sensitive, "General"
@@ -208,7 +271,11 @@ export class RoomsService {
       throw new ConflictException('Bu isimde bir oda zaten var.');
     }
 
-    let room: RoomSummary;
+    // M11c Slice A: auth.service.ts'in signup'ta kullandığı AYNI
+    // argon2.hash(password) deseni - varsayılan parametrelerle.
+    const passwordHash = password ? await argon2.hash(password) : undefined;
+
+    let room: RoomSummaryRow;
     try {
       // M7a Slice B: nested create - kurucunun üyeliği Room satırıyla
       // ATOMIK olarak yaratılıyor (ADR-0009, createRoom'un ileriye dönük
@@ -218,6 +285,7 @@ export class RoomsService {
         data: {
           name,
           description,
+          passwordHash,
           creatorId: userId,
           members: { create: { userId } },
         },
@@ -234,7 +302,7 @@ export class RoomsService {
       await socket.join(room.id);
     }
 
-    return room;
+    return toRoomSummary(room);
   }
 
   // `now` parametresi bu kod tabanında ilk kez kullanılan bir desen -

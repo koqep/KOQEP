@@ -12,7 +12,9 @@ import { RoomPage, RoomsService, RoomSummary } from '../services/rooms.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { JoinRoomDto } from './dto/join-room.dto';
 import { RoomCreationThrottlerGuard } from './room-creation-throttler.guard';
+import { RoomJoinThrottlerGuard } from './room-join-throttler.guard';
 
 @Controller('rooms')
 @UseGuards(JwtAuthGuard)
@@ -59,15 +61,21 @@ export class RoomsController {
       req.user.sub,
       dto.name,
       dto.description,
+      dto.password,
     );
   }
 
   @Post(':id/join')
+  @UseGuards(RoomJoinThrottlerGuard)
   joinRoom(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
+    @Body() dto: JoinRoomDto,
   ): Promise<RoomSummary> {
-    return this.roomsService.joinRoom(req.user.sub, id);
+    // messages.controller.ts'in reportMessage'ıyla AYNI gerekçe: gövde hiç
+    // gönderilmemişse (şifresiz odaya katılmanın normal yolu) dto undefined
+    // olabilir - dto?.password ile güvenli erişim.
+    return this.roomsService.joinRoom(req.user.sub, id, dto?.password);
   }
 
   @Post(':id/leave')

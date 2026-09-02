@@ -8,7 +8,12 @@ import {
 import { Room } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
-import { RoomSummary, isUniqueConstraintError } from './rooms.service';
+import {
+  RoomSummary,
+  ROOM_SUMMARY_SELECT,
+  isUniqueConstraintError,
+  toRoomSummary,
+} from './rooms.service';
 import { hasExcessiveCombiningMarks } from './content-validation.util';
 
 export const ROOM_RENAMED_ACTION = 'ROOM_RENAMED';
@@ -19,15 +24,6 @@ export const ROOM_DELETED_ACTION = 'ROOM_DELETED';
 // aynı, targetRoomAnnouncement'ın null/dolu olması hangisi olduğunu zaten
 // söylüyor.
 export const ROOM_ANNOUNCEMENT_UPDATED_ACTION = 'ROOM_ANNOUNCEMENT_UPDATED';
-
-const roomSummarySelect = {
-  id: true,
-  name: true,
-  description: true,
-  lastActivityAt: true,
-  status: true,
-  announcement: true,
-} as const;
 
 @Injectable()
 export class RoomModerationService {
@@ -64,7 +60,7 @@ export class RoomModerationService {
         const updated = await tx.room.update({
           where: { id: roomId },
           data: { name: newName },
-          select: roomSummarySelect,
+          select: ROOM_SUMMARY_SELECT,
         });
         await tx.moderationAuditLog.create({
           data: {
@@ -75,7 +71,7 @@ export class RoomModerationService {
             targetRoomDescription: room.description,
           },
         });
-        return updated;
+        return toRoomSummary(updated);
       });
     } catch (error) {
       if (isUniqueConstraintError(error, 'name')) {
@@ -96,7 +92,7 @@ export class RoomModerationService {
       const updated = await tx.room.update({
         where: { id: roomId },
         data: { status: 'archived', archivedAt: new Date() },
-        select: roomSummarySelect,
+        select: ROOM_SUMMARY_SELECT,
       });
       await tx.moderationAuditLog.create({
         data: {
@@ -107,7 +103,7 @@ export class RoomModerationService {
           targetRoomDescription: room.description,
         },
       });
-      return updated;
+      return toRoomSummary(updated);
     });
   }
 
@@ -196,7 +192,7 @@ export class RoomModerationService {
       const updated = await tx.room.update({
         where: { id: roomId },
         data: { announcement: normalized },
-        select: roomSummarySelect,
+        select: ROOM_SUMMARY_SELECT,
       });
       await tx.moderationAuditLog.create({
         data: {
@@ -208,7 +204,7 @@ export class RoomModerationService {
           targetRoomAnnouncement: normalized,
         },
       });
-      return updated;
+      return toRoomSummary(updated);
     });
   }
 

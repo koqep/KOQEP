@@ -86,6 +86,7 @@ export class MessagesService {
   ): Promise<MessageDto> {
     await this.assertNotMuted(userId);
     const room = await this.findRoomOrThrow(roomName);
+    await this.assertRoomAccessOrThrow(room, userId);
     if (room.status !== 'active') {
       // M3 Slice B: "arşivlenince salt-okunur" - sendMessage bugüne kadar
       // oda durumunu hiç kontrol etmiyordu.
@@ -167,6 +168,7 @@ export class MessagesService {
     limit: number = DEFAULT_PAGE_SIZE,
   ): Promise<MessagePage> {
     const room = await this.findRoomOrThrow(roomName);
+    await this.assertRoomAccessOrThrow(room, requesterId);
     if (room.status === 'archived') {
       // M3 Slice C: purgeArchivedRooms'un 60-gün-sıfır-görüntülenme
       // hesaplaması bu alana bakıyor - SADECE arşivlenmiş odalarda
@@ -389,6 +391,26 @@ export class MessagesService {
     });
     if (requester?.mutedUntil && requester.mutedUntil > new Date()) {
       throw new UserMutedException(requester.mutedUntil);
+    }
+  }
+
+  // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifresiz
+  // odalarda (bugün TÜMÜ) sıfır ek sorgu/davranış değişikliği, room.
+  // passwordHash doluysa RoomMember şart koşuyor (bir kez şifreyle
+  // kanıtlanmış üyelik - joinRoom, rooms.service.ts). WS handleMessageSend
+  // bu ForbiddenException'ı ROOM_ACCESS_DENIED'a çeviriyor (messages.
+  // gateway.ts); REST getRecentMessages'ta Nest'in varsayılan exception
+  // filter'ı doğal 403'e çeviriyor.
+  private async assertRoomAccessOrThrow(
+    room: Room,
+    userId: string,
+  ): Promise<void> {
+    if (!room.passwordHash) return;
+    const membership = await this.prisma.roomMember.findUnique({
+      where: { userId_roomId: { userId, roomId: room.id } },
+    });
+    if (!membership) {
+      throw new ForbiddenException('Bu oda şifre korumalı, önce katılmalısın.');
     }
   }
 
