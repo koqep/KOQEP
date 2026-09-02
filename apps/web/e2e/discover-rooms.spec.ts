@@ -72,6 +72,175 @@ test("odalari_kesfet_acilinca_uye_olunmayan_aktif_odalar_listelenir_katilinca_sw
   expect(joinedRoomId).toBe("room-elden-ring");
 });
 
+// M11c Slice B: şifreli oda göstergesi + inline şifre formu.
+test("sifreli_oda_gostergeyle_gorunur", async ({ page }) => {
+  await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "user",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/rooms", (route) => route.fulfill({ json: [] }));
+  await page.route("**/rooms/*/messages*", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+  await page.route(
+    (url) =>
+      url.pathname.endsWith("/rooms") &&
+      url.searchParams.get("scope") === "discoverable",
+    (route) =>
+      route.fulfill({
+        json: { rooms: [room({ hasPassword: true })], nextCursor: null },
+      }),
+  );
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "explore" }).click();
+  await expect(page.getByText("password protected")).toBeVisible();
+});
+
+test("sifreli_odada_join_dogrudan_katilmiyor_sifre_formu_aciyor", async ({
+  page,
+}) => {
+  await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "user",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/rooms", (route) => route.fulfill({ json: [] }));
+  await page.route("**/rooms/*/messages*", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+  await page.route(
+    (url) =>
+      url.pathname.endsWith("/rooms") &&
+      url.searchParams.get("scope") === "discoverable",
+    (route) =>
+      route.fulfill({
+        json: { rooms: [room({ hasPassword: true })], nextCursor: null },
+      }),
+  );
+  let joinCalled = false;
+  await page.route("**/rooms/room-elden-ring/join", async (route) => {
+    joinCalled = true;
+    await route.fulfill({ json: room({ hasPassword: true }) });
+  });
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "explore" }).click();
+  await page.getByRole("button", { name: "join" }).click();
+
+  await expect(page.getByLabel("password", { exact: true })).toBeVisible();
+  expect(joinCalled).toBe(false);
+});
+
+test("yanlis_sifreyle_hata_gosterir_form_acik_kalir", async ({ page }) => {
+  await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "user",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/rooms", (route) => route.fulfill({ json: [] }));
+  await page.route("**/rooms/*/messages*", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+  await page.route(
+    (url) =>
+      url.pathname.endsWith("/rooms") &&
+      url.searchParams.get("scope") === "discoverable",
+    (route) =>
+      route.fulfill({
+        json: { rooms: [room({ hasPassword: true })], nextCursor: null },
+      }),
+  );
+  await page.route("**/rooms/room-elden-ring/join", (route) =>
+    route.fulfill({ status: 401, json: { message: "Şifre hatalı." } }),
+  );
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "explore" }).click();
+  await page.getByRole("button", { name: "join" }).click();
+  await page.getByLabel("password", { exact: true }).fill("yanlis-sifre");
+  await page.getByRole("button", { name: "join", exact: true }).click();
+
+  await expect(page.getByText("Şifre hatalı.")).toBeVisible();
+  await expect(page.getByLabel("password", { exact: true })).toBeVisible();
+});
+
+test("dogru_sifreyle_katilir", async ({ page }) => {
+  await mockAuthSuccess(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "user",
+        mutedUntil: null,
+      },
+    }),
+  );
+  await page.route("**/rooms", (route) => route.fulfill({ json: [] }));
+  await page.route("**/rooms/*/messages*", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+  await page.route(
+    (url) =>
+      url.pathname.endsWith("/rooms") &&
+      url.searchParams.get("scope") === "discoverable",
+    (route) =>
+      route.fulfill({
+        json: { rooms: [room({ hasPassword: true })], nextCursor: null },
+      }),
+  );
+  let joinedRoomId: string | undefined;
+  await page.route("**/rooms/room-elden-ring/join", async (route) => {
+    joinedRoomId = "room-elden-ring";
+    await route.fulfill({ json: room({ hasPassword: true }) });
+  });
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "explore" }).click();
+  await page.getByRole("button", { name: "join" }).click();
+  await page.getByLabel("password", { exact: true }).fill("dogru-sifre");
+  await page.getByRole("button", { name: "join", exact: true }).click();
+
+  await expect(page.getByRole("button", { name: "#elden-ring" })).toBeVisible();
+  expect(joinedRoomId).toBe("room-elden-ring");
+});
+
 test("kesif_listesi_daha_fazla_goster_ile_sayfalanir", async ({ page }) => {
   await mockAuthSuccess(page);
   await page.route("**/users/me", (route) =>
