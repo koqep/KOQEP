@@ -8,6 +8,7 @@ import {
   type Room,
 } from "../../lib/api";
 import { formatRelativeActivity } from "../../lib/format";
+import PasswordInput from "./PasswordInput";
 
 interface Props {
   accessToken: string;
@@ -20,6 +21,11 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // M11c Slice B: şifreli bir oda için "join" tıklaması DOĞRUDAN katılmıyor -
+  // önce bu satırda inline bir şifre formu açılıyor (RoomModerationSection.
+  // tsx'in rename/announce formlarıyla AYNI koşullu-değiştirme deseni).
+  const [passwordDraftId, setPasswordDraftId] = useState<string | null>(null);
+  const [passwordDraft, setPasswordDraft] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -52,19 +58,40 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
   }
 
   async function handleJoin(room: Room) {
+    // Şifreli bir oda için ilk tıklama SADECE formu açar - şifre henüz
+    // yok, API'ye gitmenin anlamı yok (zaten reddedilir).
+    if (room.hasPassword && passwordDraftId !== room.id) {
+      setError(null);
+      setPasswordDraftId(room.id);
+      setPasswordDraft("");
+      return;
+    }
+
     setError(null);
     setJoiningId(room.id);
     try {
-      const joined = await joinRoom(accessToken, room.id);
+      const joined = await joinRoom(
+        accessToken,
+        room.id,
+        room.hasPassword ? passwordDraft : undefined,
+      );
       setRooms((prev) => (prev ?? []).filter((r) => r.id !== room.id));
+      setPasswordDraftId(null);
       onJoined(joined);
     } catch (err) {
+      // Yanlış şifrede form AÇIK KALIR - kullanıcı tekrar deneyebilsin.
       setError(
         err instanceof ApiError ? err.message : "Connection error. Try again.",
       );
     } finally {
       setJoiningId(null);
     }
+  }
+
+  function handleCancelPasswordPrompt() {
+    setPasswordDraftId(null);
+    setPasswordDraft("");
+    setError(null);
   }
 
   return (
@@ -90,16 +117,48 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
                 )}
                 <span className="block text-sm text-muted">
                   last active: {formatRelativeActivity(room.lastActivityAt)}
+                  {room.hasPassword && " · password protected"}
                 </span>
               </span>
-              <button
-                type="button"
-                onClick={() => void handleJoin(room)}
-                disabled={joiningId === room.id}
-                className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {joiningId === room.id ? "joining..." : "join"}
-              </button>
+              {passwordDraftId === room.id ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleJoin(room);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <PasswordInput
+                    label="password"
+                    filled
+                    value={passwordDraft}
+                    onChange={(event) => setPasswordDraft(event.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    disabled={joiningId === room.id}
+                    className="bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {joiningId === room.id ? "joining..." : "join"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelPasswordPrompt}
+                    className="text-muted hover:text-neutral-400"
+                  >
+                    cancel
+                  </button>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleJoin(room)}
+                  disabled={joiningId === room.id}
+                  className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {joiningId === room.id ? "joining..." : "join"}
+                </button>
+              )}
             </li>
           ))}
         </ul>

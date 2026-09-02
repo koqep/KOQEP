@@ -3,23 +3,28 @@
 import { useState, type FormEvent } from "react";
 import { createRoom, ApiError, type Room } from "../../lib/api";
 import { filledInputClassName } from "./formStyles";
+import PasswordInput from "./PasswordInput";
 
 interface Props {
   accessToken: string;
   onCreated: (room: Room) => void;
 }
 
-// create-room.dto.ts'teki MAX_ROOM_NAME_LENGTH/MAX_ROOM_DESCRIPTION_LENGTH
-// ile birebir aynı - RoomView.tsx'in MAX_MESSAGE_LENGTH için zaten kurduğu
-// aynı "küçük sabiti frontend/backend arasında kopyala" deseni (ADR-0002:
-// web istemcisi iş mantığı sahibi değil, sunucu tarafı zaten doğruluyor).
+// create-room.dto.ts'teki MAX_ROOM_NAME_LENGTH/MAX_ROOM_DESCRIPTION_LENGTH/
+// MIN_ROOM_PASSWORD_LENGTH/MAX_ROOM_PASSWORD_LENGTH ile birebir aynı -
+// RoomView.tsx'in MAX_MESSAGE_LENGTH için zaten kurduğu aynı "küçük
+// sabiti frontend/backend arasında kopyala" deseni (ADR-0002: web
+// istemcisi iş mantığı sahibi değil, sunucu tarafı zaten doğruluyor).
 const MAX_ROOM_NAME_LENGTH = 60;
 const MAX_ROOM_DESCRIPTION_LENGTH = 200;
+const MIN_ROOM_PASSWORD_LENGTH = 8;
+const MAX_ROOM_PASSWORD_LENGTH = 200;
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 export default function CreateRoomView({ accessToken, onCreated }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,11 +34,22 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
       setError("Room name can only contain letters, numbers, - and _.");
       return;
     }
+    if (password.length > 0 && password.length < MIN_ROOM_PASSWORD_LENGTH) {
+      setError(
+        `Room password must be at least ${MIN_ROOM_PASSWORD_LENGTH} characters.`,
+      );
+      return;
+    }
 
     setError(null);
     setIsSubmitting(true);
     try {
-      const room = await createRoom(accessToken, name, description.trim());
+      const room = await createRoom(
+        accessToken,
+        name,
+        description.trim(),
+        password,
+      );
       onCreated(room);
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
@@ -74,6 +90,13 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
             className={filledInputClassName}
           />
         </label>
+        <PasswordInput
+          label="password (optional)"
+          filled
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          maxLength={MAX_ROOM_PASSWORD_LENGTH}
+        />
         {error && <p className="text-red-400">{error}</p>}
         <button
           type="submit"
