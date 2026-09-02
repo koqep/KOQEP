@@ -291,6 +291,78 @@ describe('AuthService', () => {
       expect(payload.sub).toBe(user.id);
     });
 
+    // M9 Slice B: kod tabanına eklenen locale-senkron mantığı.
+    it('locale_null_iken_localehint_senkronlanir_ve_jwte_yazilir', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = {
+        id: 'user-1',
+        email: 'a@koqep.local',
+        passwordHash,
+        emailVerifiedAt: new Date(),
+        locale: null,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      };
+      const updateSpy = jest.fn().mockResolvedValue({});
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+          update: updateSpy,
+        } as unknown as PrismaService['user'],
+        refreshToken: {
+          create: jest.fn().mockResolvedValue({}),
+        } as unknown as PrismaService['refreshToken'],
+      };
+
+      const service = buildService(prismaMock);
+      const { accessToken } = await service.login({
+        email: user.email,
+        password: 'correct-password',
+        localeHint: 'tr',
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith({
+        where: { id: user.id },
+        data: { locale: 'tr' },
+      });
+      const payload = jwt.verify<{ sub: string; locale: string }>(accessToken);
+      expect(payload.locale).toBe('tr');
+    });
+
+    it('locale_zaten_doluyken_localehint_yok_sayilir', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const user = {
+        id: 'user-1',
+        email: 'a@koqep.local',
+        passwordHash,
+        emailVerifiedAt: new Date(),
+        locale: 'tr',
+        failedLoginCount: 0,
+        lockedUntil: null,
+      };
+      const updateSpy = jest.fn().mockResolvedValue({});
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue(user),
+          update: updateSpy,
+        } as unknown as PrismaService['user'],
+        refreshToken: {
+          create: jest.fn().mockResolvedValue({}),
+        } as unknown as PrismaService['refreshToken'],
+      };
+
+      const service = buildService(prismaMock);
+      const { accessToken } = await service.login({
+        email: user.email,
+        password: 'correct-password',
+        localeHint: 'en',
+      });
+
+      expect(updateSpy).not.toHaveBeenCalled();
+      const payload = jwt.verify<{ sub: string; locale: string }>(accessToken);
+      expect(payload.locale).toBe('tr');
+    });
+
     it('reddeder_yanlis_sifreyi', async () => {
       const passwordHash = await argon2.hash('correct-password');
       const user = {
@@ -726,6 +798,39 @@ describe('AuthService', () => {
       });
       const payload = jwt.verify<{ sub: string; email: string }>(accessToken);
       expect(payload.sub).toBe('user-1');
+    });
+
+    // M9 Slice B: refresh de login gibi user.locale'i (varsa) JWT'ye taşır.
+    it('jwt_payloadina_user_locale_i_yazar', async () => {
+      const rawToken = 'a-raw-refresh-token';
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      const stored = {
+        id: 'rt-1',
+        tokenHash,
+        userId: 'user-1',
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        refreshToken: {
+          findUnique: jest.fn().mockResolvedValue(stored),
+          update: jest.fn().mockResolvedValue({}),
+          create: jest.fn().mockResolvedValue({}),
+        } as unknown as PrismaService['refreshToken'],
+        user: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({
+            id: 'user-1',
+            email: 'a@koqep.local',
+            locale: 'tr',
+          }),
+        } as unknown as PrismaService['user'],
+      };
+
+      const service = buildService(prismaMock);
+      const { accessToken } = await service.refresh(rawToken);
+
+      const payload = jwt.verify<{ sub: string; locale: string }>(accessToken);
+      expect(payload.locale).toBe('tr');
     });
 
     it('reddeder_grace_penceresi_gecmis_iptal_edilmis_refresh_tokeni', async () => {
