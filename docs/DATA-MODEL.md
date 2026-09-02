@@ -9,9 +9,9 @@
 
 **Invite** — a code issued by a user on level-up (PRD: 1 per level, starting at Level 1). `used_by` is nullable until consumed.
 
-**Room** — either core (fixed set, e.g. #general, #meta) or user-created. `status` moves one-way: active → archived → deleted (ADR-0006). `last_message_at` drives the 14-day archive timer; `last_viewed_at` drives the 60-day delete timer once archived.
+**Room** — either core (fixed set, e.g. #general, #meta) or user-created. `status` moves one-way: active → archived → deleted (ADR-0006). `last_message_at` drives the 14-day archive timer; `last_viewed_at` drives the 60-day delete timer once archived. `password_hash` (nullable, argon2 — M11c) is the first real access-gating field: when set, joining requires the matching password, and reading/sending messages requires an existing `RoomMember` row (see below).
 
-**RoomMember** — `(user, room)` join row, `@@unique([userId, roomId])`. Scopes WS broadcast fan-out and the "mine"/"discoverable" room lists at 500-user scale (ADR-0009) — **not** an access-control mechanism: any authenticated user can still read/post to any active room by name regardless of membership. Backfilled once (core rooms × all users, room creators, real message participants) for pre-existing data; silent "lurkers" (read but never posted) are a known, accepted gap — no per-user view-tracking exists today.
+**RoomMember** — `(user, room)` join row, `@@unique([userId, roomId])`. Scopes WS broadcast fan-out and the "mine"/"discoverable" room lists at 500-user scale (ADR-0009) — **not** an access-control mechanism for password-less rooms: any authenticated user can still read/post to any active, password-less room by name regardless of membership. **Exception (M11c):** for a room with `password_hash` set, a `RoomMember` row (created by a successful, password-verified join) is now required before reading or sending messages in that room. Backfilled once (core rooms × all users, room creators, real message participants) for pre-existing data; silent "lurkers" (read but never posted) are a known, accepted gap — no per-user view-tracking exists today.
 
 **Message** — belongs to a room. `author_id` becomes null only when its account is anonymized on deletion (ADR-0005) — content itself is never deleted for that reason.
 
