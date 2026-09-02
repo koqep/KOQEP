@@ -22,19 +22,22 @@ görebiliyor/moderasyon yapabiliyor (şifre onu etkilemiyor).
   varsayılan: normal keşif listesinde görünür, sadece katılım şifre ister.
 
 ## Acceptance criteria
-- [ ] `Room` modeli opsiyonel bir şifre-hash alanına sahip (migration).
-- [ ] Oda oluşturma akışında opsiyonel bir şifre alanı var.
-- [ ] `joinRoom` (bugün açık bir upsert, `Room.RoomMember`'ın erişim-kontrolü
+- [x] `Room` modeli opsiyonel bir şifre-hash alanına sahip (migration).
+- [ ] Oda oluşturma akışında opsiyonel bir şifre alanı var — backend
+      (DTO+servis) Slice A'da hazır, frontend formu Slice B'nin işi.
+- [x] `joinRoom` (bugün açık bir upsert, `Room.RoomMember`'ın erişim-kontrolü
       OLMADIĞI şemanın kendi doc yorumunda belirtiliyor) artık şifreli bir
       oda için doğru şifre gerektiriyor, yanlış şifrede reddediyor.
-- [ ] Moderatör aksiyonları (mute, remove-content, room-level moderasyon)
-      şifreli odalarda AYNEN çalışıyor — hiçbir yeni kısıt yok.
-- [ ] Şifre hash'lenerek saklanıyor (düz metin DEĞİL, mevcut login-şifresi
+- [x] Moderatör aksiyonları (mute, remove-content, room-level moderasyon)
+      şifreli odalarda AYNEN çalışıyor — hiçbir yeni kısıt yok (kod
+      DEĞİŞMEDİ, `ModeratorGuard` zaten role-based, oda şifresinden
+      bağımsız — Slice A'da doğrulandı).
+- [x] Şifre hash'lenerek saklanıyor (düz metin DEĞİL, mevcut login-şifresi
       hash'leme deseniyle tutarlı).
 
 ## Tasks
-- [ ] **Slice A — Şema + backend.** Migration, `joinRoom`'un şifre
-      doğrulaması, oda oluşturma DTO'suna opsiyonel şifre alanı.
+- [x] **Slice A — Şema + backend.** Tamamlandı (2026-09-02),
+      `feat/room-password-backend` dalında. Detay Plan notları'nda.
 - [ ] **Slice B — Frontend.** `CreateRoomView.tsx`'e opsiyonel şifre alanı,
       katılım akışına şifre isteme adımı.
 
@@ -55,3 +58,62 @@ etkilenmez, ~15-20h; (b) gerçek mesaj-içeriği şifrelemesi, anahtar yönetimi
 + THREAT-MODEL etkisi (şifreli içerik mevcut moderasyon sisteminin
 "okunabilir içerik" varsayımıyla çelişir), ~40-60h+. **Kullanıcı (a)'yı
 seçti.** Bu dosya sadece (a)'yı kapsıyor.
+
+### Slice A kapsam turu + implementasyonu (2026-09-02) — tamamlandı
+
+Plan modunda 2 paralel Explore agent'ıyla (backend: `RoomMember`/ADR-0009/
+`joinRoom`/hash deseni; frontend: `CreateRoomView`/`DiscoverRoomsView`/
+panel deseni) kod TAM okunarak doğrulandı. **En kritik bulgu:** ADR-0009
+`messages.service.ts`'in `sendMessage`/`getRecentMessages`'ının HİÇBİR
+üyelik kontrolü yapmadığını, herhangi bir authed kullanıcının ismini
+bildiği herhangi bir aktif odaya doğrudan yazabildiğini/okuyabildiğini
+GERÇEKTEN doğruladı (bilinçli bir mimari karar, "erişim kontrolü DEĞİL").
+Bu, `AskUserQuestion` ile netleştirilen kritik bir kapsam kararı doğurdu:
+
+**Kapsam kararı — sendMessage/getRecentMessages de korunmalı mı?**
+1. Sadece `joinRoom`'u koru (milestone'un literal AC'si) — şifre sadece
+   UI akışının bir adımı, REST/WS'i doğrudan çağıran biri şifreyi hiç
+   görmeden mesaj gönderip okuyabilirdi, "şifre-korumalı" ismi yanıltıcı
+   olurdu.
+2. **`sendMessage`/`getRecentMessages`/WS `handleMessageSend`'i de koru**
+   (KULLANICI SEÇTİ, önerilen) — normal UI akışı (her zaman join'den
+   geçiyor) HİÇ etkilenmiyor, sadece API'yi doğrudan çağıran biri
+   durduruluyor. ~3-5h ek süre.
+
+Uygulama, `feat/room-password-backend` dalında (main'den, BAĞIMSIZ) 3
+commit:
+- `60f37e1` — `Room.passwordHash` migration (nullable, additive) +
+  `CreateRoomDto`/`JoinRoomDto` + `RoomsService.createRoom`/`joinRoom`
+  (argon2, `auth.service.ts`'in AYNI deseni) + `MessagesService`'e YENİ
+  `assertRoomAccessOrThrow` (sendMessage/getRecentMessages'ın ikisine de
+  eklendi, şifresiz odalarda SIFIR davranış değişikliği) + WS
+  `handleMessageSend`'e `ForbiddenException` → `ROOM_ACCESS_DENIED`
+  çevirisi + `RoomSummary`'ye `hasPassword` (hash asla dışarı sızmıyor) +
+  yeni `RoomJoinThrottlerGuard` (`ReportThrottlerGuard`'ın birebir
+  kopyası, 10/saat — milestone AC'sinde yok ama şifre kontrolünün
+  kendisiyle motive).
+- `264796b` — testler (aşağıda).
+- `ef4b6a7` — `docs/DATA-MODEL.md` güncellemesi.
+
+**Plan sırasında YAKALANMAMIŞ, implementasyonda bulunan bir tip hatası:**
+`room-moderation.service.ts` `RoomSummary` dönen 3 metodu (`renameRoom`/
+`archiveRoom`/`setRoomAnnouncement`) KENDİ ayrı, `rooms.service.ts`'in
+`ROOM_SUMMARY_SELECT`'inden BAĞIMSIZ bir `roomSummarySelect` kopyasını
+taşıyordu — `hasPassword` eklenince derleyici bu 3 yeri de eksik alanla
+yakaladı. Düzeltme: `rooms.service.ts`'in `ROOM_SUMMARY_SELECT`/
+`toRoomSummary`'si EXPORT edilip `room-moderation.service.ts`'in kendi
+kopyası KALDIRILDI — bir taşla iki kuş (tip hatası + önceden var olan bir
+gerçek kod tekrarı).
+
+**Test-izolasyonu dersi (ValidationPipe):** `rooms.e2e-spec.ts`'in ana
+describe'u `ValidationPipe` KURMUYOR (`apps/api`'nin e2e TestingModule'ü
+genelde kurmuyor, STATE.md Tuzaklar) — kısa-şifre DTO reddi testi
+`auth-signup-login.e2e-spec.ts`'in "ana describe'a ValidationPipe eklemek
+riskli, KENDİ küçük TestingModule'ü" emsaliyle AYNI desende ayrı, küçük
+bir describe'a alındı, ana describe'un mevcut testlerine hiç dokunulmadı.
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz, `npm run build` başarılı,
+`apps/api` birim 329/329 (+9 yeni), `apps/api` e2e 160/160 (26 suite, +4
+yeni: `rooms.e2e-spec.ts`'te join şifre akışı + WS `ROOM_ACCESS_DENIED` +
+ayrı ValidationPipe describe'unda kısa-şifre reddi, `messages.e2e-spec.ts`'te
+REST 403). Frontend'e (Slice B) HENÜZ dokunulmadı.
