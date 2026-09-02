@@ -76,6 +76,82 @@ test("yeni_oda_olusturunca_switchera_eklenir_ve_otomatik_secilir", async ({
   await expect(page.getByText("genel odasindaki mesaj")).not.toBeVisible();
 });
 
+// M11c Slice B: opsiyonel şifre alanı.
+test("sifre_ile_oda_olusturur", async ({ page }) => {
+  await mockAuthSuccess(page);
+  let postedBody: { name: string; password?: string } | undefined;
+  await page.route("**/rooms", async (route) => {
+    if (route.request().method() === "POST") {
+      postedBody = route.request().postDataJSON() as {
+        name: string;
+        password?: string;
+      };
+      await route.fulfill({
+        status: 201,
+        json: {
+          id: "room-gizli",
+          name: postedBody.name,
+          description: null,
+          lastActivityAt: new Date().toISOString(),
+          status: "active",
+          hasPassword: true,
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: [] });
+  });
+  await page.route("**/rooms/*/messages", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "+ new room" }).click();
+  await page.getByLabel("room name").fill("gizli-oda");
+  await page.getByLabel("password (optional)").fill("oda-sifresi-123");
+  await page.getByRole("button", { name: "create" }).click();
+
+  await expect(page.getByRole("button", { name: "#gizli-oda" })).toBeVisible();
+  expect(postedBody?.password).toBe("oda-sifresi-123");
+});
+
+test("kisa_sifre_client_tarafinda_reddedilir_api_cagrilmaz", async ({
+  page,
+}) => {
+  await mockAuthSuccess(page);
+  let postCount = 0;
+  await page.route("**/rooms", async (route) => {
+    if (route.request().method() === "POST") {
+      postCount++;
+      await route.fulfill({ status: 201, json: {} });
+      return;
+    }
+    await route.fulfill({ json: [] });
+  });
+  await page.route("**/rooms/*/messages", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "+ new room" }).click();
+  await page.getByLabel("room name").fill("kisa-sifreli-oda");
+  await page.getByLabel("password (optional)").fill("kisa");
+  await page.getByRole("button", { name: "create" }).click();
+
+  await expect(
+    page.getByText("Room password must be at least 8 characters."),
+  ).toBeVisible();
+  expect(postCount).toBe(0);
+});
+
 test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
   await mockAuthSuccess(page);
   await page.route("**/rooms", async (route) => {

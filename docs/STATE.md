@@ -3,19 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-02 (M11a+M11b (A/D/E)+M13 (TÜMÜ) main'de; M11c Slice A tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-02 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ) main'de; M11c Slice B tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü.
-- **M11b Slice A/D/E + M13 (TÜM dilimler) main'de** (PR #106-113, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; panel mekanizması ortada-modal'a geçti; `AccountMenu` artık profile/settings/feedback/log out; feedback kendi paneli oldu.
-- **2026-09-02: M11c Slice A (şifre-korumalı odalar: şema+backend) TAMAMLANDI, `feat/room-password-backend` dalında (main'den, BAĞIMSIZ), push bekliyor.** `Room.passwordHash` (nullable, argon2) — kod tabanına eklenen İLK gerçek erişim-gating. `joinRoom` artık şifre doğruluyor; kullanıcı onayıyla kapsam `sendMessage`/`getRecentMessages`/WS'i de kapsayacak GENİŞLETİLDİ (ADR-0009'un "erişim kontrolü değil" duruşu şifreli odalar için İSTİSNA aldı) — normal UI akışı etkilenmiyor, sadece API'yi doğrudan çağıran biri durduruluyor. `apps/api` birim 329/329 + e2e 160/160 yeşil. Frontend (Slice B) HENÜZ yok. Detay `docs/milestones/M11c-password-rooms.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c Slice B, M12 sırada.
+- **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c Slice A main'de** (PR #106-114, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; feedback kendi paneli oldu; `Room.passwordHash` — kod tabanına eklenen İLK gerçek erişim-gating (`joinRoom`+`sendMessage`/`getRecentMessages`/WS, ADR-0009'un istisnası).
+- **2026-09-02: M11c Slice B (şifre-korumalı odalar: frontend) TAMAMLANDI, `feat/room-password-frontend` dalında (main'den, Slice A zaten main'de), push bekliyor — M11c'nin SON dilimi.** `CreateRoomView.tsx`'e `PasswordInput` (login'in aynı bileşeni) ile opsiyonel şifre alanı; `DiscoverRoomsView.tsx`'te şifreli oda düz metin "password protected" göstergesiyle işaretleniyor, "join" doğrudan katılmıyor, inline şifre formu açılıyor (yanlış şifrede form açık kalıyor). Mock'lu süit 146/146 (×2) + fullstack 10/10 + `apps/api` 329/329+160/160 (etkilenmedi) yeşil. Detay `docs/milestones/M11c-password-rooms.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12 sırada — M11c TAMAMEN bitti.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/room-password-backend` (main'den, 3 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M11c Slice B (frontend: `CreateRoomView`/`DiscoverRoomsView` şifre alanları, `PasswordInput.tsx` yeniden kullanılarak) plan modu başlatılacak.
+- **Görev:** `feat/room-password-frontend` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası bir sıradaki milestone seçilmeli (M11b Slice B/C ya da M12) — M11c artık tamamen kapandı.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

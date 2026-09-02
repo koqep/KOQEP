@@ -17,14 +17,14 @@ görebiliyor/moderasyon yapabiliyor (şifre onu etkilemiyor).
   Plan notları): anahtar yönetimi + moderasyon/raporlama sisteminin
   "okunabilir içerik" varsayımıyla çelişkisi, ~40-60h+ ek risk. Bu dilimde
   YOK, ileride ayrı bir tartışma/milestone gerektirir.
-- Şifre-korumalı odanın `scope=discoverable` listesinden gizlenmesi/farklı
-  görünmesi — implementasyon planında ayrıca netleştirilecek, bu dosyada
-  varsayılan: normal keşif listesinde görünür, sadece katılım şifre ister.
+- Şifre-korumalı odanın `scope=discoverable` listesinden gizlenmesi —
+  KARARLAŞTIRILDI (Slice B): normal keşif listesinde görünür, sadece düz
+  metin bir "password protected" göstergesiyle işaretlenir.
 
 ## Acceptance criteria
 - [x] `Room` modeli opsiyonel bir şifre-hash alanına sahip (migration).
-- [ ] Oda oluşturma akışında opsiyonel bir şifre alanı var — backend
-      (DTO+servis) Slice A'da hazır, frontend formu Slice B'nin işi.
+- [x] Oda oluşturma akışında opsiyonel bir şifre alanı var — backend
+      Slice A'da, frontend formu (`CreateRoomView.tsx`) Slice B'de.
 - [x] `joinRoom` (bugün açık bir upsert, `Room.RoomMember`'ın erişim-kontrolü
       OLMADIĞI şemanın kendi doc yorumunda belirtiliyor) artık şifreli bir
       oda için doğru şifre gerektiriyor, yanlış şifrede reddediyor.
@@ -38,8 +38,8 @@ görebiliyor/moderasyon yapabiliyor (şifre onu etkilemiyor).
 ## Tasks
 - [x] **Slice A — Şema + backend.** Tamamlandı (2026-09-02),
       `feat/room-password-backend` dalında. Detay Plan notları'nda.
-- [ ] **Slice B — Frontend.** `CreateRoomView.tsx`'e opsiyonel şifre alanı,
-      katılım akışına şifre isteme adımı.
+- [x] **Slice B — Frontend.** Tamamlandı (2026-09-02),
+      `feat/room-password-frontend` dalında. Detay Plan notları'nda.
 
 ## Risks
 - Bugün HİÇBİR odada erişim-kontrolü yok (`RoomMember` bilerek "access
@@ -117,3 +117,38 @@ bir describe'a alındı, ana describe'un mevcut testlerine hiç dokunulmadı.
 yeni: `rooms.e2e-spec.ts`'te join şifre akışı + WS `ROOM_ACCESS_DENIED` +
 ayrı ValidationPipe describe'unda kısa-şifre reddi, `messages.e2e-spec.ts`'te
 REST 403). Frontend'e (Slice B) HENÜZ dokunulmadı.
+
+### Slice B implementasyonu (2026-09-02) — tamamlandı
+
+Kapsam net, Slice A'nın plan modunda ZATEN tam okunmuş frontend kodu
+(`CreateRoomView.tsx`/`DiscoverRoomsView.tsx`/`lib/api.ts`/
+`PasswordInput.tsx`) üzerinden doğrudan uygulamaya geçildi - yeni bir
+Explore agent'ı gerekmedi (`git log` ile Slice A'dan bu yana `apps/web`'e
+hiç dokunulmadığı doğrulandı).
+
+Uygulama, `feat/room-password-frontend` dalında (main'den, Slice A ZATEN
+main'de) 2 commit:
+- `4b37593` — `lib/api.ts`'e `Room.hasPassword` + `createRoom`/`joinRoom`'un
+  opsiyonel `password` parametresi. `CreateRoomView.tsx`'e login'in ZATEN
+  kullandığı `PasswordInput` bileşeniyle (yeni bir `<input type=
+  "password">` icat edilmeden) "password (optional)" alanı - kısa şifre
+  client tarafında (API'ye hiç gitmeden) reddediliyor.
+  `DiscoverRoomsView.tsx`: şifreli bir oda düz metin "· password
+  protected" göstergesiyle işaretleniyor (KOQEP'in metin-only/terminal
+  estetiği - ikon/emoji İCAT EDİLMEDİ). "join" tıklaması şifreli bir
+  odada DOĞRUDAN katılmıyor, `RoomModerationSection.tsx`'in rename/
+  announce formlarıyla AYNI koşullu-değiştirme deseninde inline bir
+  şifre formu açılıyor; yanlış şifrede form AÇIK KALIYOR (kullanıcı
+  tekrar deneyebilsin).
+- `f2ebf0d` — testler (aşağıda).
+
+**Doğrulama:** `npm run lint`+`typecheck` temiz, `npm run build` başarılı,
+mock'lu Playwright süiti 146/146 (İKİ tam koşum - 6 yeni test), `e2e-
+fullstack` 10/10 (bu slice'a dokunan bir fullstack testi yok, grep ile
+doğrulandı), `apps/api` birim 329/329 + e2e 160/160 (etkilenmedi, saf
+frontend). Görsel doğrulama: create-room panelinde şifre alanı + discover-
+rooms listesinde göstergenin (şifresiz odada YOK) + join tıklanınca açılan
+inline formun + yanlış şifre hatasının (form açık kalıyor, şifre alanı
+dolu) gerçek Playwright ekran görüntüsüyle onaylandı.
+
+**M11c'nin TÜM dilimleri (Slice A + Slice B) artık tamamlandı.**

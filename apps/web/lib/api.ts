@@ -341,6 +341,8 @@ export interface Room {
   lastActivityAt: string;
   status: "active" | "archived" | "deleted";
   announcement: string | null;
+  // M11c Slice B: hash'in kendisi asla dönmüyor, sadece varlığı.
+  hasPassword: boolean;
 }
 
 export function listRooms(
@@ -380,8 +382,14 @@ export function listDiscoverableRooms(
   return authedGetJson<RoomPage>(`/rooms?${params.toString()}`, accessToken);
 }
 
-export function joinRoom(accessToken: string, roomId: string): Promise<Room> {
-  return authedPostJson<Room>(`/rooms/${roomId}/join`, accessToken);
+export function joinRoom(
+  accessToken: string,
+  roomId: string,
+  password?: string,
+): Promise<Room> {
+  return authedPostJson<Room>(`/rooms/${roomId}/join`, accessToken, {
+    password: password || undefined,
+  });
 }
 
 export async function leaveRoom(
@@ -395,10 +403,12 @@ export function createRoom(
   accessToken: string,
   name: string,
   description?: string,
+  password?: string,
 ): Promise<Room> {
   return authedPostJson<Room>("/rooms", accessToken, {
     name,
     description: description || undefined,
+    password: password || undefined,
   });
 }
 
