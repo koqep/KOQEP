@@ -30,6 +30,7 @@ import DiscoverRoomsView from "./DiscoverRoomsView";
 import ModerationQueueView from "./ModerationQueueView";
 import ProfileView from "./ProfileView";
 import SettingsView from "./SettingsView";
+import FeedbackView from "./FeedbackView";
 import TopBar from "./TopBar";
 import RoomSidebar from "./RoomSidebar";
 import ChatPanel from "./ChatPanel";
@@ -45,13 +46,17 @@ import CenteredModal from "./CenteredModal";
 // aşağıdaki viewingProfileUsername.
 // M13 Slice A: "sidebar"/"moderation" ESKİ SidePanel mekanizmasında
 // kalıyor (kullanıcı onayı - navigasyon deseni/sık-aksiyonlu içerik,
-// ortada-modal'a uygun değil), diğer 7 (+ henüz eklenmeyen "feedback",
-// Slice C) CenteredModal'a geçiyor - bkz. PANEL_TITLES.
+// ortada-modal'a uygun değil), diğer paneller CenteredModal'a geçiyor -
+// bkz. PANEL_TITLES.
 // M13 Slice B: "settings" AccountMenu'nün eski 4 ayrı öğesinin (totp/
 // blocked/invites/delete-account) yerine açılan bir gezinme paneli -
 // SettingsView'daki bir satıra tıklamak activePanel'i DOĞRUDAN o hedefe
 // çeviriyor (settings→totp gibi), CenteredModal UNMOUNT OLMUYOR (ikisi
 // de AYNI ternary dalına düşüyor), sadece title/children değişiyor.
+// M13 Slice C: "feedback" AccountMenu'de ÜST SEVİYEDE kalıyor (settings'in
+// ALTINA taşınmadı, henüz gerçek bir panel değildi) ama artık doğrudan bir
+// mailto: linki DEĞİL - AYNI CenteredModal mekanizmasıyla açılan statik
+// bir panel (FeedbackView), gerçek mailto: linki panelin İÇİNDE.
 type ActivePanel =
   | "none"
   | "totp"
@@ -63,7 +68,8 @@ type ActivePanel =
   | "moderation"
   | "sidebar"
   | "profile"
-  | "settings";
+  | "settings"
+  | "feedback";
 
 type CenteredModalPanel = Exclude<ActivePanel, "none" | "sidebar" | "moderation">;
 
@@ -80,6 +86,7 @@ const PANEL_TITLES: Record<CenteredModalPanel, string> = {
   "discover-rooms": "discover rooms",
   profile: "profile",
   settings: "settings",
+  feedback: "feedback",
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -789,6 +796,7 @@ export default function RoomView({
           username={myProfile?.username ?? null}
           onOpenProfile={handleViewProfile}
           onOpenSettings={() => setActivePanel("settings")}
+          onOpenFeedback={() => setActivePanel("feedback")}
           onLogout={() => void handleLogout()}
         />
 
@@ -905,6 +913,8 @@ export default function RoomView({
               <ProfileView accessToken={accessToken} username={viewingProfileUsername} />
             ) : activePanel === "settings" ? (
               <SettingsView onNavigate={setActivePanel} />
+            ) : activePanel === "feedback" ? (
+              <FeedbackView />
             ) : null}
           </CenteredModal>
         )

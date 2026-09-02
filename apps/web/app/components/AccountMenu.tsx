@@ -1,13 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FEEDBACK_EMAIL } from "../../lib/contact";
 import { useDismissableMenu } from "./useDismissableMenu";
 
 interface Props {
   username: string | null;
   onOpenProfile: (username: string) => void;
   onOpenSettings: () => void;
+  onOpenFeedback: () => void;
   onLogout: () => void;
 }
 
@@ -18,6 +18,7 @@ export default function AccountMenu({
   username,
   onOpenProfile,
   onOpenSettings,
+  onOpenFeedback,
   onLogout,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,14 +87,14 @@ export default function AccountMenu({
           >
             settings
           </button>
-          <a
+          <button
             role="menuitem"
-            href={`mailto:${FEEDBACK_EMAIL}?subject=KOQEP%20feedback`}
-            onClick={() => setIsOpen(false)}
+            type="button"
+            onClick={() => select(onOpenFeedback)}
             className={menuItemClassName}
           >
             feedback
-          </a>
+          </button>
           <button
             role="menuitem"
             type="button"

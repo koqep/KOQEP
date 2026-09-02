@@ -3,19 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-01 (M11a+M11b (A/D/E)+M13 Slice A/D/E main'de; M13 Slice B tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-01 (M11a+M11b (A/D/E)+M13 Slice A/B/D/E main'de; M13 Slice C tamamlandı, push bekliyor — M13'ün TÜM dilimleri bitti)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü.
-- **M11b Slice A/D/E + M13 Slice A/D/E main'de** (PR #106-111, kullanıcı merge etti) — landing/legal/login/panel içerikleri (buton/input) aynı görsel dili taşıyor; panel mekanizması ortada-modal'a geçti (`moderation`/mobil `sidebar` hariç); profile paneli XP çubuğu + `SmallAvatar` kaldırma.
-- **2026-09-01: M13 Slice B (AccountMenu "settings" alt-grubu) TAMAMLANDI, `feat/account-settings-panel` dalında (main'den, BAĞIMSIZ), push bekliyor.** `AccountMenu`'nün eski 4 öğesi (2FA/blocked/invites/delete account) tek bir `settings` girişine indirgendi, o `SettingsView` panelini açıyor; `feedback`/`profile`/`log out` üst seviyede kaldı. Bu sırada `CenteredModal.tsx`'te YENİ bir senaryo (aynı örnek üzerinde panel→alt-panel geçişi) `useFocusOnMount`'un mount-only effect'ini yetersiz bıraktığı bulundu, `[title]`'a bağlı lokal bir effect'e geçirildi. Mock'lu süit 137/137 (×2) + fullstack 10/10 (reseed sonrası) + `apps/api` 320/320 yeşil. Detay `docs/milestones/M13-panel-redesign.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12, M13 Slice C sırada.
+- **M11b Slice A/D/E + M13 (A/B/D/E) main'de** (PR #106-112, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; panel mekanizması ortada-modal'a geçti; `AccountMenu` artık profile/settings/feedback/log out; profile paneli XP çubuğu.
+- **2026-09-01: M13 Slice C (feedback paneli) TAMAMLANDI, `feat/feedback-panel` dalında (main'den, BAĞIMSIZ), push bekliyor — M13'ün SON dilimi.** `AccountMenu`'nün üst-seviye `feedback` öğesi artık DOĞRUDAN bir mailto: linki DEĞİL, kendi `FeedbackView` paneli var (açıklama + e-posta metni + Slice D'nin solid-CTA'sıyla "write an email" butonu). `FEEDBACK_EMAIL` sabiti değişmedi. Mock'lu süit 140/140 (×2) + fullstack 10/10 (reseed sonrası) + `apps/api` 320/320 yeşil. Detay `docs/milestones/M13-panel-redesign.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12 sırada — M13 TAMAMEN bitti.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/account-settings-panel` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M13 Slice C (yeni feedback paneli, mailto linkinin yerine) plan modu başlatılacak — M13'ün son kalan dilimi.
+- **Görev:** `feat/feedback-panel` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası bir sıradaki milestone seçilmeli (M11b Slice B/C, M11c ya da M12) — M13 artık tamamen kapandı.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

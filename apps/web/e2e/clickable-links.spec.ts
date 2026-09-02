@@ -64,10 +64,13 @@ test("kod_blogu_icindeki_url_link_olmaz", async ({ page }) => {
   await login(page);
 
   await expect(page.locator("pre")).toHaveText("https://koqep.dev/kod");
-  // "feedback" (AccountMenu'nün mailto linki, M7b Slice H2 - M10 Faz 2
-  // Slice B'de "account ▾" menüsüne taşındı, menü kapalıyken DOM'da bile
-  // yok) bare getByRole("link") ile karışabilirdi - mesaj içeriğinden gelen
-  // linklerle SINIRLI (http ile başlayan) filtre bu yüzden kalıcı.
+  // "feedback" (AccountMenu'nün menü öğesi, M7b Slice H2 - M10 Faz 2
+  // Slice B'de "account ▾" menüsüne taşındı, M13 Slice C'de artık DOĞRUDAN
+  // bir mailto: linki DEĞİL kendi paneli var - gerçek mailto: linki
+  // ("write an email") o panel AÇILMADAN DOM'a hiç girmiyor, bu test menü
+  // dışına HİÇ dokunmuyor) bare getByRole("link") ile karışabilirdi -
+  // mesaj içeriğinden gelen linklerle SINIRLI (http ile başlayan) filtre
+  // bu yüzden kalıcı.
   await expect(
     page.getByRole("link").filter({ hasText: "http" }),
   ).toHaveCount(0);
