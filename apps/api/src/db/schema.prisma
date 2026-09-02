@@ -199,6 +199,13 @@ model Room {
   // description gibi serbest metin, ayrı bir model gerektirmeyecek kadar
   // basit (tek mutable alan).
   announcement   String?
+  // M11c Slice A: opsiyonel katılım-şifresi - hash (argon2, auth.service.ts'in
+  // AYNI deseni), asla düz metin. null = şifresiz oda (bugün TÜM odalar).
+  // Kod tabanına eklenen İLK gerçek erişim-gating mekanizması - aşağıdaki
+  // RoomMember yorumunun "erişim kontrolü DEĞİL" duruşunu KISMEN tersine
+  // çeviriyor: dolu bir passwordHash için messages.service.ts'in
+  // sendMessage/getRecentMessages'ı artık RoomMember şart koşuyor.
+  passwordHash   String?
 
   creatorId String?
   creator   User?   @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: SetNull)
@@ -213,9 +220,12 @@ model Room {
 }
 
 // M7a Slice B (ADR-0009): yayın/liste scoping için üyelik - erişim kontrolü
-// DEĞİL, herhangi bir authed kullanıcı hâlâ herhangi bir aktif odaya isimle
-// yazabilir/okuyabilir (messages.service.ts). Sadece kimin gerçek-zamanlı
-// yayın aldığını ve "benim odalarım" listesinde neyin göründüğünü belirler.
+// DEĞİL, herhangi bir authed kullanıcı hâlâ herhangi bir aktif ŞİFRESİZ
+// odaya isimle yazabilir/okuyabilir (messages.service.ts). Sadece kimin
+// gerçek-zamanlı yayın aldığını ve "benim odalarım" listesinde neyin
+// göründüğünü belirler. M11c Slice A: şifreli bir oda için bu artık İSTİSNA
+// - Room.passwordHash doluysa sendMessage/getRecentMessages bir RoomMember
+// satırı ARIYOR (bkz. Room.passwordHash'in kendi yorumu).
 model RoomMember {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())

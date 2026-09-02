@@ -368,6 +368,66 @@ describe('MessagesService', () => {
         expect.objectContaining({ id: 'msg-1', content: 'merhaba' }),
       );
     });
+
+    // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifreli
+    // bir odada RoomMember'ı olmayan bir kullanıcı reddediliyor.
+    it('reddeder_sifreli_odada_uye_olmayan_kullaniciyi', async () => {
+      const passwordRoom = { ...room, passwordHash: 'hashed-password' };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(passwordRoom),
+        } as unknown as PrismaService['room'],
+        user: {
+          findUnique: notMutedUserMock(),
+        } as unknown as PrismaService['user'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('izin_verir_sifreli_odada_uye_olan_kullaniciya', async () => {
+      const passwordRoom = { ...room, passwordHash: 'hashed-password' };
+      const created = {
+        id: 'msg-1',
+        content: 'merhaba',
+        createdAt: new Date('2026-01-01'),
+        roomId: room.id,
+        author: { username: 'dev' },
+      };
+      // buildSendMessagePrismaMock'un YERİNE - roomMember (Prisma delegate,
+      // readonly) sadece BAŞLANGIÇ nesne literalinde set edilebilir,
+      // döndürülen mock'a SONRADAN atanamaz.
+      const createSpy = jest.fn().mockResolvedValue(created);
+      const txMock = { message: { create: createSpy } };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(passwordRoom),
+          update: jest.fn().mockResolvedValue(passwordRoom),
+        } as unknown as PrismaService['room'],
+        user: {
+          findUnique: notMutedUserMock(),
+        } as unknown as PrismaService['user'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue({ id: 'member-1' }),
+        } as unknown as PrismaService['roomMember'],
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
+      ).resolves.toEqual(expect.objectContaining({ id: 'msg-1' }));
+    });
   });
 
   describe('getRecentMessages', () => {
@@ -451,6 +511,48 @@ describe('MessagesService', () => {
       await expect(
         service.getRecentMessages('yok-oda', 'requester-1'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifreli
+    // bir odada RoomMember'ı olmayan bir kullanıcı reddediliyor.
+    it('reddeder_sifreli_odada_uye_olmayan_kullaniciyi', async () => {
+      const passwordRoom = { ...room, passwordHash: 'hashed-password' };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(passwordRoom),
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('izin_verir_sifreli_odada_uye_olan_kullaniciya', async () => {
+      const passwordRoom = { ...room, passwordHash: 'hashed-password' };
+      const findManyMock = jest.fn().mockResolvedValue([]);
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(passwordRoom),
+        } as unknown as PrismaService['room'],
+        message: {
+          findMany: findManyMock,
+        } as unknown as PrismaService['message'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue({ id: 'member-1' }),
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1'),
+      ).resolves.toEqual({ messages: [], nextCursor: null });
     });
 
     it('arsivlenmis_odada_lastViewedAti_damgalar', async () => {

@@ -3,19 +3,19 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-01 (M11a+M11b (A/D/E)+M13 Slice A/B/D/E main'de; M13 Slice C tamamlandı, push bekliyor — M13'ün TÜM dilimleri bitti)
+**Son güncelleme:** 2026-09-02 (M11a+M11b (A/D/E)+M13 (TÜMÜ) main'de; M11c Slice A tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
 - **M11a (hızlı düzeltmeler) main'de, origin'e push edildi** — 6 dilim + iki devam-özelliği (mesaj "⋯" menüsü, şifre basılı-tutma göster/gizle) PR #102-105 ile merge oldu, `docs/milestones/M11a-quick-fixes.md`'de not düşülü.
-- **M11b Slice A/D/E + M13 (A/B/D/E) main'de** (PR #106-112, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; panel mekanizması ortada-modal'a geçti; `AccountMenu` artık profile/settings/feedback/log out; profile paneli XP çubuğu.
-- **2026-09-01: M13 Slice C (feedback paneli) TAMAMLANDI, `feat/feedback-panel` dalında (main'den, BAĞIMSIZ), push bekliyor — M13'ün SON dilimi.** `AccountMenu`'nün üst-seviye `feedback` öğesi artık DOĞRUDAN bir mailto: linki DEĞİL, kendi `FeedbackView` paneli var (açıklama + e-posta metni + Slice D'nin solid-CTA'sıyla "write an email" butonu). `FEEDBACK_EMAIL` sabiti değişmedi. Mock'lu süit 140/140 (×2) + fullstack 10/10 (reseed sonrası) + `apps/api` 320/320 yeşil. Detay `docs/milestones/M13-panel-redesign.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c, M12 sırada — M13 TAMAMEN bitti.
+- **M11b Slice A/D/E + M13 (TÜM dilimler) main'de** (PR #106-113, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; panel mekanizması ortada-modal'a geçti; `AccountMenu` artık profile/settings/feedback/log out; feedback kendi paneli oldu.
+- **2026-09-02: M11c Slice A (şifre-korumalı odalar: şema+backend) TAMAMLANDI, `feat/room-password-backend` dalında (main'den, BAĞIMSIZ), push bekliyor.** `Room.passwordHash` (nullable, argon2) — kod tabanına eklenen İLK gerçek erişim-gating. `joinRoom` artık şifre doğruluyor; kullanıcı onayıyla kapsam `sendMessage`/`getRecentMessages`/WS'i de kapsayacak GENİŞLETİLDİ (ADR-0009'un "erişim kontrolü değil" duruşu şifreli odalar için İSTİSNA aldı) — normal UI akışı etkilenmiyor, sadece API'yi doğrudan çağıran biri durduruluyor. `apps/api` birim 329/329 + e2e 160/160 yeşil. Frontend (Slice B) HENÜZ yok. Detay `docs/milestones/M11c-password-rooms.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M11c Slice B, M12 sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/feedback-panel` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası bir sıradaki milestone seçilmeli (M11b Slice B/C, M11c ya da M12) — M13 artık tamamen kapandı.
+- **Görev:** `feat/room-password-backend` (main'den, 3 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M11c Slice B (frontend: `CreateRoomView`/`DiscoverRoomsView` şifre alanları, `PasswordInput.tsx` yeniden kullanılarak) plan modu başlatılacak.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

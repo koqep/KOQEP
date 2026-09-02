@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
+import * as argon2 from 'argon2';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
@@ -14,6 +15,7 @@ import {
 describe('Messages REST (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let jwtService: JwtService;
   let accessToken: string;
   let roomId: string;
   const roomName = `test-room-${randomUUID()}`;
@@ -27,7 +29,7 @@ describe('Messages REST (e2e)', () => {
     await app.init();
 
     prisma = moduleFixture.get(PrismaService);
-    const jwtService = moduleFixture.get(JwtService);
+    jwtService = moduleFixture.get(JwtService);
 
     const user = await prisma.user.upsert({
       where: { email: DEV_USER_EMAIL },
@@ -135,5 +137,36 @@ describe('Messages REST (e2e)', () => {
       .get(`/rooms/hic-yok-${randomUUID()}/messages`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(404);
+  });
+
+  // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifreli
+  // bir odada RoomMember'ı olmayan bir kullanıcı 403 alır.
+  it('reddeder_sifreli_bir_odada_uye_olmayan_kullaniciyi_403_ile', async () => {
+    const passwordRoomName = `sifreli-oda-${randomUUID()}`;
+    const passwordHash = await argon2.hash('dogru-sifre');
+    const passwordRoom = await prisma.room.create({
+      data: { name: passwordRoomName, passwordHash },
+    });
+
+    const outsiderEmail = `outsider-${randomUUID()}@koqep.local`;
+    const outsider = await prisma.user.create({
+      data: {
+        email: outsiderEmail,
+        username: `outsider-${randomUUID()}`,
+        passwordHash: 'test-not-a-real-hash',
+      },
+    });
+    const outsiderToken = await jwtService.signAsync({
+      sub: outsider.id,
+      email: outsider.email,
+    });
+
+    await request(app.getHttpServer())
+      .get(`/rooms/${passwordRoomName}/messages`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .expect(403);
+
+    await prisma.room.delete({ where: { id: passwordRoom.id } });
+    await prisma.user.delete({ where: { id: outsider.id } });
   });
 });

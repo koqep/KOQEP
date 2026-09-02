@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import * as argon2 from 'argon2';
 import { RoomsService } from './rooms.service';
 import { PrismaService } from '../db/prisma.service';
 import { SocketRegistryService } from './socket-registry.service';
@@ -26,6 +27,7 @@ describe('RoomsService', () => {
           description: null,
           lastActivityAt: new Date('2026-01-01'),
           status: 'active',
+          passwordHash: null,
         },
         {
           id: 'room-meta',
@@ -33,6 +35,7 @@ describe('RoomsService', () => {
           description: 'meta konusu',
           lastActivityAt: new Date('2026-01-02'),
           status: 'active',
+          passwordHash: null,
         },
       ]);
       const prismaMock: Partial<PrismaService> = {
@@ -53,10 +56,13 @@ describe('RoomsService', () => {
           lastActivityAt: true,
           status: true,
           announcement: true,
+          passwordHash: true,
         },
         orderBy: { name: 'asc' },
       });
       expect(rooms).toHaveLength(2);
+      expect(rooms[0]).not.toHaveProperty('passwordHash');
+      expect(rooms[0].hasPassword).toBe(false);
     });
 
     it('includeArchived_true_iken_arsivlenmisleri_de_dahil_eder', async () => {
@@ -100,6 +106,7 @@ describe('RoomsService', () => {
           lastActivityAt: true,
           status: true,
           announcement: true,
+          passwordHash: true,
         },
         orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
       });
@@ -115,6 +122,7 @@ describe('RoomsService', () => {
           description: null,
           lastActivityAt: new Date('2026-01-01'),
           status: 'active',
+          passwordHash: null,
         },
       ]);
       const prismaMock: Partial<PrismaService> = {
@@ -133,12 +141,18 @@ describe('RoomsService', () => {
           lastActivityAt: true,
           status: true,
           announcement: true,
+          passwordHash: true,
         },
         orderBy: [{ lastActivityAt: 'desc' }, { name: 'asc' }],
         take: 31,
       });
       expect(page).toEqual({
-        rooms: [expect.objectContaining({ name: 'elden-ring' }) as unknown],
+        rooms: [
+          expect.objectContaining({
+            name: 'elden-ring',
+            hasPassword: false,
+          }) as unknown,
+        ],
         nextCursor: null,
       });
     });
@@ -150,6 +164,7 @@ describe('RoomsService', () => {
         description: null,
         lastActivityAt: new Date('2026-01-01'),
         status: 'active' as const,
+        passwordHash: null,
       }));
       const findManyMock = jest.fn().mockResolvedValue(rows);
       const prismaMock: Partial<PrismaService> = {
@@ -190,6 +205,7 @@ describe('RoomsService', () => {
         description: null,
         lastActivityAt: new Date(),
         status: 'active',
+        passwordHash: null,
       };
       const findUniqueOrThrowMock = jest.fn().mockResolvedValue(room);
       const upsertMock = jest.fn().mockResolvedValue({});
@@ -215,7 +231,124 @@ describe('RoomsService', () => {
         update: {},
       });
       expect(joinMock).toHaveBeenCalledWith('room-1');
-      expect(result).toEqual(room);
+      expect(result).toEqual({
+        ...room,
+        passwordHash: undefined,
+        hasPassword: false,
+      });
+    });
+
+    // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating.
+    it('sifreli_odaya_dogru_sifreyle_katilir', async () => {
+      const passwordHash = await argon2.hash('dogru-sifre');
+      const room = {
+        id: 'room-1',
+        name: 'gizli-oda',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        passwordHash,
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          upsert: jest.fn().mockResolvedValue({}),
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.joinRoom('user-1', 'room-1', 'dogru-sifre');
+
+      expect(result.hasPassword).toBe(true);
+      expect(result).not.toHaveProperty('passwordHash');
+    });
+
+    it('sifreli_odaya_yanlis_sifreyle_katilma_denemesini_reddeder', async () => {
+      const passwordHash = await argon2.hash('dogru-sifre');
+      const room = {
+        id: 'room-1',
+        name: 'gizli-oda',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        passwordHash,
+      };
+      const upsertMock = jest.fn();
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          upsert: upsertMock,
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(
+        service.joinRoom('user-1', 'room-1', 'yanlis-sifre'),
+      ).rejects.toThrow('Şifre hatalı.');
+      expect(upsertMock).not.toHaveBeenCalled();
+    });
+
+    it('sifreli_odaya_sifre_verilmeden_katilma_denemesini_reddeder', async () => {
+      const passwordHash = await argon2.hash('dogru-sifre');
+      const room = {
+        id: 'room-1',
+        name: 'gizli-oda',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        passwordHash,
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.joinRoom('user-1', 'room-1')).rejects.toThrow(
+        'Şifre hatalı.',
+      );
+    });
+
+    it('zaten_uye_olan_sifreli_odaya_sifre_istemeden_tekrar_katilir', async () => {
+      const passwordHash = await argon2.hash('dogru-sifre');
+      const room = {
+        id: 'room-1',
+        name: 'gizli-oda',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        passwordHash,
+      };
+      const upsertMock = jest.fn().mockResolvedValue({});
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(room),
+        } as unknown as PrismaService['room'],
+        roomMember: {
+          // Zaten üye - upsert'in KENDİSİ bunu tekrar sorgulayacak olsa da
+          // findUnique burada "önceki üyelik kontrolü" için ayrıca çağrılıyor.
+          findUnique: jest.fn().mockResolvedValue({ id: 'member-1' }),
+          upsert: upsertMock,
+        } as unknown as PrismaService['roomMember'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.joinRoom('user-1', 'room-1');
+
+      expect(result.hasPassword).toBe(true);
+      expect(upsertMock).toHaveBeenCalled();
     });
   });
 
@@ -270,6 +403,7 @@ describe('RoomsService', () => {
         description: 'Elden Ring tartışması',
         lastActivityAt: new Date(),
         status: 'active',
+        passwordHash: null,
       };
       const findFirstMock = jest.fn().mockResolvedValue(null);
       const createMock = jest.fn().mockResolvedValue(room);
@@ -298,6 +432,7 @@ describe('RoomsService', () => {
         data: {
           name: 'elden-ring',
           description: 'Elden Ring tartışması',
+          passwordHash: undefined,
           creatorId: 'user-1',
           members: { create: { userId: 'user-1' } },
         },
@@ -308,10 +443,54 @@ describe('RoomsService', () => {
           lastActivityAt: true,
           status: true,
           announcement: true,
+          passwordHash: true,
         },
       });
       expect(joinMock).toHaveBeenCalledWith('room-1');
-      expect(result).toEqual(room);
+      expect(result).toEqual({
+        ...room,
+        passwordHash: undefined,
+        hasPassword: false,
+      });
+    });
+
+    // M11c Slice A: verilen şifre auth.service.ts'in AYNI argon2.hash
+    // deseniyle hash'lenip Room.passwordHash'e yazılıyor.
+    it('sifre_verilince_hashlenip_saklanir', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'gizli-oda',
+        description: null,
+        lastActivityAt: new Date(),
+        status: 'active',
+        passwordHash: 'irrelevant-mocked-return',
+      };
+      const createMock = jest.fn().mockResolvedValue(room);
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: createMock,
+        } as unknown as PrismaService['room'],
+      };
+
+      const service = buildService(prismaMock);
+      const result = await service.createRoom(
+        'user-1',
+        'gizli-oda',
+        undefined,
+        'oda-sifresi',
+      );
+
+      const call = createMock.mock.calls[0] as [
+        { data: { passwordHash?: string } },
+      ];
+      const passwordHash = call[0].data.passwordHash;
+      expect(passwordHash).toBeDefined();
+      expect(passwordHash).not.toBe('oda-sifresi');
+      await expect(argon2.verify(passwordHash!, 'oda-sifresi')).resolves.toBe(
+        true,
+      );
+      expect(result.hasPassword).toBe(true);
     });
 
     it('reddeder_buyuk_kucuk_harf_farkli_ama_ayni_ismi_on_kontrolde', async () => {
