@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
@@ -311,6 +311,41 @@ describe('Room creation (e2e)', () => {
     expect(row).toBeNull();
   }, 10000);
 
+  // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifreli
+  // bir odaya join'den HİÇ geçmemiş biri WS üzerinden mesaj gönderemez.
+  // GoneException -> WsException(ROOM_ARCHIVED) zinciriyle AYNI desen.
+  it('sifreli_odaya_katilmadan_mesaj_gonderme_denemesi_ws_uzerinden_reddedilir', async () => {
+    const creator = await createTestUser();
+    const outsider = await createTestUser();
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .send({ name: `oda-${randomUUID()}`, password: 'dogru-sifre-123' })
+      .expect(201);
+    const room = response.body as { id: string; name: string };
+    createdRoomIds.push(room.id);
+
+    const socket = connect(outsider.accessToken);
+    await waitForEvent(socket, 'ready');
+
+    const exceptionPromise = waitForEvent<{ status: string; code: string }>(
+      socket,
+      'exception',
+    );
+    socket.emit('message:send', {
+      content: 'yetkisiz-deneme',
+      roomName: room.name,
+    });
+
+    const exception = await exceptionPromise;
+    expect(exception.code).toBe('ROOM_ACCESS_DENIED');
+
+    const row = await prisma.message.findFirst({
+      where: { content: 'yetkisiz-deneme' },
+    });
+    expect(row).toBeNull();
+  }, 10000);
+
   it('get_rooms_varsayilan_olarak_arsivlenmisi_haric_tutar_includeArchived_ile_dahil_eder', async () => {
     const { accessToken } = await createTestUser();
     const name = `oda-${randomUUID()}`;
@@ -373,6 +408,46 @@ describe('Room creation (e2e)', () => {
       where: { userId: joiner.userId, roomId: room.id },
     });
     expect(memberCount).toBe(1);
+  });
+
+  // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating.
+  it('sifreli_oda_yanlis_sifreyle_join_reddedilir_dogru_sifreyle_kabul_edilir', async () => {
+    const creator = await createTestUser();
+    const joiner = await createTestUser();
+    const response = await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${creator.accessToken}`)
+      .send({ name: `oda-${randomUUID()}`, password: 'dogru-sifre-123' })
+      .expect(201);
+    const room = response.body as { id: string };
+    createdRoomIds.push(room.id);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .send({ password: 'yanlis-sifre' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .send({ password: 'dogru-sifre-123' })
+      .expect(201);
+
+    const memberCount = await prisma.roomMember.count({
+      where: { userId: joiner.userId, roomId: room.id },
+    });
+    expect(memberCount).toBe(1);
+
+    // Zaten üye - şifre olmadan tekrar join, idempotent (mevcut davranış).
+    await request(app.getHttpServer())
+      .post(`/rooms/${room.id}/join`)
+      .set('Authorization', `Bearer ${joiner.accessToken}`)
+      .expect(201);
   });
 
   it('post_leave_uyeligi_kaldirir_ve_idempotenttir', async () => {
@@ -534,5 +609,53 @@ describe('Room creation (e2e)', () => {
       .expect(200);
     const allNames = (allList.body as { name: string }[]).map((r) => r.name);
     expect(allNames).toContain(room.name);
+  });
+});
+
+// M11c Slice A: auth-signup-login.e2e-spec.ts'in "kanıtlanabilir onay
+// (ValidationPipe)" describe'unun AYNI gerekçesi - yukarıdaki ana describe'a
+// ValidationPipe eklemek riskli (mevcut testlerin fixture'larını kontrol
+// etmek gerekir), bunun yerine kendi küçük TestingModule'ü.
+describe('Oda oluşturma: şifre uzunluğu (ValidationPipe) (e2e)', () => {
+  let app: INestApplication<App>;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    );
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('kisa_oda_sifresi_reddedilir', async () => {
+    const jwtService = app.get(JwtService);
+    const prisma = app.get(PrismaService);
+    const user = await prisma.user.create({
+      data: {
+        email: `dto-${randomUUID()}@koqep.local`,
+        username: `dto-${randomUUID().slice(0, 18)}`,
+        passwordHash: 'test-not-a-real-hash',
+      },
+    });
+    const accessToken = await jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+
+    await request(app.getHttpServer())
+      .post('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: `oda-${randomUUID()}`, password: 'kisa' })
+      .expect(400);
+
+    await prisma.user.delete({ where: { id: user.id } });
   });
 });
