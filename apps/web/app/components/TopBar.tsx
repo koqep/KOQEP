@@ -1,6 +1,7 @@
 "use client";
 
 import AccountMenu from "./AccountMenu";
+import { interpolate, type Dictionary } from "../../lib/i18n";
 
 interface Props {
   onOpenSidebar: () => void;
@@ -14,6 +15,7 @@ interface Props {
   onOpenSettings: () => void;
   onOpenFeedback: () => void;
   onLogout: () => void;
+  dict: Dictionary;
 }
 
 export default function TopBar({
@@ -28,6 +30,7 @@ export default function TopBar({
   onOpenSettings,
   onOpenFeedback,
   onLogout,
+  dict,
 }: Props) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-neutral-800 px-4">
@@ -36,7 +39,7 @@ export default function TopBar({
         <button
           type="button"
           onClick={onOpenSidebar}
-          aria-label="open room list"
+          aria-label={dict.topBar.openRoomList}
           className="text-muted hover:text-neutral-400 md:hidden"
         >
           ☰
@@ -46,14 +49,14 @@ export default function TopBar({
           onClick={onCreateRoomClick}
           className="text-muted hover:text-neutral-400"
         >
-          + new room
+          {dict.topBar.newRoom}
         </button>
         <button
           type="button"
           onClick={onDiscoverRoomsClick}
           className="text-muted hover:text-neutral-400"
         >
-          explore
+          {dict.topBar.explore}
         </button>
       </div>
       <div className="flex items-center gap-4">
@@ -63,7 +66,11 @@ export default function TopBar({
             onClick={onOpenModeration}
             className="text-muted hover:text-neutral-400"
           >
-            moderation{openReportCount > 0 ? ` [${openReportCount}]` : ""}
+            {openReportCount > 0
+              ? interpolate(dict.topBar.moderationWithCount, {
+                  n: openReportCount,
+                })
+              : dict.topBar.moderation}
           </button>
         )}
         <AccountMenu
@@ -72,6 +79,7 @@ export default function TopBar({
           onOpenSettings={onOpenSettings}
           onOpenFeedback={onOpenFeedback}
           onLogout={onLogout}
+          dict={dict}
         />
       </div>
     </header>

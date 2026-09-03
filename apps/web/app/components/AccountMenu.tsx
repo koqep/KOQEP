@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useDismissableMenu } from "./useDismissableMenu";
+import type { Dictionary } from "../../lib/i18n";
 
 interface Props {
   username: string | null;
@@ -9,6 +10,7 @@ interface Props {
   onOpenSettings: () => void;
   onOpenFeedback: () => void;
   onLogout: () => void;
+  dict: Dictionary;
 }
 
 const menuItemClassName =
@@ -20,6 +22,7 @@ export default function AccountMenu({
   onOpenSettings,
   onOpenFeedback,
   onLogout,
+  dict,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -57,12 +60,12 @@ export default function AccountMenu({
         onClick={() => setIsOpen((value) => !value)}
         className="text-muted hover:text-neutral-400"
       >
-        account <span aria-hidden="true">▾</span>
+        {dict.accountMenu.trigger} <span aria-hidden="true">▾</span>
       </button>
       {isOpen && (
         <div
           role="menu"
-          aria-label="account"
+          aria-label={dict.accountMenu.ariaLabel}
           className="absolute right-0 top-full z-30 mt-1 flex w-56 flex-col gap-1 border border-neutral-800 bg-neutral-950 p-2"
         >
           {/* M10 Faz 2 Slice D+E: myProfile async yükleniyor ama TopBar/
@@ -76,7 +79,7 @@ export default function AccountMenu({
               onClick={() => select(() => onOpenProfile(username))}
               className={menuItemClassName}
             >
-              profile
+              {dict.accountMenu.profile}
             </button>
           )}
           <button
@@ -85,7 +88,7 @@ export default function AccountMenu({
             onClick={() => select(onOpenSettings)}
             className={menuItemClassName}
           >
-            settings
+            {dict.accountMenu.settings}
           </button>
           <button
             role="menuitem"
@@ -93,7 +96,7 @@ export default function AccountMenu({
             onClick={() => select(onOpenFeedback)}
             className={menuItemClassName}
           >
-            feedback
+            {dict.accountMenu.feedback}
           </button>
           <button
             role="menuitem"
@@ -101,7 +104,7 @@ export default function AccountMenu({
             onClick={() => select(onLogout)}
             className={menuItemClassName}
           >
-            log out
+            {dict.accountMenu.logOut}
           </button>
         </div>
       )}
