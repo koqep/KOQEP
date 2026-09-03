@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-02 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A main'de; M9 Slice B tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-03 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B main'de; M9 Slice C tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A main'de** (PR #106-116, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; feedback kendi paneli oldu; `Room.passwordHash` (şema+backend+frontend); `apps/web/lib/i18n.ts`+`apps/api/src/db/locale.constants.ts` (Locale tipi+sözlük iskeleti, Slice A'da hiçbir bileşene bağlanmamıştı).
-- **2026-09-02: M9 Slice B (`User.locale`+iki-katmanlı senkron) TAMAMLANDI, `feat/user-locale-sync` dalında (main'den, BAĞIMSIZ), push bekliyor.** Nullable `User.locale` (varsayılan YOK, bilerek — `null`="hiç set edilmedi") + login'de TEK SEFERLİK localStorage→DB senkronu + JWT payload'ına `locale` claim'i (eski token'lar `JwtAuthGuard`'da `?? DEFAULT_LOCALE`'e düşer) + `PATCH /users/me/locale` (kapsam boşluğuydu, `AskUserQuestion` ile Slice B'ye eklendi). `apps/api` birim 338/338 + e2e 164/164, `apps/web` mock 148/148 ×2 + fullstack 10/10. Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu (founder'ın `api.koqep.com` taşımasını bekliyor). M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice C sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B main'de** (PR #106-118, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; `Room.passwordHash`; `User.locale`+login-senkronu+`PATCH /users/me/locale`; `apps/web/lib/i18n.ts`+`apps/api/src/db/locale.constants.ts` (sözlük iskeleti, henüz bileşene bağlanmadı).
+- **2026-09-03: M9 Slice C (backend REST hata kodları) TAMAMLANDI, `feat/rest-error-codes` dalında (main'den, BAĞIMSIZ), push bekliyor.** `apps/api/src` genelinde 60 kodsuz REST throw noktası (milestone'un "57"si + 3 argümansız `ThrottlerException()`, `HttpException`'a çevrilerek) mevcut 11 örneğin `{code,message}` şekline kavuştu; cross-dosya tekrarlanan kodlar `error-codes.constants.ts`'e çıkarıldı, REST/WS aynı semantiği paylaşan kodlar (`ROOM_ARCHIVED` vb.) BİREBİR eşitlendi. WS katmanı bilerek kapsam dışı. `apps/api` birim 342/342 + e2e 165/165, `apps/web` mock 148/148 (tek koşum, backend-only). Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice D sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/user-locale-sync` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 Slice C mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `feat/rest-error-codes` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 Slice D mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
