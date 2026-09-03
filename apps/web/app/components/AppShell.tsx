@@ -6,6 +6,11 @@ import AuthPageShell from "./AuthPageShell";
 import AuthView from "./AuthView";
 import RoomView from "./RoomView";
 import { refreshAccessToken, setAccessTokenRefreshedListener } from "../../lib/api";
+import {
+  readStoredLocale,
+  detectBrowserLocale,
+  translations,
+} from "../../lib/i18n";
 
 // M11b Slice A: "/" artık saf bir pazarlama landing'i (LandingPage.tsx) -
 // bu dosya bugüne kadar app/page.tsx'te yaşayan TÜM bootstrap/auth/oda
@@ -27,6 +32,14 @@ export default function AppShell() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+
+  // M9 Slice D2 (Dalga A): TEK locale-çözümleme noktası - giriş öncesi
+  // ekranların (AuthPageShell/AuthView) hepsi buradan `dict` alıyor.
+  // Render gövdesinde (state DEĞİL) - ucuz senkron localStorage/navigator
+  // okuması, RoomView'ın kendi authoritative (User.locale'den türeyen)
+  // dict'ini ETKİLEMİYOR (giriş sonrası tamamen bağımsız, D1'den beri).
+  const locale = readStoredLocale() ?? detectBrowserLocale();
+  const dict = translations[locale];
 
   useEffect(() => {
     setAccessTokenRefreshedListener(setAccessToken);
@@ -60,16 +73,18 @@ export default function AppShell() {
   if (isBootstrapping) {
     return (
       <main className="flex h-dvh items-center justify-center">
-        <p className="text-muted">loading...</p>
+        <p className="text-muted">{dict.common.loading}</p>
       </main>
     );
   }
 
   if (!accessToken) {
     return (
-      <AuthPageShell>
+      <AuthPageShell dict={dict}>
         <AuthView
           initialMode={initialMode}
+          dict={dict}
+          locale={locale}
           onAuthenticated={(tokens, nextTotpEnabled) => {
             setAccessToken(tokens.accessToken);
             setTotpEnabled(nextTotpEnabled);

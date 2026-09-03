@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { inputClassName, filledInputClassName } from "./formStyles";
+import type { Dictionary } from "../../lib/i18n";
 
 interface Props
   extends Omit<
@@ -19,6 +20,12 @@ interface Props
   // false, ResetPasswordView.tsx/AssignModeratorSection.tsx (bu slice'ın
   // kapsamı DIŞINDA) hiçbir şey geçirmediği için davranışları DEĞİŞMİYOR.
   filled?: boolean;
+  // M9 Slice D2 (Dalga A): OPSİYONEL - bu bileşen 6 dosyadan çağrılıyor,
+  // bu dalga sadece 2'sini (AuthView/ResetPasswordView) migrate ediyor.
+  // `dict` verilmezse aşağıdaki hardcoded İngilizce metinlere düşülür -
+  // kalan 4 çağıran (D3/D4/D6'nın işi) kendi dict'lerini kazanana kadar
+  // davranışları SIFIR değişir.
+  dict?: Dictionary;
 }
 
 // Avatar.tsx'in konvansiyonlarını izliyor (aria-hidden, açık width/height,
@@ -57,7 +64,12 @@ function EyeIcon({ slashed }: { slashed: boolean }) {
 // AT sentetik click'i) toggle'lıyor - fare/dokunma/klavye kullanıcıları
 // momentary davranışı alır, ekran-okuyucu kullanıcıları toggle'a "zarif
 // biçimde" düşer (sessiz başarısızlık değil).
-export default function PasswordInput({ label, filled, ...inputProps }: Props) {
+export default function PasswordInput({
+  label,
+  filled,
+  dict,
+  ...inputProps
+}: Props) {
   const [isVisible, setIsVisible] = useState(false);
   const id = useId();
   const hasTrackedPressRef = useRef(false);
@@ -134,9 +146,17 @@ export default function PasswordInput({ label, filled, ...inputProps }: Props) {
           // strict-mode ihlaline yol açardı (gerçek bir Playwright
           // koşumuyla bulundu) - eski metin-buton da AYNI nedenle sadece
           // "show"/"hide" diyordu.
-          aria-label={isVisible ? "hide" : "show"}
+          aria-label={
+            isVisible
+              ? (dict?.passwordInput.hide ?? "hide")
+              : (dict?.passwordInput.show ?? "show")
+          }
           aria-pressed={isVisible}
-          title={isVisible ? "hide password" : "show password"}
+          title={
+            isVisible
+              ? (dict?.passwordInput.hidePassword ?? "hide password")
+              : (dict?.passwordInput.showPassword ?? "show password")
+          }
           onMouseDown={show}
           onMouseUp={hide}
           onMouseLeave={hideAndResetFlag}

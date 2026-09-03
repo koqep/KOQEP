@@ -16,6 +16,58 @@ export interface Dictionary {
   common: {
     cancel: string;
     loading: string;
+    // M9 Slice D2 (Dalga A): AuthView/ResetPasswordView'ın PAYLAŞTIĞI
+    // fallback + AuthView/ResetPasswordView/VerifyEmailView'ın (3 dosya)
+    // BİREBİR aynı metinleri - kopya yerine tek sözlük girdisi.
+    connectionError: string;
+    backToLogin: string;
+    invalidLink: string;
+  };
+  authPageShell: {
+    tagline: string;
+    backToHome: string;
+    help: string;
+  };
+  authView: {
+    logIn: string;
+    signUp: string;
+    send: string;
+    promptSignUp: string;
+    promptResetPassword: string;
+    promptLogIn: string;
+    inviteCodeLabel: string;
+    inviteCodeHelp: string;
+    emailLabel: string;
+    usernameLabel: string;
+    passwordLabel: string;
+    authenticatorCodeLabel: string;
+    termsPrefix: string;
+    termsLink: string;
+    termsAnd: string;
+    privacyLink: string;
+    forgotPassword: string;
+    resetRequestedMessage: string;
+    signupCompleteMessage: string;
+  };
+  resetPassword: {
+    title: string;
+    passwordLabel: string;
+    successMessage: string;
+    submitButton: string;
+  };
+  verifyEmail: {
+    successMessage: string;
+    errorMessage: string;
+    verifying: string;
+  };
+  // Opsiyonel tüketim (bkz. PasswordInput.tsx) - 6 çağırandan sadece
+  // 2'si (AuthView, ResetPasswordView) bu dalgada dict geçiyor, diğer 4
+  // (D3/D4/D6'nın işi) `dict` vermeden bugünkü İngilizce fallback'e düşer.
+  passwordInput: {
+    hide: string;
+    show: string;
+    hidePassword: string;
+    showPassword: string;
   };
   // CenteredModal'ın paylaşılan şell'i - "KOQEP · {title}" şablonu marka
   // adı taşıdığı için değişmiyor, sadece "close" aria-label'i çevriliyor.
@@ -75,6 +127,54 @@ export const translations: Record<Locale, Dictionary> = {
     common: {
       cancel: "cancel",
       loading: "loading...",
+      connectionError: "Connection error. Try again.",
+      backToLogin: "back to login",
+      invalidLink: "Invalid link.",
+    },
+    authPageShell: {
+      tagline: "text-based chat · invite-only",
+      backToHome: "back to home",
+      help: "help",
+    },
+    authView: {
+      logIn: "log in",
+      signUp: "sign up",
+      send: "send",
+      promptSignUp: "$ sign up",
+      promptResetPassword: "$ reset password",
+      promptLogIn: "$ log in",
+      inviteCodeLabel: "invite code",
+      inviteCodeHelp: "Ask someone already on KOQEP for an invite code.",
+      emailLabel: "email",
+      usernameLabel: "username",
+      passwordLabel: "password",
+      authenticatorCodeLabel: "authenticator code",
+      termsPrefix: "I have read and accept the",
+      termsLink: "Terms of Service",
+      termsAnd: "and",
+      privacyLink: "Privacy Policy",
+      forgotPassword: "forgot your password?",
+      resetRequestedMessage:
+        "If this email is registered, a reset link has been sent.",
+      signupCompleteMessage:
+        "Click the link sent to your email to complete your signup.",
+    },
+    resetPassword: {
+      title: "new password",
+      passwordLabel: "new password",
+      successMessage: "Your password has been updated.",
+      submitButton: "update password",
+    },
+    verifyEmail: {
+      successMessage: "Your email is verified. You can log in now.",
+      errorMessage: "This link is invalid or has expired.",
+      verifying: "verifying...",
+    },
+    passwordInput: {
+      hide: "hide",
+      show: "show",
+      hidePassword: "hide password",
+      showPassword: "show password",
     },
     centeredModal: {
       close: "close",
@@ -127,6 +227,54 @@ export const translations: Record<Locale, Dictionary> = {
     common: {
       cancel: "vazgeç",
       loading: "yükleniyor...",
+      connectionError: "Bağlantı hatası. Tekrar dene.",
+      backToLogin: "girişe dön",
+      invalidLink: "Geçersiz bağlantı.",
+    },
+    authPageShell: {
+      tagline: "sadece metin · davetle katılım",
+      backToHome: "ana sayfaya dön",
+      help: "yardım",
+    },
+    authView: {
+      logIn: "giriş yap",
+      signUp: "kayıt ol",
+      send: "gönder",
+      promptSignUp: "$ kayıt ol",
+      promptResetPassword: "$ şifreyi sıfırla",
+      promptLogIn: "$ giriş yap",
+      inviteCodeLabel: "davet kodu",
+      inviteCodeHelp: "KOQEP'te zaten olan birinden davet kodu iste.",
+      emailLabel: "e-posta",
+      usernameLabel: "kullanıcı adı",
+      passwordLabel: "şifre",
+      authenticatorCodeLabel: "kimlik doğrulayıcı kodu",
+      termsPrefix: "Şunu okudum ve kabul ediyorum:",
+      termsLink: "Kullanım Şartları",
+      termsAnd: "ve",
+      privacyLink: "Gizlilik Politikası",
+      forgotPassword: "şifreni mi unuttun?",
+      resetRequestedMessage:
+        "Bu e-posta kayıtlıysa, bir sıfırlama bağlantısı gönderildi.",
+      signupCompleteMessage:
+        "Kaydını tamamlamak için e-postana gönderilen bağlantıya tıkla.",
+    },
+    resetPassword: {
+      title: "yeni şifre",
+      passwordLabel: "yeni şifre",
+      successMessage: "Şifren güncellendi.",
+      submitButton: "şifreyi güncelle",
+    },
+    verifyEmail: {
+      successMessage: "E-postan doğrulandı. Şimdi giriş yapabilirsin.",
+      errorMessage: "Bu bağlantı geçersiz veya süresi dolmuş.",
+      verifying: "doğrulanıyor...",
+    },
+    passwordInput: {
+      hide: "gizle",
+      show: "göster",
+      hidePassword: "şifreyi gizle",
+      showPassword: "şifreyi göster",
     },
     centeredModal: {
       close: "kapat",
