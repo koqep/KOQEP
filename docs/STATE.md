@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-03 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C main'de; M9 Slice D1 tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-03 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D1 main'de; M9 Slice D2 kapsam turu tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C main'de** (PR #106-119, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; `Room.passwordHash`; `User.locale`+login-senkronu+`PATCH /users/me/locale`; `apps/api`'nin 71 REST hata noktası `{code,message}` taşıyor.
-- **2026-09-03: M9 Slice D1 (frontend i18n altyapısı) TAMAMLANDI, `feat/i18n-frontend-foundation` dalında (main'den, BAĞIMSIZ), push bekliyor.** Slice D'nin gerçek kapsamı (31 dosya, ~275-300 metin) milestone tahmininden büyük çıktığı için kullanıcıyla ALTYAPI-ÖNCE alt-dilimlere bölündü — bu tur SADECE D1: `dict` prop-drilling (RoomView'dan birkaç temsili dosyaya), `apps/web/lib/error-messages.ts` (44 hata kodu çevirisi), yeni dil-ayarları UI'si (`PATCH /users/me/locale`'i ilk kez ÇAĞIRAN arayüz), bilingual `formatRelativeActivity`. Kalan ~28 dosya D2+'a kaldı. `apps/web` mock 150/150 (×2) + fullstack 11/11. Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice D2 sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D1 main'de** (PR #106-120, kullanıcı merge etti) — landing/legal/login/panel içerikleri aynı görsel dili taşıyor; `apps/api`'nin 71 REST hata noktası `{code,message}` taşıyor; frontend `dict` prop-drilling altyapısı + dil ayarları UI'si (TopBar/AccountMenu/SettingsView/CenteredModal'da tam, RoomView/RoomSidebar'da kısmi).
+- **2026-09-03: M9 Slice D2 kapsam turu TAMAMLANDI (kod YOK, sadece docs), `docs/m9-slice-d2-scope` dalında, push bekliyor.** Kalan 21 dosya/226 metin (taze sayım — milestone'un eski "~28"i D1'in gerçek ilerlemesini yansıtmıyordu) 5 dalgaya bölündü, önerilen sırayla: D2 auth (53 metin) → D3 ayar panelleri (45) → D4 oda panelleri (21) → D5 sohbet çekirdeği (49, en yüksek regresyon riski) → D6 moderasyon (58, en karmaşık+en düşük öncelik). 5 dosya (Ascii/Avatar/MessageContent/SidePanel/LegalPageShell) metin taşımıyor, iş yok. Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice D2 (Dalga A) sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/i18n-frontend-foundation` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 Slice D2 mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `docs/m9-slice-d2-scope` (main'den, docs-only 1 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 Slice D2 (Dalga A: auth) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
