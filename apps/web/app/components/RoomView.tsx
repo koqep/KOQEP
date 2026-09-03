@@ -21,7 +21,15 @@ import {
   type MessageEdit,
   type Room,
 } from "../../lib/api";
-import { storeLocale } from "../../lib/i18n";
+import {
+  storeLocale,
+  translations,
+  DEFAULT_LOCALE,
+  interpolate,
+  type Dictionary,
+  type Locale,
+} from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 import TotpSettingsView from "./TotpSettingsView";
 import BlockedUsersView from "./BlockedUsersView";
 import InviteView from "./InviteView";
@@ -32,6 +40,7 @@ import ModerationQueueView from "./ModerationQueueView";
 import ProfileView from "./ProfileView";
 import SettingsView from "./SettingsView";
 import FeedbackView from "./FeedbackView";
+import LanguageSettingsView from "./LanguageSettingsView";
 import TopBar from "./TopBar";
 import RoomSidebar from "./RoomSidebar";
 import ChatPanel from "./ChatPanel";
@@ -48,7 +57,7 @@ import CenteredModal from "./CenteredModal";
 // M13 Slice A: "sidebar"/"moderation" ESKİ SidePanel mekanizmasında
 // kalıyor (kullanıcı onayı - navigasyon deseni/sık-aksiyonlu içerik,
 // ortada-modal'a uygun değil), diğer paneller CenteredModal'a geçiyor -
-// bkz. PANEL_TITLES.
+// bkz. getPanelTitle.
 // M13 Slice B: "settings" AccountMenu'nün eski 4 ayrı öğesinin (totp/
 // blocked/invites/delete-account) yerine açılan bir gezinme paneli -
 // SettingsView'daki bir satıra tıklamak activePanel'i DOĞRUDAN o hedefe
@@ -70,25 +79,43 @@ type ActivePanel =
   | "sidebar"
   | "profile"
   | "settings"
-  | "feedback";
+  | "feedback"
+  | "language";
 
 type CenteredModalPanel = Exclude<ActivePanel, "none" | "sidebar" | "moderation">;
 
 // CenteredModal'ın paylaşılan "KOQEP · {title}" başlığı için - eskiden
 // her panel bileşeni kendi başlığını üretiyordu, artık şell'in
-// sorumluluğu (bkz. CenteredModal.tsx). Metinler bugünkü panel
-// başlıklarıyla BİREBİR aynı, bu slice bir kopya değişikliği DEĞİL.
-const PANEL_TITLES: Record<CenteredModalPanel, string> = {
-  totp: "two-factor authentication",
-  blocked: "blocked",
-  invites: "invites",
-  "delete-account": "delete account",
-  "create-room": "new room",
-  "discover-rooms": "discover rooms",
-  profile: "profile",
-  settings: "settings",
-  feedback: "feedback",
-};
+// sorumluluğu (bkz. CenteredModal.tsx). M9 Slice D1: statik bir
+// `Record` yerine `dict.panelTitles`'tan okunuyor (bkz. i18n.ts) - EN
+// değerleri bugünkü panel başlıklarıyla BİREBİR aynı, bu slice bir
+// kopya değişikliği DEĞİL. activePanel'in kebab-case değerlerini
+// dict.panelTitles'ın camelCase anahtarlarına eşliyor.
+function getPanelTitle(panel: CenteredModalPanel, dict: Dictionary): string {
+  const titles = dict.panelTitles;
+  switch (panel) {
+    case "totp":
+      return titles.totp;
+    case "blocked":
+      return titles.blocked;
+    case "invites":
+      return titles.invites;
+    case "delete-account":
+      return titles.deleteAccount;
+    case "create-room":
+      return titles.createRoom;
+    case "discover-rooms":
+      return titles.discoverRooms;
+    case "profile":
+      return titles.profile;
+    case "settings":
+      return titles.settings;
+    case "feedback":
+      return titles.feedback;
+    case "language":
+      return titles.language;
+  }
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export const MAX_MESSAGE_LENGTH = 2000;
@@ -164,6 +191,21 @@ export default function RoomView({
   const [activePanel, setActivePanel] = useState<ActivePanel>("none");
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
+  // M9 Slice D1: kendi state'i DEĞİL - myProfile.locale'den her render'da
+  // türetilir (myProfile null iken DEFAULT_LOCALE'e düşer, storeLocale'in
+  // localStorage'a yazdığı bootstrap-öncesi ipucundan BAĞIMSIZ - burası
+  // SADECE User.locale otoriteyi yansıtır). `dict` bir PROP olarak
+  // child'lara akar - `t(key)` fonksiyonu YOK (bkz. lib/i18n.ts).
+  const locale: Locale = myProfile?.locale ?? DEFAULT_LOCALE;
+  const dict: Dictionary = translations[locale];
+  // Ayarlar→dil panelinin onLocaleChange callback'i - satır ~464/477/498'deki
+  // partial-update deseniyle BİREBİR aynı (setMyProfile), + storeLocale ile
+  // localStorage aynası güncellenir (RoomView'ın bootstrap effect'iyle AYNI
+  // senkron kuralı).
+  function handleLocaleChange(newLocale: Locale) {
+    setMyProfile((prev) => (prev ? { ...prev, locale: newLocale } : prev));
+    storeLocale(newLocale);
+  }
   const [showArchived, setShowArchived] = useState(false);
   const [openReportCount, setOpenReportCount] = useState(0);
   // M10 Faz 2 Slice D+E: "profile" panel türünün taşıdığı ekstra bilgi -
@@ -175,6 +217,12 @@ export default function RoomView({
   const activeRoomIdRef = useRef<string | null>(null);
   const activeRoomRef = useRef<Room | null>(null);
   const roomsRef = useRef<Room[]>([]);
+  // M9 Slice D1: activeRoomRef'le AYNI gerekçe - bootstrap effect'i
+  // `[accessToken]`'a bağlı, SADECE accessToken değişince yeniden
+  // çalışıyor. WS `exception` handler'ı locale'i OKUMASI gerektiği için
+  // (dil değişince mesajlar da değişsin diye) bir ref'ten okuyor, kendi
+  // closure'ındaki (mount anındaki) bayat `locale` değerinden değil.
+  const localeRef = useRef<Locale>(locale);
   const fetchGenerationRef = useRef(0);
   const hasConnectedBeforeRef = useRef(false);
   const messagesSectionRef = useRef<HTMLElement | null>(null);
@@ -264,6 +312,10 @@ export default function RoomView({
     activeRoomIdRef.current = activeRoom?.id ?? null;
     activeRoomRef.current = activeRoom;
   }, [activeRoom]);
+
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
 
   // M5 Slice D: room:deleted dinleyicisi bir yedek odaya geçerken GÜNCEL
   // oda listesine ihtiyaç duyuyor - state'in kendisi yerine ref üzerinden
@@ -587,30 +639,27 @@ export default function RoomView({
           (payload: { code?: string; mutedUntil?: string }) => {
             if (cancelled) return;
             setIsSending(false);
-            if (payload?.code === "RATE_LIMITED") {
-              setSendError("You're sending messages too fast, slow down.");
-            } else if (payload?.code === "MESSAGE_TOO_LONG") {
-              setSendError(
-                `Message too long (max ${MAX_MESSAGE_LENGTH} characters).`,
-              );
-            } else if (payload?.code === "ROOM_ARCHIVED") {
-              // Yedek yol - composer zaten activeRoom.status'a göre proaktif
-              // devre dışı kalıyor, bu sadece WS round-trip'ini bekleyen
-              // nadir bir yarış durumu için.
-              setSendError("This room is archived, read-only.");
-            } else if (payload?.code === "MUTED") {
-              // Savunmacı senkronizasyon: yeniden bağlanma sonrası myProfile
-              // bayat kalmış olabilir (bootstrap'te bir kez çekiliyor,
-              // reconnect'te yenilenmiyor) - ilk gönderim denemesi burada
-              // kendi kendine düzelir.
-              setSendError("You're muted, you can't send messages right now.");
-              if (payload.mutedUntil) {
-                const mutedUntil = payload.mutedUntil;
-                setMyProfile((prev) => (prev ? { ...prev, mutedUntil } : prev));
-              }
-            } else {
-              setSendError("Message could not be sent.");
+            // M9 Slice D1: tüm kodlar TEK bir sözlükten (error-messages.ts)
+            // akıyor - MUTED'ın mutedUntil yan etkisi ve MESSAGE_TOO_LONG'un
+            // {max} interpolasyonu ayrı ele alınıyor, geri kalan (eskiden
+            // eksik olan MESSAGE_INVALID_CONTENT/ROOM_ACCESS_DENIED dahil)
+            // otomatik doğru mesajı alıyor. `localeRef` - bu closure'ın
+            // bağlı olduğu bootstrap effect'i SADECE accessToken değişince
+            // yeniden çalışıyor, güncel locale'i ref'ten okumak gerekiyor.
+            const currentLocale = localeRef.current;
+            if (payload?.code === "MUTED" && payload.mutedUntil) {
+              const mutedUntil = payload.mutedUntil;
+              setMyProfile((prev) => (prev ? { ...prev, mutedUntil } : prev));
             }
+            const message =
+              payload?.code === "MESSAGE_TOO_LONG"
+                ? interpolate(
+                    translateErrorCode("MESSAGE_TOO_LONG", currentLocale) ?? "",
+                    { max: MAX_MESSAGE_LENGTH },
+                  )
+                : (translateErrorCode(payload?.code, currentLocale) ??
+                  translations[currentLocale].chatPanel.messageCouldNotBeSent);
+            setSendError(message);
           },
         );
       } catch {
@@ -802,6 +851,7 @@ export default function RoomView({
           onOpenSettings={() => setActivePanel("settings")}
           onOpenFeedback={() => setActivePanel("feedback")}
           onLogout={() => void handleLogout()}
+          dict={dict}
         />
 
         <div className="flex min-h-0 flex-1">
@@ -816,6 +866,7 @@ export default function RoomView({
               onLeaveRoom={(room) => void handleLeaveRoom(room)}
               showArchived={showArchived}
               onToggleShowArchived={() => void handleToggleShowArchived()}
+              locale={locale}
             />
           </aside>
 
@@ -869,6 +920,7 @@ export default function RoomView({
                 onLeaveRoom={(room) => void handleLeaveRoom(room)}
                 showArchived={showArchived}
                 onToggleShowArchived={() => void handleToggleShowArchived()}
+                locale={locale}
               />
             ) : (
               <ModerationQueueView
@@ -883,7 +935,8 @@ export default function RoomView({
           <CenteredModal
             isClosing={isPanelClosing}
             onRequestClose={requestClosePanel}
-            title={PANEL_TITLES[activePanel as CenteredModalPanel]}
+            title={getPanelTitle(activePanel as CenteredModalPanel, dict)}
+            dict={dict}
           >
             {activePanel === "totp" ? (
               <TotpSettingsView
@@ -916,7 +969,14 @@ export default function RoomView({
             ) : activePanel === "profile" && viewingProfileUsername ? (
               <ProfileView accessToken={accessToken} username={viewingProfileUsername} />
             ) : activePanel === "settings" ? (
-              <SettingsView onNavigate={setActivePanel} />
+              <SettingsView onNavigate={setActivePanel} dict={dict} />
+            ) : activePanel === "language" ? (
+              <LanguageSettingsView
+                accessToken={accessToken}
+                initialLocale={locale}
+                onLocaleChange={handleLocaleChange}
+                dict={dict}
+              />
             ) : activePanel === "feedback" ? (
               <FeedbackView />
             ) : null}

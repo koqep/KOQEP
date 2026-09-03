@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useFocusTrap } from "./useFocusTrap";
+import type { Dictionary } from "../../lib/i18n";
 
 // M13 Slice A: SidePanel.tsx'in devamı DEĞİL, ikisi bir arada yaşıyor -
 // moderation + mobil oda listesi sağdan/soldan kayan SidePanel'de kalıyor
@@ -20,6 +21,7 @@ interface Props {
   onRequestClose: () => void;
   title: string;
   children: ReactNode;
+  dict: Dictionary;
 }
 
 export default function CenteredModal({
@@ -27,6 +29,7 @@ export default function CenteredModal({
   onRequestClose,
   title,
   children,
+  dict,
 }: Props) {
   const containerRef = useFocusTrap<HTMLDivElement>({
     onEscape: onRequestClose,
@@ -81,7 +84,7 @@ export default function CenteredModal({
           <button
             type="button"
             onClick={onRequestClose}
-            aria-label="close"
+            aria-label={dict.centeredModal.close}
             className="text-muted hover:text-neutral-400"
           >
             ✕

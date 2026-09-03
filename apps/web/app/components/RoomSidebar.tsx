@@ -5,6 +5,7 @@ import type { Room } from "../../lib/api";
 import { formatRelativeActivity } from "../../lib/format";
 import { inputClassName } from "./formStyles";
 import { useFocusOnMount } from "./useFocusOnMount";
+import type { Locale } from "../../lib/i18n";
 
 // apps/api/src/db/core-rooms.constants.ts ile AYNI değer - RoomHeader.tsx'in
 // eski taşıdığı sabit, M10 Faz 2 Slice B'de buraya taşındı (tek kullanıcı).
@@ -22,6 +23,11 @@ interface Props {
   // butonu gerekmiyor, panel zaten kalıcı görünür).
   titleId?: string;
   onClose?: () => void;
+  // M9 Slice D1: dosyanın KENDİ diğer metinleri (arama placeholder'ı,
+  // "no rooms match" vb.) bu dilimde taşınmadı - SADECE
+  // formatRelativeActivity'nin "son aktivite" satırı için dar bir prop,
+  // TAM `dict` değil (D2+'a kadar bilerek).
+  locale: Locale;
 }
 
 export default function RoomSidebar({
@@ -33,6 +39,7 @@ export default function RoomSidebar({
   onToggleShowArchived,
   titleId,
   onClose,
+  locale,
 }: Props) {
   const [query, setQuery] = useState("");
   const headingRef = useFocusOnMount<HTMLHeadingElement>();
@@ -98,7 +105,7 @@ export default function RoomSidebar({
                 onClick={() => onRoomSwitch(r)}
                 title={
                   (r.description ? `${r.description} — ` : "") +
-                  `last active: ${formatRelativeActivity(r.lastActivityAt)}`
+                  `last active: ${formatRelativeActivity(r.lastActivityAt, locale)}`
                 }
                 className={
                   "flex-1 truncate border-l-2 py-1 pl-2 text-left " +
