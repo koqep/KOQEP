@@ -80,7 +80,12 @@ test("hesap_silinince_ayni_bilgilerle_giris_artik_basarisiz_olur_ve_redactMessag
   await page.getByLabel("password").fill(DEV_USER_2_PASSWORD);
   await page.getByRole("button", { name: "log in" }).click();
 
-  await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible({
+  // M9 Slice D2: AuthView artık `translateErrorCode`'a bağlı - varsayılan
+  // (İngilizce) locale'de backend'in HAM Türkçe mesajı yerine doğru
+  // çevrilmiş metin gösteriliyor.
+  await expect(
+    page.getByText("Incorrect email or password."),
+  ).toBeVisible({
     timeout: 15000,
   });
 
