@@ -297,6 +297,44 @@ test("dekoratif_canvas_arka_plani_ekran_okuyucudan_gizli", async ({
   await expect(canvas).toHaveAttribute("aria-hidden", "true");
 });
 
+// Fix (2026-09-03): henüz hesabı olmayan bir ziyaretçi için dil
+// değiştirme kutusu YOKTU - D1/D2'nin locale kaynağı User.locale
+// (backend), ama bu kullanıcı için henüz bir User kaydı yok. AuthPageShell'e
+// LandingPage.tsx'in AYNI görsel deseniyle (rol/aria-pressed) eklendi.
+test("giris_ekranindaki_tr_en_kutusu_dili_degistirir_ve_form_state_korunur", async ({
+  page,
+}) => {
+  await page.goto("/app");
+
+  await expect(page.getByRole("tab", { name: "log in" })).toBeVisible();
+
+  // Form state - toggle sonrası KAYBOLMAMALI (AuthView unmount OLMUYOR,
+  // sadece dict/locale prop'ları değişiyor).
+  await page.getByLabel("email").fill("test@koqep.local");
+
+  const languageGroup = page.getByRole("group", { name: "language" });
+  await expect(languageGroup.getByRole("button", { name: "TR" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await languageGroup.getByRole("button", { name: "TR" }).click();
+
+  await expect(page.getByRole("tab", { name: "giriş yap" })).toBeVisible();
+  await expect(languageGroup.getByRole("button", { name: "TR" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByLabel("e-posta")).toHaveValue("test@koqep.local");
+
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("koqep:locale")))
+    .toBe("tr");
+
+  // Geri EN'e dönmek de çalışmalı (tek yönlü bir geçiş değil).
+  await languageGroup.getByRole("button", { name: "EN" }).click();
+  await expect(page.getByRole("tab", { name: "log in" })).toBeVisible();
+});
+
 // M9 Slice D2 (Dalga A): AppShell'in TEK-noktalı locale çözümlemesi -
 // localStorage'da "tr" varken TÜM giriş-öncesi kabuk (AuthPageShell'in
 // KENDİ metinleri dahil) Türkçe render etmeli, sadece AuthView'ın DEĞİL.
