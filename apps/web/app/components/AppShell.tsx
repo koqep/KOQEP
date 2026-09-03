@@ -9,7 +9,9 @@ import { refreshAccessToken, setAccessTokenRefreshedListener } from "../../lib/a
 import {
   readStoredLocale,
   detectBrowserLocale,
+  storeLocale,
   translations,
+  type Locale,
 } from "../../lib/i18n";
 
 // M11b Slice A: "/" artık saf bir pazarlama landing'i (LandingPage.tsx) -
@@ -35,11 +37,21 @@ export default function AppShell() {
 
   // M9 Slice D2 (Dalga A): TEK locale-çözümleme noktası - giriş öncesi
   // ekranların (AuthPageShell/AuthView) hepsi buradan `dict` alıyor.
-  // Render gövdesinde (state DEĞİL) - ucuz senkron localStorage/navigator
-  // okuması, RoomView'ın kendi authoritative (User.locale'den türeyen)
-  // dict'ini ETKİLEMİYOR (giriş sonrası tamamen bağımsız, D1'den beri).
-  const locale = readStoredLocale() ?? detectBrowserLocale();
+  // Başlangıç değeri lazy initializer'da (SADECE ilk render'da çalışır)
+  // - RoomView'ın kendi authoritative (User.locale'den türeyen) dict'ini
+  // ETKİLEMİYOR (giriş sonrası tamamen bağımsız, D1'den beri).
+  // Fix (2026-09-03): henüz hesabı olmayan bir ziyaretçinin AuthPageShell'in
+  // TR/EN kutusuyla bunu DEĞİŞTİREBİLMESİ için artık state - eskiden düz
+  // bir const'tu, değiştirilemiyordu (kullanıcının bulduğu gerçek eksik).
+  const [locale, setLocale] = useState<Locale>(
+    () => readStoredLocale() ?? detectBrowserLocale(),
+  );
   const dict = translations[locale];
+
+  function handleLocaleChange(nextLocale: Locale) {
+    setLocale(nextLocale);
+    storeLocale(nextLocale);
+  }
 
   useEffect(() => {
     setAccessTokenRefreshedListener(setAccessToken);
@@ -80,7 +92,11 @@ export default function AppShell() {
 
   if (!accessToken) {
     return (
-      <AuthPageShell dict={dict}>
+      <AuthPageShell
+        dict={dict}
+        locale={locale}
+        onLocaleChange={handleLocaleChange}
+      >
         <AuthView
           initialMode={initialMode}
           dict={dict}

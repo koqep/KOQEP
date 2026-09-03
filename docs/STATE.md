@@ -3,17 +3,17 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-03 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D1 main'de; M9 D2 kapsam turu main'de; D2 Dalga A (auth) tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-03 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D1+D2 kapsam turu+D2 Dalga A main'de; giriş-öncesi dil kutusu fix'i tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D1 + D2 kapsam turu main'de** (PR #106-121, kullanıcı merge etti) — `apps/api`'nin 71 REST hata noktası `{code,message}` taşıyor; frontend `dict` altyapısı TopBar/AccountMenu/SettingsView/CenteredModal'da tam, RoomView/RoomSidebar'da kısmi; kalan 21 dosya/226 metin 5 dalgaya (D2-D6) bölündü.
-- **2026-09-03: M9 Slice D2 (Dalga A: auth ekranları) TAMAMLANDI, `feat/i18n-auth-screens` dalında (main'den, BAĞIMSIZ), push bekliyor.** `AuthView`/`AuthPageShell`/`ResetPasswordView`/`VerifyEmailView`/`AppShell` artık `dict`'e bağlı (AppShell TEK locale-çözümleme noktası, giriş-öncesi). `AuthView`/`ResetPasswordView`'ın hata gösterimi `translateErrorCode`'a (D1) bağlandı — GERÇEK bir bug düzeltmesi: varsayılan İngilizce locale'de bile `INVALID_CREDENTIALS` gibi kodlarda backend'in HAM Türkçe mesajı görünüyordu, artık doğru çevrilmiş metin. `PasswordInput`'un `dict` prop'u opsiyonel (6 çağırandan sadece 2'si bu dalgada). Mock 150→153/153 (×2) + fullstack 11/11. Detay `docs/milestones/M9-i18n.md`.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D1 + D2 kapsam turu + D2 Dalga A (auth ekranları `dict`'e bağlandı) main'de** (PR #106-122, kullanıcı merge etti) — `apps/api`'nin 71 REST hata noktası `{code,message}` taşıyor; frontend `dict` altyapısı TopBar/AccountMenu/SettingsView/CenteredModal/AuthView/AuthPageShell'de tam; kalan ~20 dosya D3-D6 dalgalarına bölündü.
+- **2026-09-03: Fix — giriş öncesi TR/EN dil kutusu, `fix/auth-locale-toggle` dalında (main'den, BAĞIMSIZ), push bekliyor.** Kullanıcının bulduğu gerçek eksik: D2 auth ekranlarını `dict`'e bağladı ama giriş öncesi ziyaretçi (henüz `User.locale`'i yok) bunu DEĞİŞTİREMİYORDU. `AppShell`'in locale'i `useState`'e çevrildi, `AuthPageShell`'e `LandingPage.tsx`'in AYNI görsel TR/EN kutusu eklendi (kod PAYLAŞILMADAN — LandingPage'in kendi kalıcı-olmayan mekanizması BİLEREK ayrı kalıyor). Mock 154/154 (×2, +1 yeni) + fullstack 11/11. Detay `docs/milestones/M9-i18n.md`.
 - Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 D3 (Dalga C: ayar panelleri) sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/i18n-auth-screens` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Görev:** `fix/auth-locale-toggle` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
 - **Sonraki adım:** push sonrası M9 D3 (Dalga C: ayar panelleri) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
