@@ -37,12 +37,16 @@ export class TotpService {
     });
 
     if (!user.totpSecret) {
-      throw new UnauthorizedException(
-        'Önce kimlik doğrulayıcı kurulumu başlatılmalı.',
-      );
+      throw new UnauthorizedException({
+        code: 'TOTP_SETUP_NOT_STARTED',
+        message: 'Önce kimlik doğrulayıcı kurulumu başlatılmalı.',
+      });
     }
     if (!isValidTotpCode(decryptTotpSecret(user.totpSecret), code)) {
-      throw new UnauthorizedException('Geçersiz kimlik doğrulayıcı kodu.');
+      throw new UnauthorizedException({
+        code: 'TOTP_INVALID_CODE',
+        message: 'Geçersiz kimlik doğrulayıcı kodu.',
+      });
     }
 
     const recoveryCodes = generateRecoveryCodes();
@@ -68,12 +72,18 @@ export class TotpService {
     });
 
     if (!this.isEnabled(user)) {
-      throw new UnauthorizedException('Kimlik doğrulayıcı zaten kapalı.');
+      throw new UnauthorizedException({
+        code: 'TOTP_ALREADY_DISABLED',
+        message: 'Kimlik doğrulayıcı zaten kapalı.',
+      });
     }
 
     const valid = await this.verifyDuringLogin(userId, code);
     if (!valid) {
-      throw new UnauthorizedException('Geçersiz kimlik doğrulayıcı kodu.');
+      throw new UnauthorizedException({
+        code: 'TOTP_INVALID_CODE',
+        message: 'Geçersiz kimlik doğrulayıcı kodu.',
+      });
     }
 
     await this.prisma.$transaction([

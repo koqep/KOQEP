@@ -6,6 +6,7 @@ import {
 import { Invite, Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../db/prisma.service';
+import { INVITE_NO_LONGER_VALID_CODE } from './error-codes.constants';
 
 const INVITE_CODE_BYTES = 12;
 
@@ -28,16 +29,25 @@ export class InvitesService {
     const invite = await this.prisma.invite.findUnique({ where: { code } });
 
     if (!invite) {
-      throw new NotFoundException('Davet kodu bulunamadı.');
+      throw new NotFoundException({
+        code: 'INVITE_NOT_FOUND',
+        message: 'Davet kodu bulunamadı.',
+      });
     }
     if (invite.usedAt) {
-      throw new ConflictException('Bu davet kodu zaten kullanılmış.');
+      throw new ConflictException({
+        code: 'INVITE_ALREADY_USED',
+        message: 'Bu davet kodu zaten kullanılmış.',
+      });
     }
     // M5 Slice E: revoke edilmiş bir davet - bu kontrol olmadan davetçi
     // hesap verebilirliği mekaniği işe yaramaz (revoke edilmiş bir kod
     // hâlâ redeem edilebilir olurdu).
     if (invite.revokedAt) {
-      throw new ConflictException('Bu davet kodu artık geçerli değil.');
+      throw new ConflictException({
+        code: INVITE_NO_LONGER_VALID_CODE,
+        message: 'Bu davet kodu artık geçerli değil.',
+      });
     }
 
     return invite;

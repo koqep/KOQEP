@@ -8,6 +8,7 @@ import { PrismaService } from '../db/prisma.service';
 import { INVALID_TOKEN_CODE } from './auth.service';
 import { XP_PER_LEVEL } from './reputation.service';
 import { Locale, DEFAULT_LOCALE, isValidLocale } from '../db/locale.constants';
+import { USER_NOT_FOUND_CODE } from './error-codes.constants';
 
 export interface UserProfile {
   email: string;
@@ -89,7 +90,10 @@ export class UsersService {
       },
     });
     if (!user) {
-      throw new NotFoundException('Kullanıcı bulunamadı.');
+      throw new NotFoundException({
+        code: USER_NOT_FOUND_CODE,
+        message: 'Kullanıcı bulunamadı.',
+      });
     }
     return {
       ...user,

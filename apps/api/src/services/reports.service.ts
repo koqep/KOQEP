@@ -63,13 +63,19 @@ export class ReportsService {
       where: { id: messageId },
     });
     if (!message) {
-      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+      throw new NotFoundException({
+        code: 'MESSAGE_NOT_FOUND',
+        message: `Mesaj bulunamadı: ${messageId}`,
+      });
     }
     // M5 Slice C: kendine izin vermenin hiçbir meşru kullanım senaryosu
     // yok, kuyruğu gereksiz kirletir ve çoklu-rapor sinyalinin kalitesini
     // bozar.
     if (message.authorId === reporterId) {
-      throw new ForbiddenException('Kendi mesajını raporlayamazsın.');
+      throw new ForbiddenException({
+        code: 'CANNOT_REPORT_OWN_MESSAGE',
+        message: 'Kendi mesajını raporlayamazsın.',
+      });
     }
 
     // reportedContent VE reportedUserId burada SNAPSHOT'lanır - raporlanan
@@ -137,9 +143,10 @@ export class ReportsService {
       // Mesaj arşivlenmiş bir odanın purge'ünde silinmiş olabilir (M3
       // Slice C) - reportedContent/reportedUserId snapshot'ları hâlâ
       // okunabilir ama artık üzerinde aksiyon alınacak canlı bir mesaj yok.
-      throw new ConflictException(
-        'Bu raporun bağlı olduğu mesaj artık mevcut değil.',
-      );
+      throw new ConflictException({
+        code: 'REPORTED_MESSAGE_GONE',
+        message: 'Bu raporun bağlı olduğu mesaj artık mevcut değil.',
+      });
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -209,10 +216,16 @@ export class ReportsService {
       where: { id: reportId },
     });
     if (!report) {
-      throw new NotFoundException(`Rapor bulunamadı: ${reportId}`);
+      throw new NotFoundException({
+        code: 'REPORT_NOT_FOUND',
+        message: `Rapor bulunamadı: ${reportId}`,
+      });
     }
     if (report.status !== 'open') {
-      throw new ConflictException('Bu rapor zaten çözülmüş.');
+      throw new ConflictException({
+        code: 'REPORT_ALREADY_RESOLVED',
+        message: 'Bu rapor zaten çözülmüş.',
+      });
     }
     return report;
   }

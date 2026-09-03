@@ -1,9 +1,11 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import {
-  InjectThrottlerStorage,
-  ThrottlerException,
-  ThrottlerStorage,
-} from '@nestjs/throttler';
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
+import { InjectThrottlerStorage, ThrottlerStorage } from '@nestjs/throttler';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 
 const LIMIT = 10;
@@ -40,7 +42,16 @@ export class RoomJoinThrottlerGuard implements CanActivate {
     );
 
     if (isBlocked) {
-      throw new ThrottlerException();
+      // M9 Slice C: room-creation-throttler.guard.ts'in AYNI gerekçesi -
+      // ThrottlerException {code,...} obje literalini kabul etmiyor,
+      // HttpException'a geçiliyor (status 429 AYNI kalıyor).
+      throw new HttpException(
+        {
+          code: 'RATE_LIMITED',
+          message: 'Çok fazla istek gönderdin, biraz sonra tekrar dene.',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     return true;

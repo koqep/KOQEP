@@ -6,6 +6,7 @@ import {
 import { User, UserRole } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { AuthService } from './auth.service';
+import { USER_NOT_FOUND_CODE } from './error-codes.constants';
 
 export const MODERATOR_ASSIGNED_ACTION = 'MODERATOR_ASSIGNED';
 export const MODERATOR_REVOKED_ACTION = 'MODERATOR_REVOKED';
@@ -82,9 +83,10 @@ export class ModeratorRoleService {
         where: { role: 'moderator' },
       });
       if (moderatorCount <= 1) {
-        throw new ConflictException(
-          'Son moderatör kendi yetkisini kaldıramaz.',
-        );
+        throw new ConflictException({
+          code: 'LAST_MODERATOR_CANNOT_REVOKE_SELF',
+          message: 'Son moderatör kendi yetkisini kaldıramaz.',
+        });
       }
     }
 
@@ -114,7 +116,10 @@ export class ModeratorRoleService {
   private async findUserOrThrow(email: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new NotFoundException('Kullanıcı bulunamadı.');
+      throw new NotFoundException({
+        code: USER_NOT_FOUND_CODE,
+        message: 'Kullanıcı bulunamadı.',
+      });
     }
     return user;
   }

@@ -9,6 +9,7 @@ import { Prisma, RoomStatus } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { SocketRegistryService } from './socket-registry.service';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
+import { ROOM_NAME_TAKEN_CODE } from './error-codes.constants';
 
 const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 const DELETE_AFTER_MS = 60 * 24 * 60 * 60 * 1000;
@@ -205,7 +206,10 @@ export class RoomsService {
           password !== undefined &&
           (await verifyRoomPasswordSafely(room.passwordHash, password));
         if (!isValid) {
-          throw new UnauthorizedException('Şifre hatalı.');
+          throw new UnauthorizedException({
+            code: 'ROOM_PASSWORD_INCORRECT',
+            message: 'Şifre hatalı.',
+          });
         }
       }
     }
@@ -238,7 +242,10 @@ export class RoomsService {
       select: { name: true },
     });
     if ((CORE_ROOM_NAMES as readonly string[]).includes(room.name)) {
-      throw new ForbiddenException('Çekirdek bir odadan ayrılamazsın.');
+      throw new ForbiddenException({
+        code: 'CORE_ROOM_LEAVE_FORBIDDEN',
+        message: 'Çekirdek bir odadan ayrılamazsın.',
+      });
     }
 
     await this.prisma.roomMember.deleteMany({ where: { userId, roomId } });
@@ -268,7 +275,10 @@ export class RoomsService {
       where: { name: { equals: name, mode: 'insensitive' } },
     });
     if (existingRoom) {
-      throw new ConflictException('Bu isimde bir oda zaten var.');
+      throw new ConflictException({
+        code: ROOM_NAME_TAKEN_CODE,
+        message: 'Bu isimde bir oda zaten var.',
+      });
     }
 
     // M11c Slice A: auth.service.ts'in signup'ta kullandığı AYNI
@@ -293,7 +303,10 @@ export class RoomsService {
       });
     } catch (error) {
       if (isUniqueConstraintError(error, 'name')) {
-        throw new ConflictException('Bu isimde bir oda zaten var.');
+        throw new ConflictException({
+          code: ROOM_NAME_TAKEN_CODE,
+          message: 'Bu isimde bir oda zaten var.',
+        });
       }
       throw error;
     }

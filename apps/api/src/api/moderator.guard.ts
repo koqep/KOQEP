@@ -25,7 +25,10 @@ export class ModeratorGuard implements CanActivate {
       select: { role: true },
     });
     if (requester?.role !== 'moderator') {
-      throw new ForbiddenException('Bu işlem için moderatör yetkisi gerekli.');
+      throw new ForbiddenException({
+        code: 'MODERATOR_ROLE_REQUIRED',
+        message: 'Bu işlem için moderatör yetkisi gerekli.',
+      });
     }
     return true;
   }
