@@ -22,6 +22,7 @@ import { LoginDto } from '../api/dto/login.dto';
 import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 import { AUTHOR_DELETED_CONTENT } from './messages.service';
 import { containsStructuralPii } from './content-redaction.util';
+import { Locale, DEFAULT_LOCALE, isValidLocale } from '../db/locale.constants';
 
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -84,9 +85,13 @@ export class AuthService {
 
   async verifyAccessToken(
     token: string,
-  ): Promise<{ sub: string; email: string }> {
+  ): Promise<{ sub: string; email: string; locale?: Locale }> {
     try {
-      return await this.jwt.verifyAsync<{ sub: string; email: string }>(token);
+      return await this.jwt.verifyAsync<{
+        sub: string;
+        email: string;
+        locale?: Locale;
+      }>(token);
     } catch {
       throw new UnauthorizedException({
         code: INVALID_TOKEN_CODE,
@@ -269,7 +274,22 @@ export class AuthService {
       }
     }
 
-    return this.issueTokenPair(user.id, user.email);
+    // M9 Slice B: "giriş anında localStorage'daki tercih TEK SEFERLİK
+    // senkronlanır" - user.locale HENÜZ null'sa (hiç açıkça set
+    // edilmediyse) ipucu senkronlanır, DOLU bir değer varsa ipucu
+    // SESSİZCE yok sayılır (sonrası SADECE User.locale otorite).
+    let resolvedLocale: Locale = isValidLocale(user.locale)
+      ? user.locale
+      : DEFAULT_LOCALE;
+    if (user.locale === null && dto.localeHint) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { locale: dto.localeHint },
+      });
+      resolvedLocale = dto.localeHint;
+    }
+
+    return this.issueTokenPair(user.id, user.email, resolvedLocale);
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {
@@ -319,7 +339,11 @@ export class AuthService {
       where: { id: stored.userId },
     });
 
-    return this.issueTokenPair(user.id, user.email);
+    return this.issueTokenPair(
+      user.id,
+      user.email,
+      isValidLocale(user.locale) ? user.locale : DEFAULT_LOCALE,
+    );
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -648,8 +672,13 @@ export class AuthService {
   private async issueTokenPair(
     userId: string,
     email: string,
+    locale: Locale,
   ): Promise<TokenPair> {
-    const accessToken = await this.jwt.signAsync({ sub: userId, email });
+    const accessToken = await this.jwt.signAsync({
+      sub: userId,
+      email,
+      locale,
+    });
     const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
 
     await this.prisma.refreshToken.create({

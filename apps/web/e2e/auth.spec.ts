@@ -152,6 +152,88 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   expect(loginCallCount).toBe(2);
 });
 
+// M9 Slice B: giriş anında localStorage'daki tercih login isteğine
+// localeHint olarak ekleniyor.
+test("login_istegi_localstoragedaki_tercihi_localehint_olarak_gonderir", async ({
+  page,
+}) => {
+  let postedBody: { localeHint?: string } | undefined;
+  await page.route("**/auth/login", async (route) => {
+    postedBody = route.request().postDataJSON() as { localeHint?: string };
+    await route.fulfill({
+      json: { accessToken: "fake-access-token", refreshToken: "fake-refresh-token" },
+    });
+  });
+  await mockRoomEndpoints(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "user",
+        mutedUntil: null,
+        muteReason: null,
+        locale: "tr",
+      },
+    }),
+  );
+  // localStorage'a AÇIKÇA bir tercih yazılıyor - readStoredLocale()
+  // detectBrowserLocale()'den ÖNCELİKLİ, testin ortam diline (varsayılan
+  // tarayıcı dili) bağımlı olmaması için.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("koqep:locale", "tr");
+  });
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  expect(postedBody?.localeHint).toBe("tr");
+});
+
+// M9 Slice B: giriş sonrası localStorage artık sadece bir ayna - backend'in
+// döndürdüğü User.locale, localStorage'daki (farklı) tercihin ÜZERİNE
+// yazar.
+test("giris_sonrasi_localstorage_backendin_donduru_locale_ile_senkronlanir", async ({
+  page,
+}) => {
+  await page.route("**/auth/login", (route) =>
+    route.fulfill({
+      json: { accessToken: "fake-access-token", refreshToken: "fake-refresh-token" },
+    }),
+  );
+  await mockRoomEndpoints(page);
+  await page.route("**/users/me", (route) =>
+    route.fulfill({
+      json: {
+        email: "test@koqep.local",
+        username: "test",
+        role: "user",
+        mutedUntil: null,
+        muteReason: null,
+        locale: "tr",
+      },
+    }),
+  );
+  // Giriş ÖNCESİ localStorage "en" diyor - backend'in "tr" yanıtı bunu
+  // EZMELİ.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("koqep:locale", "en");
+  });
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("koqep:locale")))
+    .toBe("tr");
+});
+
 test("sifremi_unuttum_gonderince_notr_mesaj_gosterir", async ({ page }) => {
   await page.route("**/auth/password-reset/request", (route) =>
     route.fulfill({ json: { ok: true } }),

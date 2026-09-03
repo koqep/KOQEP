@@ -122,6 +122,7 @@ describe('Block-user (e2e)', () => {
       totalXp: 0,
       mutedUntil: null,
       muteReason: null,
+      locale: 'en',
     });
   });
 

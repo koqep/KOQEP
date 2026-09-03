@@ -6,9 +6,10 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService, INVALID_TOKEN_CODE } from '../services/auth.service';
+import { Locale, DEFAULT_LOCALE } from '../db/locale.constants';
 
 export interface AuthenticatedRequest extends Request {
-  user: { sub: string; email: string };
+  user: { sub: string; email: string; locale: Locale };
 }
 
 @Injectable()
@@ -26,7 +27,13 @@ export class JwtAuthGuard implements CanActivate {
       });
     }
 
-    request.user = await this.authService.verifyAccessToken(token);
+    const payload = await this.authService.verifyAccessToken(token);
+    // M9 Slice B: deploy anında aktif eski token'ların locale claim'i YOK
+    // (henüz yenilenmediler) - burada TEK bir yerde çözümlemek, her
+    // gelecekteki tüketicinin (Slice C) kendi başına `?? DEFAULT_LOCALE`
+    // hatırlamasına güvenmekten daha sağlam. 15dk TTL içinde kendiliğinden
+    // düzelir (bkz. locale.constants.ts).
+    request.user = { ...payload, locale: payload.locale ?? DEFAULT_LOCALE };
     return true;
   }
 }

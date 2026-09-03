@@ -277,6 +277,94 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     expect(typeof body.accessToken).toBe('string');
   });
 
+  // M9 Slice B: giriş anında localStorage'daki tercih TEK SEFERLİK
+  // senkronlanır (User.locale henüz null'sa), GET /users/me bunu yansıtır.
+  it('ilk_giriste_localehint_senkronlanir_users_me_yansitir', async () => {
+    const { code } = await seedInvite();
+    const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
+    const password = 'a-strong-password';
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({ inviteCode: code, email, username, password })
+      .expect(201);
+    const token = extractVerificationToken();
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token })
+      .expect(201);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password, localeHint: 'tr' })
+      .expect(201);
+    const { accessToken } = loginResponse.body as { accessToken: string };
+
+    const meResponse = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect((meResponse.body as { locale: string }).locale).toBe('tr');
+  });
+
+  it('ikinci_giriste_farkli_localehint_yok_sayilir', async () => {
+    const { code } = await seedInvite();
+    const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
+    const password = 'a-strong-password';
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({ inviteCode: code, email, username, password })
+      .expect(201);
+    const token = extractVerificationToken();
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password, localeHint: 'tr' })
+      .expect(201);
+
+    const secondLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password, localeHint: 'en' })
+      .expect(201);
+    const { accessToken } = secondLogin.body as { accessToken: string };
+
+    const meResponse = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    // İlk girişte senkronlanan 'tr' otorite kalır - ikinci girişteki
+    // farklı ipucu SESSİZCE yok sayılır.
+    expect((meResponse.body as { locale: string }).locale).toBe('tr');
+  });
+
+  it('patch_users_me_locale_gercekten_degistirir', async () => {
+    const { accessToken } = await signUpVerifyAndLogin();
+
+    await request(app.getHttpServer())
+      .patch('/users/me/locale')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ locale: 'tr' })
+      .expect(200);
+
+    const meResponse = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect((meResponse.body as { locale: string }).locale).toBe('tr');
+  });
+
+  // M9 Slice B: geçersiz bir locale DEĞERİNİN reddedilmesi bu ana
+  // describe'un ValidationPipe kurmadığı için burada test EDİLEMEZ -
+  // aşağıdaki "kanıtlanabilir onay (ValidationPipe)" describe'una
+  // taşındı (aynı desen, patch_users_me_locale_gecersiz_degeri_reddeder).
+
   it('yeniler_refresh_tokeni_eskisi_grace_penceresinde_bir_kez_daha_calisir', async () => {
     const { refreshToken } = await signUpVerifyAndLogin();
 
@@ -539,5 +627,50 @@ describe('Auth signup: kanıtlanabilir onay (ValidationPipe) (e2e)', () => {
       where: { email },
     });
     expect(createdUser.termsAcceptedAt).not.toBeNull();
+  });
+
+  // M9 Slice B: geçersiz bir locale değerinin DTO validasyonuyla
+  // reddedildiği - ana describe'un ValidationPipe kurmaması yüzünden
+  // buraya taşındı (bkz. auth-signup-login.e2e-spec.ts'in yukarısındaki
+  // yorum).
+  it('patch_users_me_locale_gecersiz_degeri_reddeder', async () => {
+    const code = await seedInvite();
+    const email = `su-${randomUUID()}@koqep.local`;
+    const username = `su-${randomUUID().slice(0, 18)}`;
+    const password = 'a-strong-password';
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: code,
+        email,
+        username,
+        password,
+        acceptedTerms: true,
+      })
+      .expect(201);
+
+    const calls = emailServiceMock.sendEmailVerificationEmail.mock.calls as [
+      string,
+      string,
+    ][];
+    const verifyLink = calls[calls.length - 1][1];
+    const token = new URL(verifyLink).searchParams.get('token');
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token })
+      .expect(201);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(201);
+    const { accessToken } = loginResponse.body as { accessToken: string };
+
+    await request(app.getHttpServer())
+      .patch('/users/me/locale')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ locale: 'de' })
+      .expect(400);
   });
 });

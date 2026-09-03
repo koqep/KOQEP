@@ -1,3 +1,5 @@
+import type { Locale } from "./i18n";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // M7a Slice A (ADR-0002'yi bitirmek): refresh token + CSRF eşleştirme
@@ -161,6 +163,33 @@ async function authedGetJson<T>(path: string, accessToken: string): Promise<T> {
   }
 }
 
+// M9 Slice B: authedPostJson/authedGetJson'ın üçüncü kardeşi - AYNI
+// 401-yakala-yenile-tekrar-dene deseni, sadece HTTP metodu farklı.
+async function authedPatchJson<T>(
+  path: string,
+  accessToken: string,
+  body?: unknown,
+): Promise<T> {
+  const buildInit = (token: string): RequestInit => ({
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  try {
+    return await sendJson<T>(path, buildInit(accessToken));
+  } catch (error) {
+    if (error instanceof ApiError && error.code === INVALID_TOKEN_CODE) {
+      const freshToken = await refreshAccessToken();
+      return sendJson<T>(path, buildInit(freshToken));
+    }
+    throw error;
+  }
+}
+
 export async function signup(input: {
   inviteCode: string;
   email: string;
@@ -179,6 +208,9 @@ export function login(input: {
   email: string;
   password: string;
   totpCode?: string;
+  // M9 Slice B: localStorage'daki tercih - backend sadece User.locale HENÜZ
+  // hiç set edilmediyse (null) bunu kullanır, aksi halde sessizce yok sayar.
+  localeHint?: Locale;
 }): Promise<TokenPair> {
   return postJson<TokenPair>("/auth/login", input);
 }
@@ -281,10 +313,21 @@ export interface UserProfile {
   role: "user" | "moderator";
   mutedUntil: string | null;
   muteReason: string | null;
+  locale: Locale;
 }
 
 export function getCurrentUser(accessToken: string): Promise<UserProfile> {
   return authedGetJson<UserProfile>("/users/me", accessToken);
+}
+
+// M9 Slice B: ayarlardan dil değiştirme - bunu ÇAĞIRACAK UI Slice D'nin
+// işi, burada sadece backend'in PATCH /users/me/locale'ini çağıran
+// fonksiyon.
+export async function updateLocale(
+  accessToken: string,
+  locale: Locale,
+): Promise<void> {
+  await authedPatchJson("/users/me/locale", accessToken, { locale });
 }
 
 // M10 Faz 2 Slice D+E: başkasının profili - public-safe alan seti (email/
