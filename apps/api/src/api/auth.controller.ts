@@ -11,6 +11,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService, TokenPair } from '../services/auth.service';
+import { INVALID_REFRESH_TOKEN_CODE } from '../services/error-codes.constants';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -141,9 +142,10 @@ export class AuthController {
     const cookies = parseCookieHeader(req.headers.cookie);
     const refreshToken = cookies[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      throw new UnauthorizedException(
-        'Geçersiz veya süresi dolmuş refresh token.',
-      );
+      throw new UnauthorizedException({
+        code: INVALID_REFRESH_TOKEN_CODE,
+        message: 'Geçersiz veya süresi dolmuş refresh token.',
+      });
     }
 
     const csrfCookie = cookies[CSRF_COOKIE_NAME];
@@ -153,7 +155,10 @@ export class AuthController {
       typeof csrfHeader !== 'string' ||
       csrfHeader !== csrfCookie
     ) {
-      throw new ForbiddenException('CSRF doğrulaması başarısız.');
+      throw new ForbiddenException({
+        code: 'CSRF_VALIDATION_FAILED',
+        message: 'CSRF doğrulaması başarısız.',
+      });
     }
 
     return refreshToken;

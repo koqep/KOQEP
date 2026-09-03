@@ -168,21 +168,23 @@ describe('Block-user (e2e)', () => {
   it('reddeder_kendini_engellemeyi', async () => {
     const a = await createTestUser();
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/users/block')
       .set('Authorization', `Bearer ${a.accessToken}`)
       .send({ email: a.email })
       .expect(409);
+    expect((response.body as { code?: string }).code).toBe('CANNOT_BLOCK_SELF');
   });
 
   it('reddeder_bulunamayan_e_postayi', async () => {
     const a = await createTestUser();
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/users/block')
       .set('Authorization', `Bearer ${a.accessToken}`)
       .send({ email: `yok-${randomUUID()}@koqep.local` })
       .expect(404);
+    expect((response.body as { code?: string }).code).toBe('USER_NOT_FOUND');
   });
 
   it('tam_akis_gecmis_ve_gercek_zamanli_filtreleme_ve_engel_kaldirma', async () => {

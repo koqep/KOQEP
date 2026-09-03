@@ -15,6 +15,7 @@ import {
   toRoomSummary,
 } from './rooms.service';
 import { hasExcessiveCombiningMarks } from './content-validation.util';
+import { ROOM_NAME_TAKEN_CODE } from './error-codes.constants';
 
 export const ROOM_RENAMED_ACTION = 'ROOM_RENAMED';
 export const ROOM_ARCHIVED_ACTION = 'ROOM_ARCHIVED';
@@ -52,7 +53,10 @@ export class RoomModerationService {
       },
     });
     if (existingRoom) {
-      throw new ConflictException('Bu isimde bir oda zaten var.');
+      throw new ConflictException({
+        code: ROOM_NAME_TAKEN_CODE,
+        message: 'Bu isimde bir oda zaten var.',
+      });
     }
 
     try {
@@ -75,7 +79,10 @@ export class RoomModerationService {
       });
     } catch (error) {
       if (isUniqueConstraintError(error, 'name')) {
-        throw new ConflictException('Bu isimde bir oda zaten var.');
+        throw new ConflictException({
+          code: ROOM_NAME_TAKEN_CODE,
+          message: 'Bu isimde bir oda zaten var.',
+        });
       }
       throw error;
     }
@@ -85,7 +92,10 @@ export class RoomModerationService {
     const room = await this.findRoomOrThrow(roomId);
     this.assertNotCoreRoom(room.name);
     if (room.status !== 'active') {
-      throw new ConflictException('Sadece aktif bir oda arşivlenebilir.');
+      throw new ConflictException({
+        code: 'ROOM_NOT_ACTIVE',
+        message: 'Sadece aktif bir oda arşivlenebilir.',
+      });
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -118,9 +128,10 @@ export class RoomModerationService {
     const room = await this.findRoomOrThrow(roomId);
     this.assertNotCoreRoom(room.name);
     if (room.status !== 'archived') {
-      throw new ConflictException(
-        'Sadece arşivlenmiş bir oda silinebilir - önce arşivle.',
-      );
+      throw new ConflictException({
+        code: 'ROOM_NOT_ARCHIVED',
+        message: 'Sadece arşivlenmiş bir oda silinebilir - önce arşivle.',
+      });
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -185,7 +196,10 @@ export class RoomModerationService {
     // - HERKESE broadcast edilen bir metin, burası kontrolsüz bırakılırsa
     // zalgo korumasını bypass eden bir yan kapı olurdu.
     if (normalized && hasExcessiveCombiningMarks(normalized)) {
-      throw new BadRequestException('Duyuru geçersiz karakterler içeriyor.');
+      throw new BadRequestException({
+        code: 'ANNOUNCEMENT_INVALID_CHARACTERS',
+        message: 'Duyuru geçersiz karakterler içeriyor.',
+      });
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -211,16 +225,20 @@ export class RoomModerationService {
   private async findRoomOrThrow(roomId: string): Promise<Room> {
     const room = await this.prisma.room.findUnique({ where: { id: roomId } });
     if (!room) {
-      throw new NotFoundException(`Oda bulunamadı: ${roomId}`);
+      throw new NotFoundException({
+        code: 'ROOM_NOT_FOUND',
+        message: `Oda bulunamadı: ${roomId}`,
+      });
     }
     return room;
   }
 
   private assertNotCoreRoom(name: string): void {
     if ((CORE_ROOM_NAMES as readonly string[]).includes(name)) {
-      throw new ForbiddenException(
-        'Çekirdek odalar üzerinde bu işlem yapılamaz.',
-      );
+      throw new ForbiddenException({
+        code: 'CORE_ROOM_ACTION_FORBIDDEN',
+        message: 'Çekirdek odalar üzerinde bu işlem yapılamaz.',
+      });
     }
   }
 }

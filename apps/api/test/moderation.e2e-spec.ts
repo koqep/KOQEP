@@ -171,10 +171,11 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
   it('bilinmeyen_mesaj_icin_404_doner', async () => {
     const reporter = await createTestUser();
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${randomUUID()}/report`)
       .set('Authorization', `Bearer ${reporter.accessToken}`)
       .expect(404);
+    expect((response.body as { code?: string }).code).toBe('MESSAGE_NOT_FOUND');
   });
 
   it('saatte_bes_rapordan_fazlasini_ayni_kullanici_icin_engeller', async () => {
@@ -196,19 +197,23 @@ describe('Moderation: rapor + inceleme + aksiyon (e2e)', () => {
       author.id,
       `mesaj-${randomUUID()}`,
     );
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post(`/rooms/${CORE_ROOM_NAMES[0]}/messages/${lastMessageId}/report`)
       .set(authHeader)
       .expect(429);
+    expect((response.body as { code?: string }).code).toBe('RATE_LIMITED');
   }, 15000);
 
   it('moderator_olmayan_rapor_kuyrugunu_goremez', async () => {
     const user = await createTestUser();
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .get('/moderation/reports')
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(403);
+    expect((response.body as { code?: string }).code).toBe(
+      'MODERATOR_ROLE_REQUIRED',
+    );
   });
 
   it('moderator_acik_raporlari_gorur_icerik_kaldirinca_gercek_zamanli_yayinlanir', async () => {

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
+import { USER_NOT_FOUND_CODE } from './error-codes.constants';
 
 @Injectable()
 export class BlocksService {
@@ -12,7 +13,10 @@ export class BlocksService {
   async block(blockerId: string, blockedEmail: string): Promise<void> {
     const blockedUser = await this.findUserOrThrow(blockedEmail);
     if (blockedUser.id === blockerId) {
-      throw new ConflictException('Kendini engelleyemezsin.');
+      throw new ConflictException({
+        code: 'CANNOT_BLOCK_SELF',
+        message: 'Kendini engelleyemezsin.',
+      });
     }
 
     await this.prisma.block.upsert({
@@ -73,7 +77,10 @@ export class BlocksService {
   private async findUserOrThrow(email: string): Promise<{ id: string }> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new NotFoundException('Kullanıcı bulunamadı.');
+      throw new NotFoundException({
+        code: USER_NOT_FOUND_CODE,
+        message: 'Kullanıcı bulunamadı.',
+      });
     }
     return user;
   }

@@ -90,7 +90,10 @@ export class MessagesService {
     if (room.status !== 'active') {
       // M3 Slice B: "arşivlenince salt-okunur" - sendMessage bugüne kadar
       // oda durumunu hiç kontrol etmiyordu.
-      throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
+      throw new GoneException({
+        code: 'ROOM_ARCHIVED',
+        message: 'Bu oda arşivlenmiş, sadece okunabilir.',
+      });
     }
 
     const message = await this.prisma.$transaction(async (tx) => {
@@ -230,16 +233,25 @@ export class MessagesService {
       include: { room: { select: { status: true } } },
     });
     if (!message) {
-      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+      throw new NotFoundException({
+        code: 'MESSAGE_NOT_FOUND',
+        message: `Mesaj bulunamadı: ${messageId}`,
+      });
     }
     if (message.room.status !== 'active') {
       // M3 Slice B: editMessage bugüne kadar oda durumunu hiç kontrol
       // etmiyordu - sadece sendMessage'ı engellemek "yeni mesaj yasak ama
       // düzenleme serbest" bırakırdı, "salt-okunur" değil.
-      throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
+      throw new GoneException({
+        code: 'ROOM_ARCHIVED',
+        message: 'Bu oda arşivlenmiş, sadece okunabilir.',
+      });
     }
     if (message.authorId !== userId) {
-      throw new ForbiddenException('Sadece kendi mesajını düzenleyebilirsin.');
+      throw new ForbiddenException({
+        code: 'MESSAGE_EDIT_FORBIDDEN',
+        message: 'Sadece kendi mesajını düzenleyebilirsin.',
+      });
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -272,13 +284,22 @@ export class MessagesService {
       include: { room: { select: { status: true } } },
     });
     if (!message) {
-      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+      throw new NotFoundException({
+        code: 'MESSAGE_NOT_FOUND',
+        message: `Mesaj bulunamadı: ${messageId}`,
+      });
     }
     if (message.room.status !== 'active') {
-      throw new GoneException('Bu oda arşivlenmiş, sadece okunabilir.');
+      throw new GoneException({
+        code: 'ROOM_ARCHIVED',
+        message: 'Bu oda arşivlenmiş, sadece okunabilir.',
+      });
     }
     if (message.authorId !== userId) {
-      throw new ForbiddenException('Sadece kendi mesajını silebilirsin.');
+      throw new ForbiddenException({
+        code: 'MESSAGE_DELETE_FORBIDDEN',
+        message: 'Sadece kendi mesajını silebilirsin.',
+      });
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -315,7 +336,10 @@ export class MessagesService {
   ): Promise<{ dto: MessageDto; authorId: string | null }> {
     const message = await tx.message.findUnique({ where: { id: messageId } });
     if (!message) {
-      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+      throw new NotFoundException({
+        code: 'MESSAGE_NOT_FOUND',
+        message: `Mesaj bulunamadı: ${messageId}`,
+      });
     }
 
     await tx.messageEdit.create({
@@ -338,7 +362,10 @@ export class MessagesService {
       where: { id: messageId },
     });
     if (!message) {
-      throw new NotFoundException(`Mesaj bulunamadı: ${messageId}`);
+      throw new NotFoundException({
+        code: 'MESSAGE_NOT_FOUND',
+        message: `Mesaj bulunamadı: ${messageId}`,
+      });
     }
 
     const isAuthor = message.authorId === requesterId;
@@ -348,9 +375,10 @@ export class MessagesService {
         select: { role: true },
       });
       if (requester?.role !== 'moderator') {
-        throw new ForbiddenException(
-          'Bu mesajın düzenleme geçmişini görme yetkin yok.',
-        );
+        throw new ForbiddenException({
+          code: 'MESSAGE_HISTORY_FORBIDDEN',
+          message: 'Bu mesajın düzenleme geçmişini görme yetkin yok.',
+        });
       }
       // M5 Slice A: docs/THREAT-MODEL.md satır 12 "scoped to an active
       // report" diyordu ama Report hiç yokken bu doğrulanamaz bir iddiaydı
@@ -362,9 +390,10 @@ export class MessagesService {
         select: { id: true },
       });
       if (!hasReport) {
-        throw new ForbiddenException(
-          'Bu mesajın düzenleme geçmişini görme yetkin yok.',
-        );
+        throw new ForbiddenException({
+          code: 'MESSAGE_HISTORY_FORBIDDEN',
+          message: 'Bu mesajın düzenleme geçmişini görme yetkin yok.',
+        });
       }
     }
 
@@ -410,14 +439,20 @@ export class MessagesService {
       where: { userId_roomId: { userId, roomId: room.id } },
     });
     if (!membership) {
-      throw new ForbiddenException('Bu oda şifre korumalı, önce katılmalısın.');
+      throw new ForbiddenException({
+        code: 'ROOM_ACCESS_DENIED',
+        message: 'Bu oda şifre korumalı, önce katılmalısın.',
+      });
     }
   }
 
   private async findRoomOrThrow(name: string): Promise<Room> {
     const room = await this.prisma.room.findUnique({ where: { name } });
     if (!room) {
-      throw new NotFoundException(`Oda bulunamadı: ${name}`);
+      throw new NotFoundException({
+        code: 'ROOM_NOT_FOUND',
+        message: `Oda bulunamadı: ${name}`,
+      });
     }
     return room;
   }

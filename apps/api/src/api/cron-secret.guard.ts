@@ -19,7 +19,10 @@ export class CronSecretGuard implements CanActivate {
     const expected = this.config.get<string>('CRON_SECRET');
 
     if (!expected || provided !== expected) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException({
+        code: 'INVALID_CRON_SECRET',
+        message: 'Geçersiz cron secret.',
+      });
     }
 
     return true;

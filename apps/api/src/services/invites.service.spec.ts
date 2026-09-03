@@ -1,4 +1,3 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { InvitesService } from './invites.service';
 import { PrismaService } from '../db/prisma.service';
@@ -38,9 +37,9 @@ describe('InvitesService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.findRedeemableInvite('YOK')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findRedeemableInvite('YOK')).rejects.toMatchObject({
+        response: { code: 'INVITE_NOT_FOUND' },
+      });
     });
 
     it('reddeder_kullanilmis_davet_kodu', async () => {
@@ -58,9 +57,9 @@ describe('InvitesService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.findRedeemableInvite('ABC123')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.findRedeemableInvite('ABC123'),
+      ).rejects.toMatchObject({ response: { code: 'INVITE_ALREADY_USED' } });
     });
 
     it('reddeder_revoke_edilmis_davet_kodunu', async () => {
@@ -78,9 +77,11 @@ describe('InvitesService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.findRedeemableInvite('ABC123')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.findRedeemableInvite('ABC123'),
+      ).rejects.toMatchObject({
+        response: { code: 'INVITE_NO_LONGER_VALID' },
+      });
     });
   });
 

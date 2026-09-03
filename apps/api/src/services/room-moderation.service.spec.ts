@@ -1,9 +1,3 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   RoomModerationService,
@@ -131,7 +125,41 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.renameRoom('moderator-1', 'room-1', 'baska-oda'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NAME_TAKEN' } });
+    });
+
+    // M9 Slice C: ön-kontrolün (findFirst) kaçırdığı bir yarış durumu -
+    // tx.room.update'in kendi P2002 backstop'u, önceki testten AYRI, hiç
+    // test edilmiyordu.
+    it('yarisi_kaybedilen_yeniden_adlandirmayi_p2002_backstopuyla_reddeder', async () => {
+      const room = {
+        id: 'room-1',
+        name: 'eski-isim',
+        description: null,
+        status: 'active',
+      };
+      const uniqueError = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: 'test', meta: { target: ['name'] } },
+      );
+      const txMock = {
+        room: {
+          update: jest.fn().mockRejectedValue(uniqueError),
+        },
+      };
+      const prismaMock: Partial<PrismaService> = {
+        room: {
+          findUnique: jest.fn().mockResolvedValue(room),
+          findFirst: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['room'],
+        $transaction: buildTransactionMock(txMock),
+      };
+
+      const service = new RoomModerationService(prismaMock as PrismaService);
+
+      await expect(
+        service.renameRoom('moderator-1', 'room-1', 'baska-oda'),
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NAME_TAKEN' } });
     });
 
     it('arsivlenmis_bir_oda_da_yeniden_adlandirilabilir', async () => {
@@ -188,7 +216,9 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.renameRoom('moderator-1', 'room-1', 'yeni-isim'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({
+        response: { code: 'CORE_ROOM_ACTION_FORBIDDEN' },
+      });
     });
 
     it('reddeder_bilinmeyen_odayi', async () => {
@@ -202,7 +232,7 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.renameRoom('moderator-1', 'yok-oda', 'yeni-isim'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_FOUND' } });
     });
   });
 
@@ -270,7 +300,7 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.archiveRoom('moderator-1', 'room-1'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_ACTIVE' } });
     });
 
     it('cekirdek_odayi_reddeder', async () => {
@@ -290,7 +320,9 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.archiveRoom('moderator-1', 'room-1'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({
+        response: { code: 'CORE_ROOM_ACTION_FORBIDDEN' },
+      });
     });
   });
 
@@ -394,9 +426,9 @@ describe('RoomModerationService', () => {
 
       const service = new RoomModerationService(prismaMock as PrismaService);
 
-      await expect(service.deleteRoom('moderator-1', 'room-1')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.deleteRoom('moderator-1', 'room-1'),
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_ARCHIVED' } });
     });
 
     it('cekirdek_odayi_reddeder', async () => {
@@ -414,9 +446,11 @@ describe('RoomModerationService', () => {
 
       const service = new RoomModerationService(prismaMock as PrismaService);
 
-      await expect(service.deleteRoom('moderator-1', 'room-1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.deleteRoom('moderator-1', 'room-1'),
+      ).rejects.toMatchObject({
+        response: { code: 'CORE_ROOM_ACTION_FORBIDDEN' },
+      });
     });
 
     it('reddeder_bilinmeyen_odayi', async () => {
@@ -430,7 +464,7 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.deleteRoom('moderator-1', 'yok-oda'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_FOUND' } });
     });
   });
 
@@ -588,7 +622,9 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.setRoomAnnouncement('moderator-1', 'room-1', zalgo),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toMatchObject({
+        response: { code: 'ANNOUNCEMENT_INVALID_CHARACTERS' },
+      });
     });
 
     it('reddeder_bilinmeyen_odayi', async () => {
@@ -602,7 +638,7 @@ describe('RoomModerationService', () => {
 
       await expect(
         service.setRoomAnnouncement('moderator-1', 'yok-oda', 'bir duyuru'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_FOUND' } });
     });
   });
 });

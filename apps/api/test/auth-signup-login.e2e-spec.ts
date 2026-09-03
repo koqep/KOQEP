@@ -393,10 +393,25 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
       .send({ refreshToken })
       .expect(201);
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/auth/refresh')
       .send({ refreshToken })
       .expect(401);
+    expect((response.body as { code?: string }).code).toBe(
+      'INVALID_REFRESH_TOKEN',
+    );
+  });
+
+  // M9 Slice C: auth.controller.ts'in resolveRefreshToken'ının kendi
+  // 401'i - ne cookie ne body'de bir refresh token varken.
+  it('cookiesiz_ve_bodysiz_refresh_401_ve_code_doner', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({})
+      .expect(401);
+    expect((response.body as { code?: string }).code).toBe(
+      'INVALID_REFRESH_TOKEN',
+    );
   });
 
   // M7a Slice A: çoklu-sekme yarışı - AynI (artık rotasyona uğramış) eski
@@ -416,10 +431,13 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
       .send({ refreshToken })
       .expect(201);
 
-    await request(app.getHttpServer())
+    const thirdResponse = await request(app.getHttpServer())
       .post('/auth/refresh')
       .send({ refreshToken })
       .expect(401);
+    expect((thirdResponse.body as { code?: string }).code).toBe(
+      'INVALID_REFRESH_TOKEN',
+    );
   });
 
   it('login_yaniti_refresh_ve_csrf_cookielerini_dogru_bayraklarla_set_eder', async () => {
@@ -472,18 +490,24 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     const { loginResponse } = await signUpVerifyAndLogin();
     const { rt, csrf } = extractCookieValues(loginResponse);
 
-    await request(app.getHttpServer())
+    const missingHeaderResponse = await request(app.getHttpServer())
       .post('/auth/refresh')
       .set('Cookie', [`koqep_rt=${rt}`, `koqep_csrf=${csrf}`])
       .send({})
       .expect(403);
+    expect((missingHeaderResponse.body as { code?: string }).code).toBe(
+      'CSRF_VALIDATION_FAILED',
+    );
 
-    await request(app.getHttpServer())
+    const wrongHeaderResponse = await request(app.getHttpServer())
       .post('/auth/refresh')
       .set('Cookie', [`koqep_rt=${rt}`, `koqep_csrf=${csrf}`])
       .set('X-Csrf-Token', 'yanlis-deger')
       .send({})
       .expect(403);
+    expect((wrongHeaderResponse.body as { code?: string }).code).toBe(
+      'CSRF_VALIDATION_FAILED',
+    );
   });
 
   it('logout_cookieleri_max_age_sifirla_temizler', async () => {

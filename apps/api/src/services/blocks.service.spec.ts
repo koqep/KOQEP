@@ -1,4 +1,3 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
 import { BlocksService } from './blocks.service';
 import { PrismaService } from '../db/prisma.service';
 
@@ -47,9 +46,9 @@ describe('BlocksService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.block('user-1', 'a@koqep.local')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.block('user-1', 'a@koqep.local'),
+      ).rejects.toMatchObject({ response: { code: 'CANNOT_BLOCK_SELF' } });
     });
 
     it('reddeder_bulunamayan_e_postayi', async () => {
@@ -61,9 +60,9 @@ describe('BlocksService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.block('user-1', 'yok@koqep.local')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.block('user-1', 'yok@koqep.local'),
+      ).rejects.toMatchObject({ response: { code: 'USER_NOT_FOUND' } });
     });
   });
 

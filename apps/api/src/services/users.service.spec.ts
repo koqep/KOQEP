@@ -1,4 +1,4 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../db/prisma.service';
 
@@ -152,8 +152,8 @@ describe('UsersService', () => {
 
     const service = buildService(prismaMock);
 
-    await expect(service.getPublicProfile('yok')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(service.getPublicProfile('yok')).rejects.toMatchObject({
+      response: { code: 'USER_NOT_FOUND' },
+    });
   });
 });

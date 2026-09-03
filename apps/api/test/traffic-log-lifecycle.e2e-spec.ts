@@ -59,16 +59,22 @@ describe('Traffic log purge (e2e)', () => {
   }
 
   it('sirla_eksikse_401_doner', async () => {
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/internal/traffic-logs/purge')
       .expect(401);
+    expect((response.body as { code?: string }).code).toBe(
+      'INVALID_CRON_SECRET',
+    );
   });
 
   it('yanlis_sirla_401_doner', async () => {
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/internal/traffic-logs/purge')
       .set('x-cron-secret', 'yanlis-sirla')
       .expect(401);
+    expect((response.body as { code?: string }).code).toBe(
+      'INVALID_CRON_SECRET',
+    );
   });
 
   it('18_aydan_eski_satiri_siler_yeni_satiri_korur', async () => {

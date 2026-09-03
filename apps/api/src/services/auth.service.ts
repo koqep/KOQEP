@@ -23,6 +23,10 @@ import { CORE_ROOM_NAMES } from '../db/core-rooms.constants';
 import { AUTHOR_DELETED_CONTENT } from './messages.service';
 import { containsStructuralPii } from './content-redaction.util';
 import { Locale, DEFAULT_LOCALE, isValidLocale } from '../db/locale.constants';
+import {
+  INVALID_REFRESH_TOKEN_CODE,
+  INVITE_NO_LONGER_VALID_CODE,
+} from './error-codes.constants';
 
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -113,7 +117,10 @@ export class AuthService {
       where: { username: { equals: dto.username, mode: 'insensitive' } },
     });
     if (existingUsername) {
-      throw new ConflictException('Bu kullanıcı adı zaten alınmış.');
+      throw new ConflictException({
+        code: 'USERNAME_TAKEN',
+        message: 'Bu kullanıcı adı zaten alınmış.',
+      });
     }
 
     await this.passwordPolicyService.assertNotBreached(dto.password);
@@ -165,15 +172,24 @@ export class AuthService {
           data: { usedById: userId, usedAt: new Date() },
         });
         if (claimed.count === 0) {
-          throw new ConflictException('Bu davet kodu artık geçerli değil.');
+          throw new ConflictException({
+            code: INVITE_NO_LONGER_VALID_CODE,
+            message: 'Bu davet kodu artık geçerli değil.',
+          });
         }
       });
     } catch (error) {
       if (isUniqueConstraintError(error, 'email')) {
-        throw new ConflictException('Bu e-posta zaten kayıtlı.');
+        throw new ConflictException({
+          code: 'EMAIL_TAKEN',
+          message: 'Bu e-posta zaten kayıtlı.',
+        });
       }
       if (isUniqueConstraintError(error, 'username')) {
-        throw new ConflictException('Bu kullanıcı adı zaten alınmış.');
+        throw new ConflictException({
+          code: 'USERNAME_TAKEN',
+          message: 'Bu kullanıcı adı zaten alınmış.',
+        });
       }
       throw error;
     }
@@ -299,9 +315,10 @@ export class AuthService {
     });
 
     if (!stored || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException(
-        'Geçersiz veya süresi dolmuş refresh token.',
-      );
+      throw new UnauthorizedException({
+        code: INVALID_REFRESH_TOKEN_CODE,
+        message: 'Geçersiz veya süresi dolmuş refresh token.',
+      });
     }
 
     if (stored.revokedAt) {
@@ -312,9 +329,10 @@ export class AuthService {
       const withinGrace =
         Date.now() - stored.revokedAt.getTime() <= REFRESH_TOKEN_REUSE_GRACE_MS;
       if (!stored.revokedByRotation || !withinGrace || stored.graceReusedAt) {
-        throw new UnauthorizedException(
-          'Geçersiz veya süresi dolmuş refresh token.',
-        );
+        throw new UnauthorizedException({
+          code: INVALID_REFRESH_TOKEN_CODE,
+          message: 'Geçersiz veya süresi dolmuş refresh token.',
+        });
       }
       // Atomik claim - iki yarışan grace-denemesinin (ör. iki sekmenin
       // neredeyse aynı anda gelen istekleri) ikisinin de aynı hakkı
@@ -324,9 +342,10 @@ export class AuthService {
         data: { graceReusedAt: new Date() },
       });
       if (claimed.count === 0) {
-        throw new UnauthorizedException(
-          'Geçersiz veya süresi dolmuş refresh token.',
-        );
+        throw new UnauthorizedException({
+          code: INVALID_REFRESH_TOKEN_CODE,
+          message: 'Geçersiz veya süresi dolmuş refresh token.',
+        });
       }
     } else {
       await this.prisma.refreshToken.update({
@@ -551,9 +570,10 @@ export class AuthService {
     });
 
     if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException(
-        'Geçersiz veya süresi dolmuş sıfırlama bağlantısı.',
-      );
+      throw new UnauthorizedException({
+        code: 'INVALID_RESET_TOKEN',
+        message: 'Geçersiz veya süresi dolmuş sıfırlama bağlantısı.',
+      });
     }
 
     await this.passwordPolicyService.assertNotBreached(newPassword);
@@ -566,9 +586,10 @@ export class AuthService {
         data: { usedAt: new Date() },
       });
       if (claimed.count === 0) {
-        throw new UnauthorizedException(
-          'Geçersiz veya süresi dolmuş sıfırlama bağlantısı.',
-        );
+        throw new UnauthorizedException({
+          code: 'INVALID_RESET_TOKEN',
+          message: 'Geçersiz veya süresi dolmuş sıfırlama bağlantısı.',
+        });
       }
 
       // failedLoginCount/lockedUntil de burada temizlenir (M7a Slice F,
@@ -617,9 +638,10 @@ export class AuthService {
     });
 
     if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException(
-        'Geçersiz veya süresi dolmuş doğrulama bağlantısı.',
-      );
+      throw new UnauthorizedException({
+        code: 'INVALID_VERIFICATION_TOKEN',
+        message: 'Geçersiz veya süresi dolmuş doğrulama bağlantısı.',
+      });
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -628,9 +650,10 @@ export class AuthService {
         data: { usedAt: new Date() },
       });
       if (claimed.count === 0) {
-        throw new UnauthorizedException(
-          'Geçersiz veya süresi dolmuş doğrulama bağlantısı.',
-        );
+        throw new UnauthorizedException({
+          code: 'INVALID_VERIFICATION_TOKEN',
+          message: 'Geçersiz veya süresi dolmuş doğrulama bağlantısı.',
+        });
       }
 
       // Şifre sıfırlamanın aksine burada oturum iptali/token yayını YOK -

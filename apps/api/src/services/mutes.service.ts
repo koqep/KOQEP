@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { InvitesService } from './invites.service';
+import { USER_NOT_FOUND_CODE } from './error-codes.constants';
 
 export const MUTE_APPLIED_ACTION = 'MUTE_APPLIED';
 export const MUTE_LIFTED_ACTION = 'MUTE_LIFTED';
@@ -117,7 +118,10 @@ export class MutesService {
   private async findUserOrThrow(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException(`Kullanıcı bulunamadı: ${userId}`);
+      throw new NotFoundException({
+        code: USER_NOT_FOUND_CODE,
+        message: `Kullanıcı bulunamadı: ${userId}`,
+      });
     }
     return user;
   }

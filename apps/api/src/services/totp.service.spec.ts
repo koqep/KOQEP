@@ -1,4 +1,3 @@
-import { UnauthorizedException } from '@nestjs/common';
 import { Secret, TOTP } from 'otpauth';
 import { TotpService } from './totp.service';
 import { PrismaService } from '../db/prisma.service';
@@ -133,9 +132,9 @@ describe('TotpService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.confirmEnable('user-1', '000000')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.confirmEnable('user-1', '000000'),
+      ).rejects.toMatchObject({ response: { code: 'TOTP_INVALID_CODE' } });
     });
 
     it('reddeder_kurulum_baslatilmamissa', async () => {
@@ -148,9 +147,11 @@ describe('TotpService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.confirmEnable('user-1', '123456')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.confirmEnable('user-1', '123456'),
+      ).rejects.toMatchObject({
+        response: { code: 'TOTP_SETUP_NOT_STARTED' },
+      });
     });
   });
 
@@ -289,9 +290,34 @@ describe('TotpService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.disable('user-1', '123456')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.disable('user-1', '123456')).rejects.toMatchObject({
+        response: { code: 'TOTP_ALREADY_DISABLED' },
+      });
+    });
+
+    // M9 Slice C: disable()'ın KENDİ geçersiz-kod dalı (confirmEnable'ın
+    // TOTP_INVALID_CODE'undan AYRI kod yolu) - hiç test edilmiyordu.
+    it('reddeder_yanlis_kodu', async () => {
+      const secret = new Secret();
+      const user = {
+        id: 'user-1',
+        totpSecret: secret.base32,
+        totpEnabledAt: new Date(),
+      };
+      const prismaMock: Partial<PrismaService> = {
+        user: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(user),
+        } as unknown as PrismaService['user'],
+        totpRecoveryCode: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        } as unknown as PrismaService['totpRecoveryCode'],
+      };
+
+      const service = buildService(prismaMock);
+
+      await expect(service.disable('user-1', '000000')).rejects.toMatchObject({
+        response: { code: 'TOTP_INVALID_CODE' },
+      });
     });
   });
 

@@ -1,8 +1,3 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   ReportsService,
@@ -67,7 +62,7 @@ describe('ReportsService', () => {
 
       await expect(
         service.createReport('reporter-1', 'yok-mesaj'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'MESSAGE_NOT_FOUND' } });
     });
 
     it('reddeder_kendi_mesajini_raporlamayi', async () => {
@@ -84,9 +79,11 @@ describe('ReportsService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.createReport('user-1', 'msg-1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.createReport('user-1', 'msg-1'),
+      ).rejects.toMatchObject({
+        response: { code: 'CANNOT_REPORT_OWN_MESSAGE' },
+      });
     });
   });
 
@@ -412,7 +409,7 @@ describe('ReportsService', () => {
 
       await expect(
         service.removeContent('moderator-1', 'yok-rapor', 'kural ihlali'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'REPORT_NOT_FOUND' } });
     });
 
     it('reddeder_zaten_cozulmus_raporu', async () => {
@@ -428,7 +425,9 @@ describe('ReportsService', () => {
 
       await expect(
         service.removeContent('moderator-1', 'report-1', 'kural ihlali'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({
+        response: { code: 'REPORT_ALREADY_RESOLVED' },
+      });
     });
 
     it('mesaji_purge_edilmis_raporu_conflict_ile_reddeder', async () => {
@@ -446,7 +445,7 @@ describe('ReportsService', () => {
 
       await expect(
         service.removeContent('moderator-1', 'report-1', 'kural ihlali'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({ response: { code: 'REPORTED_MESSAGE_GONE' } });
     });
   });
 
@@ -539,9 +538,11 @@ describe('ReportsService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.dismiss('moderator-1', 'report-1')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.dismiss('moderator-1', 'report-1'),
+      ).rejects.toMatchObject({
+        response: { code: 'REPORT_ALREADY_RESOLVED' },
+      });
     });
   });
 });
