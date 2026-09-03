@@ -1,8 +1,3 @@
-import {
-  ForbiddenException,
-  GoneException,
-  NotFoundException,
-} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   MessagesService,
@@ -309,7 +304,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_FOUND' } });
     });
 
     it('reddeder_arsivlenmis_odaya_mesaji_gone_ile', async () => {
@@ -327,7 +322,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
-      ).rejects.toThrow(GoneException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_ARCHIVED' } });
     });
 
     it('reddeder_susturulmus_kullaniciyi', async () => {
@@ -389,7 +384,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.sendMessage('user-1', CORE_ROOM_NAMES[0], 'merhaba'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_ACCESS_DENIED' } });
     });
 
     it('izin_verir_sifreli_odada_uye_olan_kullaniciya', async () => {
@@ -510,7 +505,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.getRecentMessages('yok-oda', 'requester-1'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NOT_FOUND' } });
     });
 
     // M11c Slice A: kod tabanına eklenen İLK gerçek erişim-gating - şifreli
@@ -530,7 +525,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.getRecentMessages(CORE_ROOM_NAMES[0], 'requester-1'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_ACCESS_DENIED' } });
     });
 
     it('izin_verir_sifreli_odada_uye_olan_kullaniciya', async () => {
@@ -742,7 +737,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.editMessage('baska-kullanici', 'msg-1', 'yeni icerik'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({ response: { code: 'MESSAGE_EDIT_FORBIDDEN' } });
     });
 
     it('reddeder_bilinmeyen_mesaji', async () => {
@@ -759,7 +754,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.editMessage('user-1', 'yok-mesaj', 'yeni icerik'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'MESSAGE_NOT_FOUND' } });
     });
 
     it('reddeder_arsivlenmis_odadaki_duzenlemeyi_gone_ile_yazar_olsa_bile', async () => {
@@ -775,7 +770,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.editMessage('user-1', 'msg-1', 'yeni icerik'),
-      ).rejects.toThrow(GoneException);
+      ).rejects.toMatchObject({ response: { code: 'ROOM_ARCHIVED' } });
     });
 
     it('reddeder_susturulmus_yazari', async () => {
@@ -911,7 +906,9 @@ describe('MessagesService', () => {
 
       await expect(
         service.deleteOwnMessage('baska-kullanici', 'msg-1'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({
+        response: { code: 'MESSAGE_DELETE_FORBIDDEN' },
+      });
     });
 
     it('reddeder_bilinmeyen_mesaji', async () => {
@@ -925,7 +922,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.deleteOwnMessage('user-1', 'yok-mesaj'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'MESSAGE_NOT_FOUND' } });
     });
 
     it('reddeder_arsivlenmis_odadaki_silmeyi_gone_ile_yazar_olsa_bile', async () => {
@@ -939,9 +936,9 @@ describe('MessagesService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.deleteOwnMessage('user-1', 'msg-1')).rejects.toThrow(
-        GoneException,
-      );
+      await expect(
+        service.deleteOwnMessage('user-1', 'msg-1'),
+      ).rejects.toMatchObject({ response: { code: 'ROOM_ARCHIVED' } });
     });
   });
 
@@ -1004,7 +1001,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.removeMessageContent(tx, 'yok-mesaj'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'MESSAGE_NOT_FOUND' } });
     });
   });
 
@@ -1092,7 +1089,9 @@ describe('MessagesService', () => {
 
       await expect(
         service.getMessageEditHistory('moderator-1', 'msg-1'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({
+        response: { code: 'MESSAGE_HISTORY_FORBIDDEN' },
+      });
     });
 
     it('reddeder_ne_yazar_ne_moderator_olan_kullaniciyi', async () => {
@@ -1111,7 +1110,9 @@ describe('MessagesService', () => {
 
       await expect(
         service.getMessageEditHistory('baska-kullanici', 'msg-1'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toMatchObject({
+        response: { code: 'MESSAGE_HISTORY_FORBIDDEN' },
+      });
     });
 
     it('reddeder_bilinmeyen_mesaji', async () => {
@@ -1125,7 +1126,7 @@ describe('MessagesService', () => {
 
       await expect(
         service.getMessageEditHistory('user-1', 'yok-mesaj'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'MESSAGE_NOT_FOUND' } });
     });
   });
 });

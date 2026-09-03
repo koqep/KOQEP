@@ -52,16 +52,22 @@ describe('Rooms lifecycle sweep (e2e)', () => {
   });
 
   it('yanlis_sirla_401_doner', async () => {
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/internal/rooms/lifecycle-sweep')
       .set('x-cron-secret', 'yanlis-sirla')
       .expect(401);
+    expect((response.body as { code?: string }).code).toBe(
+      'INVALID_CRON_SECRET',
+    );
   });
 
   it('sirla_eksikse_401_doner', async () => {
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/internal/rooms/lifecycle-sweep')
       .expect(401);
+    expect((response.body as { code?: string }).code).toBe(
+      'INVALID_CRON_SECRET',
+    );
   });
 
   it('14_gunden_eski_gercek_bir_odayi_arsivler', async () => {

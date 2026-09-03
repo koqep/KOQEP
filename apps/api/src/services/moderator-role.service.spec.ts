@@ -1,4 +1,3 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
 import {
   ModeratorRoleService,
   MODERATOR_ASSIGNED_ACTION,
@@ -156,7 +155,7 @@ describe('ModeratorRoleService', () => {
           undefined,
           'yok@koqep.local',
         ),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'USER_NOT_FOUND' } });
     });
   });
 
@@ -268,7 +267,9 @@ describe('ModeratorRoleService', () => {
 
       await expect(
         service.revokeModerator('moderator-1', 'a@koqep.local'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({
+        response: { code: 'LAST_MODERATOR_CANNOT_REVOKE_SELF' },
+      });
     });
 
     it('baskasini_dusurmek_moderator_sayisindan_bagimsiz_calisir', async () => {
@@ -317,7 +318,7 @@ describe('ModeratorRoleService', () => {
 
       await expect(
         service.revokeModerator('moderator-1', 'yok@koqep.local'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'USER_NOT_FOUND' } });
     });
   });
 });

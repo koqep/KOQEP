@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   MutesService,
@@ -116,7 +115,7 @@ describe('MutesService', () => {
 
       await expect(
         service.applyMute('moderator-1', 'yok-kullanici', 24, 'kural ihlali'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'USER_NOT_FOUND' } });
     });
 
     it('tekrar_mute_mutedUntili_stacklemeden_degistirir', async () => {
@@ -353,7 +352,7 @@ describe('MutesService', () => {
 
       await expect(
         service.liftMute('moderator-1', 'yok-kullanici'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toMatchObject({ response: { code: 'USER_NOT_FOUND' } });
     });
   });
 });

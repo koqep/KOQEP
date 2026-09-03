@@ -17,6 +17,10 @@ import { EmailService } from './email.service';
 import { SocketRegistryService } from './socket-registry.service';
 import { PasswordPolicyService } from './password-policy.service';
 import { PrismaService } from '../db/prisma.service';
+import {
+  INVITE_NO_LONGER_VALID_CODE,
+  INVALID_REFRESH_TOKEN_CODE,
+} from './error-codes.constants';
 
 describe('AuthService', () => {
   const jwt = new JwtService({ secret: 'test-secret' });
@@ -208,7 +212,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock, invitesMock);
 
-      await expect(service.signup(dto)).rejects.toThrow(ConflictException);
+      await expect(service.signup(dto)).rejects.toMatchObject({
+        response: { code: INVITE_NO_LONGER_VALID_CODE },
+      });
     });
 
     it('reddeder_zaten_kayitli_e_postayi', async () => {
@@ -225,7 +231,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock, invitesMock);
 
-      await expect(service.signup(dto)).rejects.toThrow(ConflictException);
+      await expect(service.signup(dto)).rejects.toMatchObject({
+        response: { code: 'EMAIL_TAKEN' },
+      });
     });
 
     it('reddeder_zaten_kayitli_kullanici_adini_yarisi_durumunda', async () => {
@@ -246,7 +254,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock, invitesMock);
 
-      await expect(service.signup(dto)).rejects.toThrow(ConflictException);
+      await expect(service.signup(dto)).rejects.toMatchObject({
+        response: { code: 'USERNAME_TAKEN' },
+      });
     });
 
     it('reddeder_buyuk_kucuk_harf_farkli_ama_ayni_kullanici_adini_on_kontrolde', async () => {
@@ -259,7 +269,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock, invitesMock);
 
-      await expect(service.signup(dto)).rejects.toThrow(ConflictException);
+      await expect(service.signup(dto)).rejects.toMatchObject({
+        response: { code: 'USERNAME_TAKEN' },
+      });
     });
   });
 
@@ -853,9 +865,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.refresh('token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refresh('token')).rejects.toMatchObject({
+        response: { code: INVALID_REFRESH_TOKEN_CODE },
+      });
     });
 
     it('reddeder_logoutla_iptal_edilmis_tokeni_grace_penceresi_icinde_bile', async () => {
@@ -881,9 +893,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.refresh('token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refresh('token')).rejects.toMatchObject({
+        response: { code: INVALID_REFRESH_TOKEN_CODE },
+      });
     });
 
     it('grace_penceresi_icinde_iptal_edilmis_tokeni_bir_kez_kabul_eder_ve_isaretler', async () => {
@@ -942,9 +954,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.refresh('token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refresh('token')).rejects.toMatchObject({
+        response: { code: INVALID_REFRESH_TOKEN_CODE },
+      });
     });
 
     it('reddeder_suresi_dolmus_refresh_tokeni', async () => {
@@ -963,9 +975,9 @@ describe('AuthService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.refresh('token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refresh('token')).rejects.toMatchObject({
+        response: { code: INVALID_REFRESH_TOKEN_CODE },
+      });
     });
   });
 
@@ -1663,7 +1675,7 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmPasswordReset('raw-token', 'a-new-password'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ response: { code: 'INVALID_RESET_TOKEN' } });
     });
 
     it('reddeder_kullanilmis_tokeni', async () => {
@@ -1684,7 +1696,7 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmPasswordReset('raw-token', 'a-new-password'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ response: { code: 'INVALID_RESET_TOKEN' } });
     });
 
     it('reddeder_suresi_dolmus_tokeni', async () => {
@@ -1705,7 +1717,7 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmPasswordReset('raw-token', 'a-new-password'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ response: { code: 'INVALID_RESET_TOKEN' } });
     });
 
     it('reddeder_yarisi_kaybedilen_talebi', async () => {
@@ -1729,7 +1741,7 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmPasswordReset('raw-token', 'a-new-password'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ response: { code: 'INVALID_RESET_TOKEN' } });
     });
   });
 
@@ -1794,7 +1806,9 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmEmailVerification('raw-token'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({
+        response: { code: 'INVALID_VERIFICATION_TOKEN' },
+      });
     });
 
     it('reddeder_kullanilmis_tokeni', async () => {
@@ -1815,7 +1829,9 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmEmailVerification('raw-token'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({
+        response: { code: 'INVALID_VERIFICATION_TOKEN' },
+      });
     });
 
     it('reddeder_suresi_dolmus_tokeni', async () => {
@@ -1836,7 +1852,9 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmEmailVerification('raw-token'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({
+        response: { code: 'INVALID_VERIFICATION_TOKEN' },
+      });
     });
 
     it('reddeder_yarisi_kaybedilen_talebi', async () => {
@@ -1860,7 +1878,9 @@ describe('AuthService', () => {
 
       await expect(
         service.confirmEmailVerification('raw-token'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({
+        response: { code: 'INVALID_VERIFICATION_TOKEN' },
+      });
     });
   });
 });

@@ -1,4 +1,3 @@
-import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { RoomsService } from './rooms.service';
@@ -291,7 +290,9 @@ describe('RoomsService', () => {
 
       await expect(
         service.joinRoom('user-1', 'room-1', 'yanlis-sifre'),
-      ).rejects.toThrow('Şifre hatalı.');
+      ).rejects.toMatchObject({
+        response: { code: 'ROOM_PASSWORD_INCORRECT' },
+      });
       expect(upsertMock).not.toHaveBeenCalled();
     });
 
@@ -316,9 +317,9 @@ describe('RoomsService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.joinRoom('user-1', 'room-1')).rejects.toThrow(
-        'Şifre hatalı.',
-      );
+      await expect(service.joinRoom('user-1', 'room-1')).rejects.toMatchObject({
+        response: { code: 'ROOM_PASSWORD_INCORRECT' },
+      });
     });
 
     it('zaten_uye_olan_sifreli_odaya_sifre_istemeden_tekrar_katilir', async () => {
@@ -389,9 +390,11 @@ describe('RoomsService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.leaveRoom('user-1', 'room-general')).rejects.toThrow(
-        'Çekirdek bir odadan ayrılamazsın.',
-      );
+      await expect(
+        service.leaveRoom('user-1', 'room-general'),
+      ).rejects.toMatchObject({
+        response: { code: 'CORE_ROOM_LEAVE_FORBIDDEN' },
+      });
     });
   });
 
@@ -502,9 +505,9 @@ describe('RoomsService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.createRoom('user-1', 'General')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.createRoom('user-1', 'General'),
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NAME_TAKEN' } });
     });
 
     it('reddeder_yarisi_kaybedilen_ismi_p2002_backstopuyla', async () => {
@@ -521,9 +524,9 @@ describe('RoomsService', () => {
 
       const service = buildService(prismaMock);
 
-      await expect(service.createRoom('user-1', 'general')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.createRoom('user-1', 'general'),
+      ).rejects.toMatchObject({ response: { code: 'ROOM_NAME_TAKEN' } });
     });
   });
 

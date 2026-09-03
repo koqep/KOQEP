@@ -144,11 +144,12 @@ describe('Room creation (e2e)', () => {
     // farkli bir kullaniciyla yapiyoruz - bu test case-insensitive
     // cakismayi dogruluyor, rate limiti degil.
     const { accessToken: otherToken } = await createTestUser();
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/rooms')
       .set('Authorization', `Bearer ${otherToken}`)
       .send({ name: name.toUpperCase() })
       .expect(409);
+    expect((response.body as { code?: string }).code).toBe('ROOM_NAME_TAKEN');
   });
 
   it('gunde_bir_odadan_fazlasini_ayni_kullanici_icin_engeller', async () => {
@@ -163,11 +164,12 @@ describe('Room creation (e2e)', () => {
         createdRoomIds.push((response.body as { id: string }).id);
       });
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/rooms')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ name: `oda-${randomUUID()}` })
       .expect(429);
+    expect((response.body as { code?: string }).code).toBe('RATE_LIMITED');
   });
 
   it('olusturanin_zaten_bagli_soketi_yeni_odaya_hemen_katilir_ve_mesaj_alir', async () => {
@@ -422,15 +424,21 @@ describe('Room creation (e2e)', () => {
     const room = response.body as { id: string };
     createdRoomIds.push(room.id);
 
-    await request(app.getHttpServer())
+    const wrongPasswordResponse = await request(app.getHttpServer())
       .post(`/rooms/${room.id}/join`)
       .set('Authorization', `Bearer ${joiner.accessToken}`)
       .send({ password: 'yanlis-sifre' })
       .expect(401);
-    await request(app.getHttpServer())
+    expect((wrongPasswordResponse.body as { code?: string }).code).toBe(
+      'ROOM_PASSWORD_INCORRECT',
+    );
+    const noPasswordResponse = await request(app.getHttpServer())
       .post(`/rooms/${room.id}/join`)
       .set('Authorization', `Bearer ${joiner.accessToken}`)
       .expect(401);
+    expect((noPasswordResponse.body as { code?: string }).code).toBe(
+      'ROOM_PASSWORD_INCORRECT',
+    );
 
     await request(app.getHttpServer())
       .post(`/rooms/${room.id}/join`)
