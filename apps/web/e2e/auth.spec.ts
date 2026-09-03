@@ -110,7 +110,10 @@ test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({
   await page.getByLabel("password").fill("yanlis-sifre");
   await page.getByRole("button", { name: "log in" }).click();
 
-  await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible();
+  // M9 Slice D2: AuthView artık `translateErrorCode`'a bağlı - varsayılan
+  // (İngilizce) locale'de backend'in HAM Türkçe mesajı yerine doğru
+  // çevrilmiş metin gösteriliyor (bu TAM DA M9'un düzelttiği bug'dı).
+  await expect(page.getByText("Incorrect email or password.")).toBeVisible();
   await expect(page.getByLabel("authenticator code")).toHaveCount(0);
 });
 
@@ -185,9 +188,12 @@ test("login_istegi_localstoragedaki_tercihi_localehint_olarak_gonderir", async (
   });
 
   await page.goto("/app");
-  await page.getByLabel("email").fill("test@koqep.local");
-  await page.getByLabel("password").fill("a-strong-password");
-  await page.getByRole("button", { name: "log in" }).click();
+  // M9 Slice D2: AuthView artık locale='tr' iken GERÇEKTEN Türkçe
+  // label'lar render ediyor (AppShell'in tek-noktalı locale çözümlemesi,
+  // giriş ÖNCESİ) - "email"/"password" yerine "e-posta"/"şifre".
+  await page.getByLabel("e-posta").fill("test@koqep.local");
+  await page.getByLabel("şifre").fill("a-strong-password");
+  await page.getByRole("button", { name: "giriş yap" }).click();
 
   await expect(page.getByPlaceholder("write a message...")).toBeVisible();
   expect(postedBody?.localeHint).toBe("tr");
@@ -289,4 +295,66 @@ test("dekoratif_canvas_arka_plani_ekran_okuyucudan_gizli", async ({
 
   const canvas = page.locator("canvas");
   await expect(canvas).toHaveAttribute("aria-hidden", "true");
+});
+
+// M9 Slice D2 (Dalga A): AppShell'in TEK-noktalı locale çözümlemesi -
+// localStorage'da "tr" varken TÜM giriş-öncesi kabuk (AuthPageShell'in
+// KENDİ metinleri dahil) Türkçe render etmeli, sadece AuthView'ın DEĞİL.
+test("localstoragede_tr_varken_giris_ekrani_turkce_render_eder", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("koqep:locale", "tr");
+  });
+
+  await page.goto("/app");
+
+  await expect(page.getByRole("tab", { name: "giriş yap" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "kayıt ol" })).toBeVisible();
+  await expect(page.getByLabel("e-posta")).toBeVisible();
+  await expect(page.getByLabel("şifre")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "şifreni mi unuttun?" }),
+  ).toBeVisible();
+  // AuthPageShell'in KENDİ metinleri - AuthView'dan AYRI bir prop yolu
+  // (RoomView'ın dict zincirine hiç girmiyor), ayrıca doğrulanmalı.
+  await expect(page.getByText("sadece metin · davetle katılım")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "ana sayfaya dön" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "yardım" })).toBeVisible();
+});
+
+// M9 Slice D2: `translateErrorCode`'un GERÇEK bilingual kanıtı - sadece
+// varsayılan İngilizce'nin BİREBİR korunduğunu değil, `tr` locale'de
+// GERÇEKTEN Türkçe çevirinin göründüğünü de kanıtlar.
+test("tr_localede_yanlis_bilgiler_hatasi_turkce_gosterilir", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("koqep:locale", "tr");
+  });
+  // Backend'in HAM mesajı BİLEREK sözlükteki çeviriden FARKLI - test
+  // SADECE sözlük değeri görünürse ("E-posta veya şifre hatalı.")
+  // GERÇEKTEN `translateErrorCode`'un kullanıldığını kanıtlar (ham
+  // mesajın sessizce geçtiği bir passthrough'la KARIŞTIRILMASIN).
+  await page.route("**/auth/login", (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        code: "INVALID_CREDENTIALS",
+        message: "kimlik doğrulama başarısız (ham backend metni)",
+      },
+    }),
+  );
+
+  await page.goto("/app");
+  await page.getByLabel("e-posta").fill("test@koqep.local");
+  await page.getByLabel("şifre").fill("yanlis-sifre");
+  await page.getByRole("button", { name: "giriş yap" }).click();
+
+  await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible();
+  await expect(
+    page.getByText("kimlik doğrulama başarısız (ham backend metni)"),
+  ).toHaveCount(0);
 });

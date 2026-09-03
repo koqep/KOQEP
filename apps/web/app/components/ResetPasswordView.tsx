@@ -5,10 +5,19 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { confirmPasswordReset, ApiError } from "../../lib/api";
 import PasswordInput from "./PasswordInput";
+import { readStoredLocale, detectBrowserLocale, translations } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 export default function ResetPasswordView() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+
+  // M9 Slice D2 (Dalga A): AppShell zincirinin DIŞINDA (kendi route'u,
+  // `/reset-password`) - AYNI readStoredLocale/detectBrowserLocale
+  // çağrısını kendi içinde yapıyor (AppShell'in TEK-noktalı çözümlemesini
+  // burada MİRAS ALAMIYOR, prop-drilling zinciri yok).
+  const locale = readStoredLocale() ?? detectBrowserLocale();
+  const dict = translations[locale];
 
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +35,9 @@ export default function ResetPasswordView() {
       setSuccess(true);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setIsSubmitting(false);
@@ -36,9 +47,9 @@ export default function ResetPasswordView() {
   if (!token) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">Invalid link.</p>
+        <p className="text-neutral-400">{dict.common.invalidLink}</p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
-          back to login
+          {dict.common.backToLogin}
         </Link>
       </main>
     );
@@ -47,9 +58,9 @@ export default function ResetPasswordView() {
   if (success) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">Your password has been updated.</p>
+        <p className="text-neutral-400">{dict.resetPassword.successMessage}</p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
-          back to login
+          {dict.common.backToLogin}
         </Link>
       </main>
     );
@@ -58,11 +69,12 @@ export default function ResetPasswordView() {
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
       <h1 className="mb-6 text-neutral-400">
-        <span className="text-muted">#</span> new password
+        <span className="text-muted">#</span> {dict.resetPassword.title}
       </h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <PasswordInput
-          label="new password"
+          label={dict.resetPassword.passwordLabel}
+          dict={dict}
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
           required
@@ -75,7 +87,7 @@ export default function ResetPasswordView() {
           disabled={isSubmitting}
           className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          update password
+          {dict.resetPassword.submitButton}
         </button>
       </form>
     </main>

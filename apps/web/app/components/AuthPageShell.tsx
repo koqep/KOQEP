@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import AsciiBackground from "./AsciiBackground";
 import { FEEDBACK_EMAIL } from "../../lib/contact";
+import type { Dictionary } from "../../lib/i18n";
 
 // M11b Slice E: /app'in giriş/kayıt ekranının chrome'u - LegalPageShell.tsx
 // ile AYNI desen (marka bloğu + fixed ASCII arka plan + alt linkler),
@@ -17,7 +18,13 @@ import { FEEDBACK_EMAIL } from "../../lib/contact";
 // `opacity-50` ek class'ı - AsciiBackground.tsx'in KENDİ iç rgba
 // opaklığının ÜSTÜNE bir CSS çarpanı, bileşene DOKUNMADAN "landing'den
 // daha soluk" isteğini karşılıyor (form okunabilirliği önceliği).
-export default function AuthPageShell({ children }: { children: ReactNode }) {
+export default function AuthPageShell({
+  children,
+  dict,
+}: {
+  children: ReactNode;
+  dict: Dictionary;
+}) {
   return (
     <>
       <AsciiBackground className="pointer-events-none fixed inset-0 h-full w-full opacity-50" />
@@ -27,20 +34,21 @@ export default function AuthPageShell({ children }: { children: ReactNode }) {
             <span className="text-lg font-bold">KOQEP</span>{" "}
             <span className="terminal-cursor inline-block h-4 w-2 bg-neutral-400 align-middle" />
           </h1>
-          <p className="text-xs text-muted">text-based chat · invite-only</p>
+          <p className="text-xs text-muted">{dict.authPageShell.tagline}</p>
         </div>
 
         {children}
 
         <div className="flex justify-between text-xs">
           <Link href="/" className="text-muted hover:text-neutral-400">
-            <span aria-hidden="true">&lt; </span>back to home
+            <span aria-hidden="true">&lt; </span>
+            {dict.authPageShell.backToHome}
           </Link>
           <a
             href={`mailto:${FEEDBACK_EMAIL}`}
             className="text-muted hover:text-neutral-400"
           >
-            help
+            {dict.authPageShell.help}
           </a>
         </div>
       </main>

@@ -11,16 +11,24 @@ import {
 } from "../../lib/api";
 import { filledInputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
-import { readStoredLocale, detectBrowserLocale } from "../../lib/i18n";
+import type { Dictionary, Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 type Mode = "login" | "signup" | "forgot-password";
 
 interface Props {
   onAuthenticated: (tokens: TokenPair, totpEnabled: boolean) => void;
   initialMode?: Mode;
+  dict: Dictionary;
+  locale: Locale;
 }
 
-export default function AuthView({ onAuthenticated, initialMode }: Props) {
+export default function AuthView({
+  onAuthenticated,
+  initialMode,
+  dict,
+  locale,
+}: Props) {
   const [mode, setMode] = useState<Mode>(initialMode ?? "login");
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
@@ -74,25 +82,27 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
         ...(totpRequired ? { totpCode } : {}),
         // M9 Slice B: giriş anında localStorage'daki tercih - backend
         // SADECE User.locale henüz null'sa kullanır (tek seferlik senkron).
-        localeHint: readStoredLocale() ?? detectBrowserLocale(),
+        // M9 Slice D2: `locale` artık AppShell'in TEK çözümleme noktasından
+        // gelen bir PROP - burada AYRICA readStoredLocale/detectBrowserLocale
+        // çağırmaya gerek yok.
+        localeHint: locale,
       });
       onAuthenticated(tokens, totpRequired);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TOTP_REQUIRED") {
           setTotpRequired(true);
-        } else if (err.code === "EMAIL_NOT_VERIFIED") {
-          // Backend'in ham mesajı Türkçe (A20, backend hata metinleri
-          // henüz çevrilmedi) - bilinen code'lar için TOTP_REQUIRED'la
-          // AYNI desen, frontend kendi net İngilizce mesajını gösteriyor.
-          setError(
-            "Check your inbox — you need to verify your email before signing in.",
-          );
         } else {
-          setError(err.message);
+          // M9 Slice D2: `translateErrorCode` (D1, apps/web/lib/
+          // error-messages.ts) backend'in code'unu kullanıcının dilinde
+          // bir mesaja çeviriyor - EMAIL_NOT_VERIFIED için AYRI bir dal
+          // GEREKMİYOR artık, sözlükteki değer AuthView'ın eski hardcoded
+          // override'ıyla ZATEN birebir aynı metin. Bilinmeyen bir code
+          // ("undefined" dönerse) backend'in ham mesajına düşülür.
+          setError(translateErrorCode(err.code, locale) ?? err.message);
         }
       } else {
-        setError("Connection error. Try again.");
+        setError(dict.common.connectionError);
       }
     } finally {
       setIsSubmitting(false);
@@ -121,7 +131,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                 : "text-muted hover:text-neutral-400")
             }
           >
-            log in
+            {dict.authView.logIn}
           </button>
           <button
             type="button"
@@ -137,7 +147,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                 : "text-muted hover:text-neutral-400")
             }
           >
-            sign up
+            {dict.authView.signUp}
           </button>
         </div>
       )}
@@ -156,25 +166,25 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
       >
         {mode === "forgot-password" && resetRequested ? (
           <p className="text-neutral-400">
-            If this email is registered, a reset link has been sent.
+            {dict.authView.resetRequestedMessage}
           </p>
         ) : mode === "signup" && signupComplete ? (
           <p className="text-neutral-400">
-            Click the link sent to your email to complete your signup.
+            {dict.authView.signupCompleteMessage}
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <p className="text-muted">
               {mode === "signup"
-                ? "$ sign up"
+                ? dict.authView.promptSignUp
                 : mode === "forgot-password"
-                  ? "$ reset password"
-                  : "$ log in"}
+                  ? dict.authView.promptResetPassword
+                  : dict.authView.promptLogIn}
             </p>
 
             {mode === "signup" && (
               <label className="flex flex-col gap-1 text-muted">
-                invite code
+                {dict.authView.inviteCodeLabel}
                 <input
                   type="text"
                   value={inviteCode}
@@ -184,13 +194,13 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                   className={filledInputClassName}
                 />
                 <span className="text-xs text-muted">
-                  Ask someone already on KOQEP for an invite code.
+                  {dict.authView.inviteCodeHelp}
                 </span>
               </label>
             )}
 
             <label className="flex flex-col gap-1 text-muted">
-              email
+              {dict.authView.emailLabel}
               <input
                 type="email"
                 value={email}
@@ -203,7 +213,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
 
             {mode === "signup" && (
               <label className="flex flex-col gap-1 text-muted">
-                username
+                {dict.authView.usernameLabel}
                 <input
                   type="text"
                   value={username}
@@ -220,7 +230,8 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
 
             {mode !== "forgot-password" && (
               <PasswordInput
-                label="password"
+                label={dict.authView.passwordLabel}
+                dict={dict}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -232,7 +243,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
 
             {mode === "login" && totpRequired && (
               <label className="flex flex-col gap-1 text-muted">
-                authenticator code
+                {dict.authView.authenticatorCodeLabel}
                 <input
                   type="text"
                   value={totpCode}
@@ -255,21 +266,21 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                   className="mt-1"
                 />
                 <span>
-                  I have read and accept the{" "}
+                  {dict.authView.termsPrefix}{" "}
                   <Link
                     href="/terms"
                     target="_blank"
                     className="text-neutral-400 hover:text-neutral-200"
                   >
-                    Terms of Service
+                    {dict.authView.termsLink}
                   </Link>{" "}
-                  and{" "}
+                  {dict.authView.termsAnd}{" "}
                   <Link
                     href="/privacy"
                     target="_blank"
                     className="text-neutral-400 hover:text-neutral-200"
                   >
-                    Privacy Policy
+                    {dict.authView.privacyLink}
                   </Link>
                   .
                 </span>
@@ -285,10 +296,10 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
             >
               <span aria-hidden="true">&gt; </span>
               {mode === "signup"
-                ? "sign up"
+                ? dict.authView.signUp
                 : mode === "forgot-password"
-                  ? "send"
-                  : "log in"}
+                  ? dict.authView.send
+                  : dict.authView.logIn}
             </button>
           </form>
         )}
@@ -299,7 +310,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
             onClick={() => switchMode("login")}
             className="text-muted hover:text-neutral-400"
           >
-            back to login
+            {dict.common.backToLogin}
           </button>
         ) : (
           <>
@@ -309,7 +320,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
                 onClick={() => switchMode("forgot-password")}
                 className="text-muted hover:text-neutral-400"
               >
-                forgot your password?
+                {dict.authView.forgotPassword}
               </button>
             )}
             <button
@@ -318,7 +329,7 @@ export default function AuthView({ onAuthenticated, initialMode }: Props) {
               className="border border-neutral-800 px-4 py-1.5 text-neutral-400 hover:border-neutral-600"
             >
               <span aria-hidden="true">+ </span>
-              {mode === "login" ? "sign up" : "log in"}
+              {mode === "login" ? dict.authView.signUp : dict.authView.logIn}
             </button>
           </>
         )}
