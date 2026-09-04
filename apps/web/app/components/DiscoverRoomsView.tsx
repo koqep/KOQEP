@@ -127,7 +127,7 @@ export default function DiscoverRoomsView({
                   <span className="text-muted"> — {room.description}</span>
                 )}
                 <span className="block text-sm text-muted">
-                  {interpolate(dict.discoverRooms.lastActive, {
+                  {interpolate(dict.common.lastActive, {
                     relative: formatRelativeActivity(
                       room.lastActivityAt,
                       locale,

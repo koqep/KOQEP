@@ -4,6 +4,7 @@ import { type FormEvent, type RefObject } from "react";
 import MessageItem from "./MessageItem";
 import MessageContent from "./MessageContent";
 import type { Room, UserProfile, MessageEdit } from "../../lib/api";
+import { interpolate, type Dictionary, type Locale } from "../../lib/i18n";
 
 interface Message {
   id: string;
@@ -63,6 +64,8 @@ interface Props {
   canSend: boolean;
   isSending: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  dict: Dictionary;
+  locale: Locale;
 }
 
 export default function ChatPanel({
@@ -90,6 +93,8 @@ export default function ChatPanel({
   canSend,
   isSending,
   onSubmit,
+  dict,
+  locale,
 }: Props) {
   return (
     <>
@@ -110,14 +115,16 @@ export default function ChatPanel({
             disabled={isLoadingOlder}
             className="mb-2 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
           >
-            {isLoadingOlder ? "loading..." : "load older messages"}
+            {isLoadingOlder ? dict.common.loading : dict.chatPanel.loadOlderMessages}
           </button>
         )}
         {messages.length === 0 ? (
           <p>
             {activeRoom
-              ? `#${activeRoom.name} is quiet so far — send the first message`
-              : "no messages yet"}
+              ? interpolate(dict.chatPanel.roomEmptyMessage, {
+                  room: activeRoom.name,
+                })
+              : dict.chatPanel.noMessagesYet}
           </p>
         ) : (
           <ul>
@@ -140,6 +147,7 @@ export default function ChatPanel({
                   fetchHistory={fetchHistoryForMessage}
                   onReport={onReportMessage}
                   onViewProfile={onViewProfile}
+                  dict={dict}
                   // Mesaj ritmi: grup içi sıkı (mt-0.5), gruplar arası
                   // gevşek (mt-3) boşluk - listenin ilk öğesi hiç boşluk
                   // almaz.
@@ -157,26 +165,33 @@ export default function ChatPanel({
       {contentRemovedNotice && (
         <p className="flex items-center gap-2 text-red-400">
           <span>
-            a message of yours was removed by a moderator — {contentRemovedNotice}
+            {interpolate(dict.chatPanel.contentRemovedNotice, {
+              reason: contentRemovedNotice,
+            })}
           </span>
           <button
             type="button"
             onClick={onDismissContentRemovedNotice}
             className="text-muted hover:text-neutral-400"
           >
-            ok
+            {dict.chatPanel.dismissButton}
           </button>
         </p>
       )}
       {activeRoom && activeRoom.status !== "active" ? (
         <p className="border-t border-neutral-800 pt-2 text-muted">
-          this room is archived, read-only
+          {dict.chatPanel.archivedNotice}
         </p>
       ) : isMuted ? (
         <p className="border-t border-neutral-800 pt-2 text-muted">
-          you&apos;re muted{muteReason && ` — ${muteReason}`}
+          {dict.chatPanel.mutedNotice}
+          {muteReason && ` — ${muteReason}`}
           {mutedUntil &&
-            ` until ${new Date(mutedUntil).toLocaleString("en-US")}, you can't send or edit messages`}
+            interpolate(dict.chatPanel.mutedUntilSuffix, {
+              date: new Date(mutedUntil).toLocaleString(
+                locale === "tr" ? "tr-TR" : "en-US",
+              ),
+            })}
         </p>
       ) : (
         <form
@@ -189,8 +204,8 @@ export default function ChatPanel({
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             disabled={!isReady}
-            placeholder="write a message..."
-            aria-label="write a message"
+            placeholder={dict.chatPanel.composerPlaceholder}
+            aria-label={dict.chatPanel.composerAriaLabel}
             className="flex-1 border border-transparent bg-transparent text-neutral-200 placeholder-muted outline-none focus-visible:border-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-100 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 disabled:cursor-not-allowed"
           />
           <span
@@ -202,7 +217,7 @@ export default function ChatPanel({
             disabled={!canSend || isSending}
             className="text-muted disabled:cursor-not-allowed"
           >
-            {isSending ? "sending..." : "send"}
+            {isSending ? dict.chatPanel.sendingButton : dict.chatPanel.sendButton}
           </button>
         </form>
       )}

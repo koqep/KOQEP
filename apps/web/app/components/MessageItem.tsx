@@ -6,6 +6,7 @@ import MessageContent from "./MessageContent";
 import type { MessageEdit } from "../../lib/api";
 import { inputClassName } from "./formStyles";
 import { useDismissableMenu } from "./useDismissableMenu";
+import type { Dictionary } from "../../lib/i18n";
 
 const menuItemClassName =
   "px-2 py-1 text-left text-muted hover:text-neutral-400";
@@ -31,6 +32,7 @@ interface Props {
   onReport: (messageId: string) => Promise<void>;
   onViewProfile: (username: string) => void;
   className?: string;
+  dict: Dictionary;
 }
 
 // M10 Faz 2 Slice C: 24-saat format (hour12: false) mockup'taki "03:12"
@@ -57,6 +59,7 @@ export default function MessageItem({
   onReport,
   onViewProfile,
   className,
+  dict,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
@@ -143,11 +146,11 @@ export default function MessageItem({
       const entries = await fetchHistory(message.id);
       setHistoryEntries(entries);
     } catch {
-      setHistoryError("Could not load history.");
+      setHistoryError(dict.messageItem.historyLoadError);
     }
   }
 
-  const authorLabel = message.authorUsername ?? "deleted user";
+  const authorLabel = message.authorUsername ?? dict.messageItem.deletedUser;
   // Yerel bir const'a çıkarmak, aşağıdaki nested onClick closure'ında
   // TypeScript'in bunu string olarak DARALTMASINI sağlıyor - message.
   // authorUsername'a doğrudan bir property-access olarak erişmek closure
@@ -172,7 +175,7 @@ export default function MessageItem({
         >
           <input
             type="text"
-            aria-label="edit message"
+            aria-label={dict.messageItem.editAriaLabel}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             // eslint-disable-next-line jsx-a11y/no-autofocus -- "düzenle"ye tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
@@ -183,14 +186,14 @@ export default function MessageItem({
             type="submit"
             className="text-muted hover:text-neutral-400"
           >
-            save
+            {dict.messageItem.saveButton}
           </button>
           <button
             type="button"
             onClick={() => setIsEditing(false)}
             className="text-muted hover:text-neutral-400"
           >
-            cancel
+            {dict.common.cancel}
           </button>
         </form>
       ) : (
@@ -234,7 +237,7 @@ export default function MessageItem({
           <span className="flex-1">
             <MessageContent content={message.content} />
             {message.editedAt && (
-              <span className="text-muted"> (edited)</span>
+              <span className="text-muted"> {dict.messageItem.editedSuffix}</span>
             )}
           </span>
           {hasMenuActions && (
@@ -244,7 +247,7 @@ export default function MessageItem({
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={isMenuOpen}
-                aria-label="message actions"
+                aria-label={dict.messageItem.messageActionsAriaLabel}
                 onClick={toggleMenu}
                 className={
                   "text-muted hover:text-neutral-400" +
@@ -258,7 +261,7 @@ export default function MessageItem({
               {isMenuOpen && (
                 <div
                   role="menu"
-                  aria-label="message actions"
+                  aria-label={dict.messageItem.messageActionsAriaLabel}
                   className={
                     "absolute right-0 z-30 flex w-40 flex-col gap-1 border border-neutral-800 bg-neutral-950 p-2" +
                     (menuOpensUpward ? " bottom-full mb-1" : " top-full mt-1")
@@ -271,7 +274,7 @@ export default function MessageItem({
                       onClick={() => selectAction(startEditing)}
                       className={menuItemClassName}
                     >
-                      edit
+                      {dict.messageItem.editButton}
                     </button>
                   )}
                   {isMine && !isConfirmingDelete && (
@@ -287,7 +290,7 @@ export default function MessageItem({
                       }
                       className="px-2 py-1 text-left text-muted hover:text-red-400"
                     >
-                      delete
+                      {dict.messageItem.deleteButton}
                     </button>
                   )}
                   {canViewHistory && (
@@ -299,7 +302,9 @@ export default function MessageItem({
                       }
                       className={menuItemClassName}
                     >
-                      {isHistoryOpen ? "hide history" : "history"}
+                      {isHistoryOpen
+                        ? dict.messageItem.hideHistoryButton
+                        : dict.messageItem.historyButton}
                     </button>
                   )}
                   {!isMine && reportState !== "sent" && (
@@ -313,10 +318,10 @@ export default function MessageItem({
                       }
                     >
                       {reportState === "error"
-                        ? "try again"
+                        ? dict.messageItem.tryAgainButton
                         : reportState === "sending"
-                          ? "reporting..."
-                          : "report"}
+                          ? dict.messageItem.reportingButton
+                          : dict.messageItem.reportButton}
                     </button>
                   )}
                 </div>
@@ -325,7 +330,9 @@ export default function MessageItem({
           )}
           {isMine && isConfirmingDelete && (
             <>
-              <span className="text-red-400">are you sure?</span>
+              <span className="text-red-400">
+                {dict.messageItem.confirmDeleteQuestion}
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -334,19 +341,19 @@ export default function MessageItem({
                 }}
                 className="text-red-400 hover:text-red-300"
               >
-                yes
+                {dict.messageItem.yesButton}
               </button>
               <button
                 type="button"
                 onClick={() => setIsConfirmingDelete(false)}
                 className="text-muted hover:text-neutral-400"
               >
-                cancel
+                {dict.common.cancel}
               </button>
             </>
           )}
           {!isMine && reportState === "sent" && (
-            <span className="text-muted">reported</span>
+            <span className="text-muted">{dict.messageItem.reportedLabel}</span>
           )}
         </div>
       )}
@@ -356,9 +363,9 @@ export default function MessageItem({
           {historyError ? (
             <p className="text-red-400">{historyError}</p>
           ) : historyEntries === null ? (
-            <p className="text-muted">loading...</p>
+            <p className="text-muted">{dict.common.loading}</p>
           ) : historyEntries.length === 0 ? (
-            <p className="text-muted">no edit history</p>
+            <p className="text-muted">{dict.messageItem.noEditHistory}</p>
           ) : (
             <ul className="space-y-0.5">
               {historyEntries.map((entry, index) => (

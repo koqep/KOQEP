@@ -33,6 +33,9 @@ export interface Dictionary {
     // CreateRoomView'ın "password (optional)"ı FARKLI metin, kendi
     // namespace'inde kalıyor.
     passwordLabel: string;
+    // M9 Slice D2 (Sohbet çekirdeği): DiscoverRoomsView + RoomSidebar'ın
+    // PAYLAŞTIĞI - eskiden discoverRooms'a özeldi.
+    lastActive: string;
   };
   authPageShell: {
     tagline: string;
@@ -127,6 +130,48 @@ export interface Dictionary {
   };
   chatPanel: {
     messageCouldNotBeSent: string;
+    loadOlderMessages: string;
+    roomEmptyMessage: string;
+    noMessagesYet: string;
+    contentRemovedNotice: string;
+    dismissButton: string;
+    archivedNotice: string;
+    mutedNotice: string;
+    mutedUntilSuffix: string;
+    sendingButton: string;
+    sendButton: string;
+    composerPlaceholder: string;
+    composerAriaLabel: string;
+  };
+  messageItem: {
+    deletedUser: string;
+    editAriaLabel: string;
+    saveButton: string;
+    editButton: string;
+    deleteButton: string;
+    historyButton: string;
+    hideHistoryButton: string;
+    reportButton: string;
+    reportingButton: string;
+    tryAgainButton: string;
+    confirmDeleteQuestion: string;
+    yesButton: string;
+    reportedLabel: string;
+    historyLoadError: string;
+    noEditHistory: string;
+    editedSuffix: string;
+    messageActionsAriaLabel: string;
+  };
+  roomSidebar: {
+    heading: string;
+    close: string;
+    searchAriaLabel: string;
+    searchPlaceholder: string;
+    showArchived: string;
+    hideArchived: string;
+    noRoomsMatch: string;
+    archivedSuffix: string;
+    leaveRoomTitle: string;
   };
   totpSettings: {
     recoveryCodesWarning: string;
@@ -179,7 +224,6 @@ export interface Dictionary {
   };
   discoverRooms: {
     emptyList: string;
-    lastActive: string;
     passwordProtected: string;
     joinButton: string;
     joiningButton: string;
@@ -199,6 +243,7 @@ export const translations: Record<Locale, Dictionary> = {
       authenticatorCodeLabel: "authenticator code",
       emailLabel: "email",
       passwordLabel: "password",
+      lastActive: "last active: {relative}",
     },
     authPageShell: {
       tagline: "text-based chat · invite-only",
@@ -287,6 +332,49 @@ export const translations: Record<Locale, Dictionary> = {
     },
     chatPanel: {
       messageCouldNotBeSent: "Message could not be sent.",
+      loadOlderMessages: "load older messages",
+      roomEmptyMessage: "#{room} is quiet so far — send the first message",
+      noMessagesYet: "no messages yet",
+      contentRemovedNotice:
+        "a message of yours was removed by a moderator — {reason}",
+      dismissButton: "ok",
+      archivedNotice: "this room is archived, read-only",
+      mutedNotice: "you're muted",
+      mutedUntilSuffix: " until {date}, you can't send or edit messages",
+      sendingButton: "sending...",
+      sendButton: "send",
+      composerPlaceholder: "write a message...",
+      composerAriaLabel: "write a message",
+    },
+    messageItem: {
+      deletedUser: "deleted user",
+      editAriaLabel: "edit message",
+      saveButton: "save",
+      editButton: "edit",
+      deleteButton: "delete",
+      historyButton: "history",
+      hideHistoryButton: "hide history",
+      reportButton: "report",
+      reportingButton: "reporting...",
+      tryAgainButton: "try again",
+      confirmDeleteQuestion: "are you sure?",
+      yesButton: "yes",
+      reportedLabel: "reported",
+      historyLoadError: "Could not load history.",
+      noEditHistory: "no edit history",
+      editedSuffix: "(edited)",
+      messageActionsAriaLabel: "message actions",
+    },
+    roomSidebar: {
+      heading: "rooms",
+      close: "close",
+      searchAriaLabel: "search rooms",
+      searchPlaceholder: "search rooms...",
+      showArchived: "show archived",
+      hideArchived: "hide archived",
+      noRoomsMatch: "no rooms match",
+      archivedSuffix: "(archived)",
+      leaveRoomTitle: "leave room",
     },
     totpSettings: {
       recoveryCodesWarning:
@@ -346,7 +434,6 @@ export const translations: Record<Locale, Dictionary> = {
     },
     discoverRooms: {
       emptyList: "no other active rooms to discover",
-      lastActive: "last active: {relative}",
       passwordProtected: "password protected",
       joinButton: "join",
       joiningButton: "joining...",
@@ -364,6 +451,7 @@ export const translations: Record<Locale, Dictionary> = {
       authenticatorCodeLabel: "kimlik doğrulayıcı kodu",
       emailLabel: "e-posta",
       passwordLabel: "şifre",
+      lastActive: "son aktivite: {relative}",
     },
     authPageShell: {
       tagline: "sadece metin · davetle katılım",
@@ -452,6 +540,50 @@ export const translations: Record<Locale, Dictionary> = {
     },
     chatPanel: {
       messageCouldNotBeSent: "Mesaj gönderilemedi.",
+      loadOlderMessages: "eski mesajları yükle",
+      roomEmptyMessage: "#{room} henüz sessiz — ilk mesajı sen gönder",
+      noMessagesYet: "henüz mesaj yok",
+      contentRemovedNotice:
+        "bir mesajın moderatör tarafından kaldırıldı — {reason}",
+      dismissButton: "tamam",
+      archivedNotice: "bu oda arşivlenmiş, sadece okunabilir",
+      mutedNotice: "susturuldun",
+      mutedUntilSuffix:
+        " {date} tarihine kadar - mesaj gönderemez veya düzenleyemezsin",
+      sendingButton: "gönderiliyor...",
+      sendButton: "gönder",
+      composerPlaceholder: "mesaj yaz...",
+      composerAriaLabel: "mesaj yaz",
+    },
+    messageItem: {
+      deletedUser: "silinmiş kullanıcı",
+      editAriaLabel: "mesajı düzenle",
+      saveButton: "kaydet",
+      editButton: "düzenle",
+      deleteButton: "sil",
+      historyButton: "geçmiş",
+      hideHistoryButton: "geçmişi gizle",
+      reportButton: "raporla",
+      reportingButton: "raporlanıyor...",
+      tryAgainButton: "tekrar dene",
+      confirmDeleteQuestion: "emin misin?",
+      yesButton: "evet",
+      reportedLabel: "raporlandı",
+      historyLoadError: "Geçmiş yüklenemedi.",
+      noEditHistory: "düzenleme geçmişi yok",
+      editedSuffix: "(düzenlendi)",
+      messageActionsAriaLabel: "mesaj aksiyonları",
+    },
+    roomSidebar: {
+      heading: "odalar",
+      close: "kapat",
+      searchAriaLabel: "odalarda ara",
+      searchPlaceholder: "odalarda ara...",
+      showArchived: "arşivi göster",
+      hideArchived: "arşivi gizle",
+      noRoomsMatch: "eşleşen oda yok",
+      archivedSuffix: "(arşivlendi)",
+      leaveRoomTitle: "odadan ayrıl",
     },
     totpSettings: {
       recoveryCodesWarning:
@@ -511,7 +643,6 @@ export const translations: Record<Locale, Dictionary> = {
     },
     discoverRooms: {
       emptyList: "keşfedilecek başka aktif oda yok",
-      lastActive: "son aktivite: {relative}",
       passwordProtected: "şifreli",
       joinButton: "katıl",
       joiningButton: "katılıyor...",
