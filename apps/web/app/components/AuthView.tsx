@@ -91,7 +91,23 @@ export default function AuthView({
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TOTP_REQUIRED") {
-          setTotpRequired(true);
+          if (totpRequired) {
+            // Alan zaten açıktı - yani kullanıcı bir kod GİRDİ ve
+            // reddedildi. Backend hem "kod eksik" hem "kod yanlış"
+            // durumunda AYNI TOTP_REQUIRED kodunu/mesajını döndürüyor
+            // (auth.service.ts'in verifyDuringLogin'i ikisini ayırt
+            // etmiyor) - burada "alan zaten açıktı" durumunu "kod
+            // yanlıştı" olarak yorumlayıp TOTP_INVALID_CODE'un (TOTP
+            // ayarları panelinde zaten kullanılan) mesajını gösteriyoruz,
+            // aksi halde kullanıcı hiçbir hata görmeden sessizce
+            // takılıyordu (gerçek bir kullanıcı regresyonu, 2026-09-04).
+            setError(
+              translateErrorCode("TOTP_INVALID_CODE", locale) ??
+                "Invalid authenticator code.",
+            );
+          } else {
+            setTotpRequired(true);
+          }
         } else {
           // M9 Slice D2: `translateErrorCode` (D1, apps/web/lib/
           // error-messages.ts) backend'in code'unu kullanıcının dilinde
