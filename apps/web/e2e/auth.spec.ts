@@ -244,7 +244,9 @@ test("login_istegi_localstoragedaki_tercihi_localehint_olarak_gonderir", async (
   await page.getByLabel("şifre").fill("a-strong-password");
   await page.getByRole("button", { name: "giriş yap" }).click();
 
-  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  // M9 Slice D5: composer artık `dict`'e bağlı - giriş sonrası User.locale
+  // "tr" olduğu için placeholder da GERÇEKTEN Türkçe render ediyor.
+  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
   expect(postedBody?.localeHint).toBe("tr");
 });
 
@@ -283,7 +285,11 @@ test("giris_sonrasi_localstorage_backendin_donduru_locale_ile_senkronlanir", asy
   await page.getByLabel("password").fill("a-strong-password");
   await page.getByRole("button", { name: "log in" }).click();
 
-  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  // M9 Slice D5: composer artık `dict`'e bağlı - backend'in döndürdüğü
+  // User.locale "tr" olduğu için placeholder da GERÇEKTEN Türkçe render
+  // ediyor (bu testin kendi amacına - locale senkronunu doğrulamaya -
+  // AYRICA bir kanıt).
+  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("koqep:locale")))
     .toBe("tr");
