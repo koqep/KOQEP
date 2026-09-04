@@ -750,7 +750,11 @@ export default function RoomView({
       return;
     }
     if (content.length > MAX_MESSAGE_LENGTH) {
-      setSendError(`Message too long (max ${MAX_MESSAGE_LENGTH} characters).`);
+      setSendError(
+        interpolate(translateErrorCode("MESSAGE_TOO_LONG", locale) ?? "", {
+          max: MAX_MESSAGE_LENGTH,
+        }),
+      );
       return;
     }
 
@@ -767,7 +771,7 @@ export default function RoomView({
         .timeout(8000)
         .emitWithAck("message:send", { content, roomName: activeRoom.name });
     } catch {
-      setSendError("Message could not be sent, try again.");
+      setSendError(dict.chatPanel.messageCouldNotBeSent);
     } finally {
       setIsSending(false);
     }
@@ -856,7 +860,7 @@ export default function RoomView({
 
         <div className="flex min-h-0 flex-1">
           <aside
-            aria-label="rooms"
+            aria-label={dict.roomSidebar.heading}
             className="hidden w-64 shrink-0 flex-col border-r border-neutral-800 p-4 md:flex"
           >
             <RoomSidebar
@@ -866,6 +870,7 @@ export default function RoomView({
               onLeaveRoom={(room) => void handleLeaveRoom(room)}
               showArchived={showArchived}
               onToggleShowArchived={() => void handleToggleShowArchived()}
+              dict={dict}
               locale={locale}
             />
           </aside>
@@ -898,6 +903,8 @@ export default function RoomView({
               canSend={canSend}
               isSending={isSending}
               onSubmit={(event) => void handleSubmit(event)}
+              dict={dict}
+              locale={locale}
             />
           </div>
         </div>
@@ -920,6 +927,7 @@ export default function RoomView({
                 onLeaveRoom={(room) => void handleLeaveRoom(room)}
                 showArchived={showArchived}
                 onToggleShowArchived={() => void handleToggleShowArchived()}
+                dict={dict}
                 locale={locale}
               />
             ) : (
