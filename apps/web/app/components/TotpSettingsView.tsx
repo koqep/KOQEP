@@ -10,11 +10,15 @@ import {
   type TotpSetup,
 } from "../../lib/api";
 import { filledInputClassName } from "./formStyles";
+import type { Dictionary, Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 interface Props {
   accessToken: string;
   initialEnabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  dict: Dictionary;
+  locale: Locale;
 }
 
 // M6 Slice D: qrcode-terminal SADECE ASCII üretiyordu (telefon kamerasıyla
@@ -27,6 +31,8 @@ export default function TotpSettingsView({
   accessToken,
   initialEnabled,
   onEnabledChange,
+  dict,
+  locale,
 }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [setup, setSetup] = useState<TotpSetup | null>(null);
@@ -50,7 +56,9 @@ export default function TotpSettingsView({
       setQr(await generateQr(nextSetup.otpauthUrl));
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setIsSubmitting(false);
@@ -67,7 +75,9 @@ export default function TotpSettingsView({
       setTotpCode("");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setIsSubmitting(false);
@@ -91,7 +101,9 @@ export default function TotpSettingsView({
       markEnabled(false);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setIsSubmitting(false);
@@ -103,7 +115,7 @@ export default function TotpSettingsView({
       {recoveryCodes ? (
         <div className="flex flex-col gap-3">
           <p className="text-red-400">
-            These codes won&apos;t be shown again. Save them somewhere now.
+            {dict.totpSettings.recoveryCodesWarning}
           </p>
           <ul className="space-y-1 font-mono text-neutral-200">
             {recoveryCodes.map((code) => (
@@ -115,14 +127,14 @@ export default function TotpSettingsView({
             onClick={handleAcknowledgeRecoveryCodes}
             className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100"
           >
-            saved it
+            {dict.totpSettings.savedIt}
           </button>
         </div>
       ) : enabled ? (
         <form onSubmit={handleDisable} className="flex flex-col gap-3">
-          <p>Two-factor authentication is currently on.</p>
+          <p>{dict.totpSettings.onDescription}</p>
           <label className="flex flex-col gap-1 text-muted">
-            authenticator code
+            {dict.common.authenticatorCodeLabel}
             <input
               type="text"
               value={totpCode}
@@ -137,21 +149,19 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            turn off authenticator
+            {dict.totpSettings.turnOff}
           </button>
         </form>
       ) : setup ? (
         <form onSubmit={handleEnable} className="flex flex-col gap-3">
           {qr && (
             // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image optimizasyonuna uygun bir uzak/statik kaynak değil.
-            <img src={qr} alt="authenticator QR code" className="h-40 w-40" />
+            <img src={qr} alt={dict.totpSettings.qrAlt} className="h-40 w-40" />
           )}
-          <p className="text-muted">
-            secret key to enter manually into your authenticator app:
-          </p>
+          <p className="text-muted">{dict.totpSettings.secretKeyHint}</p>
           <p className="font-mono text-neutral-200 select-all">{setup.secret}</p>
           <label className="flex flex-col gap-1 text-muted">
-            authenticator code
+            {dict.common.authenticatorCodeLabel}
             <input
               type="text"
               value={totpCode}
@@ -168,12 +178,12 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            enable
+            {dict.totpSettings.enable}
           </button>
         </form>
       ) : (
         <div className="flex flex-col gap-3">
-          <p>Two-factor authentication is currently off.</p>
+          <p>{dict.totpSettings.offDescription}</p>
           {error && <p className="text-red-400">{error}</p>}
           <button
             type="button"
@@ -181,7 +191,7 @@ export default function TotpSettingsView({
             disabled={isSubmitting}
             className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            start setup
+            {dict.totpSettings.startSetup}
           </button>
         </div>
       )}

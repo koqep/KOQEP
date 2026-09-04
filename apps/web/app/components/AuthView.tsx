@@ -200,7 +200,7 @@ export default function AuthView({
             )}
 
             <label className="flex flex-col gap-1 text-muted">
-              {dict.authView.emailLabel}
+              {dict.common.emailLabel}
               <input
                 type="email"
                 value={email}
@@ -243,7 +243,7 @@ export default function AuthView({
 
             {mode === "login" && totpRequired && (
               <label className="flex flex-col gap-1 text-muted">
-                {dict.authView.authenticatorCodeLabel}
+                {dict.common.authenticatorCodeLabel}
                 <input
                   type="text"
                   value={totpCode}

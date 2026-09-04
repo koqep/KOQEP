@@ -943,13 +943,20 @@ export default function RoomView({
                 accessToken={accessToken}
                 initialEnabled={totpEnabled}
                 onEnabledChange={setTotpEnabled}
+                dict={dict}
+                locale={locale}
               />
             ) : activePanel === "blocked" ? (
-              <BlockedUsersView accessToken={accessToken} />
+              <BlockedUsersView accessToken={accessToken} dict={dict} locale={locale} />
             ) : activePanel === "invites" ? (
-              <InviteView accessToken={accessToken} />
+              <InviteView accessToken={accessToken} dict={dict} />
             ) : activePanel === "delete-account" ? (
-              <DeleteAccountView accessToken={accessToken} onDeleted={onLoggedOut} />
+              <DeleteAccountView
+                accessToken={accessToken}
+                onDeleted={onLoggedOut}
+                dict={dict}
+                locale={locale}
+              />
             ) : activePanel === "create-room" ? (
               <CreateRoomView
                 accessToken={accessToken}
@@ -967,7 +974,12 @@ export default function RoomView({
                 }}
               />
             ) : activePanel === "profile" && viewingProfileUsername ? (
-              <ProfileView accessToken={accessToken} username={viewingProfileUsername} />
+              <ProfileView
+                accessToken={accessToken}
+                username={viewingProfileUsername}
+                dict={dict}
+                locale={locale}
+              />
             ) : activePanel === "settings" ? (
               <SettingsView onNavigate={setActivePanel} dict={dict} />
             ) : activePanel === "language" ? (
@@ -978,7 +990,7 @@ export default function RoomView({
                 dict={dict}
               />
             ) : activePanel === "feedback" ? (
-              <FeedbackView />
+              <FeedbackView dict={dict} />
             ) : null}
           </CenteredModal>
         )
