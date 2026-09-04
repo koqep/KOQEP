@@ -246,7 +246,7 @@ export default function AuthView({
 
             {mode !== "forgot-password" && (
               <PasswordInput
-                label={dict.authView.passwordLabel}
+                label={dict.common.passwordLabel}
                 dict={dict}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}

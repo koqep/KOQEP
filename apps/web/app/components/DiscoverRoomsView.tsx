@@ -9,13 +9,22 @@ import {
 } from "../../lib/api";
 import { formatRelativeActivity } from "../../lib/format";
 import PasswordInput from "./PasswordInput";
+import { interpolate, type Dictionary, type Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 interface Props {
   accessToken: string;
   onJoined: (room: Room) => void;
+  dict: Dictionary;
+  locale: Locale;
 }
 
-export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
+export default function DiscoverRoomsView({
+  accessToken,
+  onJoined,
+  dict,
+  locale,
+}: Props) {
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -81,7 +90,9 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
     } catch (err) {
       // Yanlış şifrede form AÇIK KALIR - kullanıcı tekrar deneyebilsin.
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setJoiningId(null);
@@ -99,9 +110,9 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {rooms === null ? (
-        <p>loading...</p>
+        <p>{dict.common.loading}</p>
       ) : rooms.length === 0 ? (
-        <p>no other active rooms to discover</p>
+        <p>{dict.discoverRooms.emptyList}</p>
       ) : (
         <ul className="space-y-2">
           {rooms.map((room) => (
@@ -116,8 +127,11 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
                   <span className="text-muted"> — {room.description}</span>
                 )}
                 <span className="block text-sm text-muted">
-                  last active: {formatRelativeActivity(room.lastActivityAt)}
-                  {room.hasPassword && " · password protected"}
+                  {interpolate(dict.discoverRooms.lastActive, {
+                    relative: formatRelativeActivity(room.lastActivityAt),
+                  })}
+                  {room.hasPassword &&
+                    ` · ${dict.discoverRooms.passwordProtected}`}
                 </span>
               </span>
               {passwordDraftId === room.id ? (
@@ -129,7 +143,8 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
                   className="flex items-center gap-2"
                 >
                   <PasswordInput
-                    label="password"
+                    label={dict.common.passwordLabel}
+                    dict={dict}
                     filled
                     value={passwordDraft}
                     onChange={(event) => setPasswordDraft(event.target.value)}
@@ -139,14 +154,16 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
                     disabled={joiningId === room.id}
                     className="bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {joiningId === room.id ? "joining..." : "join"}
+                    {joiningId === room.id
+                      ? dict.discoverRooms.joiningButton
+                      : dict.discoverRooms.joinButton}
                   </button>
                   <button
                     type="button"
                     onClick={handleCancelPasswordPrompt}
                     className="text-muted hover:text-neutral-400"
                   >
-                    cancel
+                    {dict.discoverRooms.cancelButton}
                   </button>
                 </form>
               ) : (
@@ -156,7 +173,9 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
                   disabled={joiningId === room.id}
                   className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {joiningId === room.id ? "joining..." : "join"}
+                  {joiningId === room.id
+                    ? dict.discoverRooms.joiningButton
+                    : dict.discoverRooms.joinButton}
                 </button>
               )}
             </li>
@@ -171,7 +190,7 @@ export default function DiscoverRoomsView({ accessToken, onJoined }: Props) {
           disabled={isLoadingMore}
           className="mt-4 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
         >
-          {isLoadingMore ? "loading..." : "show more"}
+          {isLoadingMore ? dict.common.loading : dict.discoverRooms.showMoreButton}
         </button>
       )}
     </section>

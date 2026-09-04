@@ -4,10 +4,14 @@ import { useState, type FormEvent } from "react";
 import { createRoom, ApiError, type Room } from "../../lib/api";
 import { filledInputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
+import { interpolate, type Dictionary, type Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 interface Props {
   accessToken: string;
   onCreated: (room: Room) => void;
+  dict: Dictionary;
+  locale: Locale;
 }
 
 // create-room.dto.ts'teki MAX_ROOM_NAME_LENGTH/MAX_ROOM_DESCRIPTION_LENGTH/
@@ -21,7 +25,12 @@ const MIN_ROOM_PASSWORD_LENGTH = 8;
 const MAX_ROOM_PASSWORD_LENGTH = 200;
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
-export default function CreateRoomView({ accessToken, onCreated }: Props) {
+export default function CreateRoomView({
+  accessToken,
+  onCreated,
+  dict,
+  locale,
+}: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [password, setPassword] = useState("");
@@ -31,12 +40,14 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!ROOM_NAME_PATTERN.test(name)) {
-      setError("Room name can only contain letters, numbers, - and _.");
+      setError(dict.createRoom.nameInvalidError);
       return;
     }
     if (password.length > 0 && password.length < MIN_ROOM_PASSWORD_LENGTH) {
       setError(
-        `Room password must be at least ${MIN_ROOM_PASSWORD_LENGTH} characters.`,
+        interpolate(dict.createRoom.passwordTooShortError, {
+          min: MIN_ROOM_PASSWORD_LENGTH,
+        }),
       );
       return;
     }
@@ -52,14 +63,16 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
       );
       onCreated(room);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 429) {
-        setError("You can create at most 1 room per day. Try again later.");
-      } else if (err instanceof ApiError && err.status === 409) {
-        setError("A room with this name already exists.");
+      if (err instanceof ApiError && err.code === "RATE_LIMITED") {
+        // Backend'in jenerik RATE_LIMITED metni yerine dosyanın kendi
+        // daha bilgilendirici mesajı KORUNUYOR (translateErrorCode'un
+        // genel girdisini bilerek EZİYOR - AuthView'ın TOTP_REQUIRED
+        // override'ıyla aynı desen).
+        setError(dict.createRoom.dailyLimitError);
+      } else if (err instanceof ApiError) {
+        setError(translateErrorCode(err.code, locale) ?? err.message);
       } else {
-        setError(
-          err instanceof ApiError ? err.message : "Connection error. Try again.",
-        );
+        setError(dict.common.connectionError);
       }
     } finally {
       setIsSubmitting(false);
@@ -70,7 +83,7 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
-          room name
+          {dict.createRoom.roomNameLabel}
           <input
             type="text"
             value={name}
@@ -81,7 +94,7 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
           />
         </label>
         <label className="flex flex-col gap-1 text-muted">
-          description (optional)
+          {dict.createRoom.descriptionLabel}
           <input
             type="text"
             value={description}
@@ -91,7 +104,8 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
           />
         </label>
         <PasswordInput
-          label="password (optional)"
+          label={dict.createRoom.passwordLabel}
+          dict={dict}
           filled
           value={password}
           onChange={(event) => setPassword(event.target.value)}
@@ -103,7 +117,7 @@ export default function CreateRoomView({ accessToken, onCreated }: Props) {
           disabled={isSubmitting || name.length === 0}
           className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          create
+          {dict.createRoom.createButton}
         </button>
       </form>
     </section>
