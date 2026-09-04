@@ -179,7 +179,10 @@ test("yanlis_sifreyle_hata_gosterir_form_acik_kalir", async ({ page }) => {
       }),
   );
   await page.route("**/rooms/room-elden-ring/join", (route) =>
-    route.fulfill({ status: 401, json: { message: "Şifre hatalı." } }),
+    route.fulfill({
+      status: 401,
+      json: { code: "ROOM_PASSWORD_INCORRECT", message: "Şifre hatalı." },
+    }),
   );
 
   await page.goto("/app");
@@ -192,7 +195,7 @@ test("yanlis_sifreyle_hata_gosterir_form_acik_kalir", async ({ page }) => {
   await page.getByLabel("password", { exact: true }).fill("yanlis-sifre");
   await page.getByRole("button", { name: "join", exact: true }).click();
 
-  await expect(page.getByText("Şifre hatalı.")).toBeVisible();
+  await expect(page.getByText("Incorrect password.")).toBeVisible();
   await expect(page.getByLabel("password", { exact: true })).toBeVisible();
 });
 

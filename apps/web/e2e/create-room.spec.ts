@@ -156,7 +156,13 @@ test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
   await mockAuthSuccess(page);
   await page.route("**/rooms", async (route) => {
     if (route.request().method() === "POST") {
-      await route.fulfill({ status: 429, json: {} });
+      await route.fulfill({
+        status: 429,
+        json: {
+          code: "RATE_LIMITED",
+          message: "Çok fazla istek gönderdin, biraz sonra tekrar dene.",
+        },
+      });
       return;
     }
     await route.fulfill({
@@ -186,5 +192,48 @@ test("gunluk_limit_asilinca_hata_gosterilir", async ({ page }) => {
 
   await expect(
     page.getByText("You can create at most 1 room per day. Try again later."),
+  ).toBeVisible();
+});
+
+test("ayni_isimde_oda_varsa_hata_gosterilir", async ({ page }) => {
+  await mockAuthSuccess(page);
+  await page.route("**/rooms", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 409,
+        json: {
+          code: "ROOM_NAME_TAKEN",
+          message: "Bu isimde bir oda zaten var.",
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      json: [
+        {
+          id: "room-general",
+          name: "general",
+          description: null,
+          lastActivityAt: new Date().toISOString(),
+          status: "active",
+        },
+      ],
+    });
+  });
+  await page.route("**/rooms/*/messages", (route) =>
+    route.fulfill({ json: { messages: [], nextCursor: null } }),
+  );
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await page.getByRole("button", { name: "+ new room" }).click();
+  await page.getByLabel("room name").fill("general");
+  await page.getByRole("button", { name: "create" }).click();
+
+  await expect(
+    page.getByText("A room with this name already exists."),
   ).toBeVisible();
 });
