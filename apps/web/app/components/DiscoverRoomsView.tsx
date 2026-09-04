@@ -128,7 +128,10 @@ export default function DiscoverRoomsView({
                 )}
                 <span className="block text-sm text-muted">
                   {interpolate(dict.discoverRooms.lastActive, {
-                    relative: formatRelativeActivity(room.lastActivityAt),
+                    relative: formatRelativeActivity(
+                      room.lastActivityAt,
+                      locale,
+                    ),
                   })}
                   {room.hasPassword &&
                     ` · ${dict.discoverRooms.passwordProtected}`}
