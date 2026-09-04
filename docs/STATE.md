@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-03 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D1+D2 kapsam turu+D2 Dalga A main'de; giriş-öncesi dil kutusu fix'i tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-04 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D1+D2 kapsam turu+D2 Dalga A+auth-locale-toggle fix main'de; M9 D3 (Dalga C: ayar panelleri) tamamlandı, push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D1 + D2 kapsam turu + D2 Dalga A (auth ekranları `dict`'e bağlandı) main'de** (PR #106-122, kullanıcı merge etti) — `apps/api`'nin 71 REST hata noktası `{code,message}` taşıyor; frontend `dict` altyapısı TopBar/AccountMenu/SettingsView/CenteredModal/AuthView/AuthPageShell'de tam; kalan ~20 dosya D3-D6 dalgalarına bölündü.
-- **2026-09-03: Fix — giriş öncesi TR/EN dil kutusu, `fix/auth-locale-toggle` dalında (main'den, BAĞIMSIZ), push bekliyor.** Kullanıcının bulduğu gerçek eksik: D2 auth ekranlarını `dict`'e bağladı ama giriş öncesi ziyaretçi (henüz `User.locale`'i yok) bunu DEĞİŞTİREMİYORDU. `AppShell`'in locale'i `useState`'e çevrildi, `AuthPageShell`'e `LandingPage.tsx`'in AYNI görsel TR/EN kutusu eklendi (kod PAYLAŞILMADAN — LandingPage'in kendi kalıcı-olmayan mekanizması BİLEREK ayrı kalıyor). Mock 154/154 (×2, +1 yeni) + fullstack 11/11. Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 D3 (Dalga C: ayar panelleri) sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D1 + D2 kapsam turu + D2 Dalga A (auth ekranları `dict`'e bağlandı) + giriş-öncesi TR/EN dil kutusu fix'i main'de** (PR #106-123, kullanıcı merge etti) — `apps/api`'nin 71 REST hata noktası `{code,message}` taşıyor; frontend `dict` altyapısı TopBar/AccountMenu/SettingsView/CenteredModal/AuthView/AuthPageShell'de tam; kalan ~14 dosya D4-D6 dalgalarına bölündü.
+- **2026-09-04: M9 D3 (Dalga C) — ayar panelleri (Totp/BlockedUsers/Invite/DeleteAccount/Profile/Feedback) `dict`'e bağlandı, `feat/i18n-settings-panels` dalında (main'den), push bekliyor.** Yol boyunca bulunan gerçek bug'lar da düzeltildi: birkaç panel backend hata koduna hiç bakmadan hardcoded/ham `err.message` gösteriyordu (artık hepsi `translateErrorCode` deseninde); `ProfileView`'ın `formatJoinDate`'i `"en-US"`'i hardcode ediyordu (artık locale'e duyarlı, ekran görüntüsüyle doğrulandı). Mock 154/154 (×2) + fullstack 11/11. Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 D4-D6 sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `fix/auth-locale-toggle` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 D3 (Dalga C: ayar panelleri) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `feat/i18n-settings-panels` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 D4 (Dalga D: oda oluşturma/keşif panelleri) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
