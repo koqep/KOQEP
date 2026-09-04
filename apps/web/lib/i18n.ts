@@ -28,6 +28,11 @@ export interface Dictionary {
     // M9 Slice D2 (Ayar panelleri): AuthView + BlockedUsersView'ın
     // PAYLAŞTIĞI - eskiden authView'a özeldi.
     emailLabel: string;
+    // M9 Slice D2 (Oda panelleri): AuthView + DiscoverRoomsView'ın
+    // (katılma formu) PAYLAŞTIĞI - eskiden authView'a özeldi.
+    // CreateRoomView'ın "password (optional)"ı FARKLI metin, kendi
+    // namespace'inde kalıyor.
+    passwordLabel: string;
   };
   authPageShell: {
     tagline: string;
@@ -44,7 +49,6 @@ export interface Dictionary {
     inviteCodeLabel: string;
     inviteCodeHelp: string;
     usernameLabel: string;
-    passwordLabel: string;
     termsPrefix: string;
     termsLink: string;
     termsAnd: string;
@@ -164,6 +168,24 @@ export interface Dictionary {
     description: string;
     writeEmail: string;
   };
+  createRoom: {
+    roomNameLabel: string;
+    descriptionLabel: string;
+    passwordLabel: string;
+    nameInvalidError: string;
+    passwordTooShortError: string;
+    dailyLimitError: string;
+    createButton: string;
+  };
+  discoverRooms: {
+    emptyList: string;
+    lastActive: string;
+    passwordProtected: string;
+    joinButton: string;
+    joiningButton: string;
+    cancelButton: string;
+    showMoreButton: string;
+  };
 }
 
 export const translations: Record<Locale, Dictionary> = {
@@ -176,6 +198,7 @@ export const translations: Record<Locale, Dictionary> = {
       invalidLink: "Invalid link.",
       authenticatorCodeLabel: "authenticator code",
       emailLabel: "email",
+      passwordLabel: "password",
     },
     authPageShell: {
       tagline: "text-based chat · invite-only",
@@ -192,7 +215,6 @@ export const translations: Record<Locale, Dictionary> = {
       inviteCodeLabel: "invite code",
       inviteCodeHelp: "Ask someone already on KOQEP for an invite code.",
       usernameLabel: "username",
-      passwordLabel: "password",
       termsPrefix: "I have read and accept the",
       termsLink: "Terms of Service",
       termsAnd: "and",
@@ -313,6 +335,24 @@ export const translations: Record<Locale, Dictionary> = {
         "found a bug, have an idea, or something feels off? we read every message.",
       writeEmail: "write an email",
     },
+    createRoom: {
+      roomNameLabel: "room name",
+      descriptionLabel: "description (optional)",
+      passwordLabel: "password (optional)",
+      nameInvalidError: "Room name can only contain letters, numbers, - and _.",
+      passwordTooShortError: "Room password must be at least {min} characters.",
+      dailyLimitError: "You can create at most 1 room per day. Try again later.",
+      createButton: "create",
+    },
+    discoverRooms: {
+      emptyList: "no other active rooms to discover",
+      lastActive: "last active: {relative}",
+      passwordProtected: "password protected",
+      joinButton: "join",
+      joiningButton: "joining...",
+      cancelButton: "cancel",
+      showMoreButton: "show more",
+    },
   },
   tr: {
     common: {
@@ -323,6 +363,7 @@ export const translations: Record<Locale, Dictionary> = {
       invalidLink: "Geçersiz bağlantı.",
       authenticatorCodeLabel: "kimlik doğrulayıcı kodu",
       emailLabel: "e-posta",
+      passwordLabel: "şifre",
     },
     authPageShell: {
       tagline: "sadece metin · davetle katılım",
@@ -339,7 +380,6 @@ export const translations: Record<Locale, Dictionary> = {
       inviteCodeLabel: "davet kodu",
       inviteCodeHelp: "KOQEP'te zaten olan birinden davet kodu iste.",
       usernameLabel: "kullanıcı adı",
-      passwordLabel: "şifre",
       termsPrefix: "Şunu okudum ve kabul ediyorum:",
       termsLink: "Kullanım Şartları",
       termsAnd: "ve",
@@ -459,6 +499,24 @@ export const translations: Record<Locale, Dictionary> = {
       description:
         "bir hata mı buldun, bir fikrin mi var, yoksa bir şeyler tuhaf mı geldi? her mesajı okuyoruz.",
       writeEmail: "e-posta yaz",
+    },
+    createRoom: {
+      roomNameLabel: "oda adı",
+      descriptionLabel: "açıklama (opsiyonel)",
+      passwordLabel: "şifre (opsiyonel)",
+      nameInvalidError: "Oda adı sadece harf, rakam, - ve _ içerebilir.",
+      passwordTooShortError: "Oda şifresi en az {min} karakter olmalı.",
+      dailyLimitError: "Günde en fazla 1 oda oluşturabilirsin. Daha sonra tekrar dene.",
+      createButton: "oluştur",
+    },
+    discoverRooms: {
+      emptyList: "keşfedilecek başka aktif oda yok",
+      lastActive: "son aktivite: {relative}",
+      passwordProtected: "şifreli",
+      joinButton: "katıl",
+      joiningButton: "katılıyor...",
+      cancelButton: "vazgeç",
+      showMoreButton: "daha fazla göster",
     },
   },
 };

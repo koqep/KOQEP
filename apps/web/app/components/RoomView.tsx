@@ -964,6 +964,8 @@ export default function RoomView({
                   setRooms((prev) => [...prev, room]);
                   void handleRoomSwitch(room);
                 }}
+                dict={dict}
+                locale={locale}
               />
             ) : activePanel === "discover-rooms" ? (
               <DiscoverRoomsView
@@ -972,6 +974,8 @@ export default function RoomView({
                   setRooms((prev) => [...prev, room]);
                   void handleRoomSwitch(room);
                 }}
+                dict={dict}
+                locale={locale}
               />
             ) : activePanel === "profile" && viewingProfileUsername ? (
               <ProfileView
