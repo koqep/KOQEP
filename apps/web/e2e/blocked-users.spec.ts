@@ -80,7 +80,7 @@ test("bilinmeyen_email_engellenemez_hata_gosterir", async ({ page }) => {
   await page.route("**/users/block", (route) =>
     route.fulfill({
       status: 404,
-      json: { message: "Kullanıcı bulunamadı." },
+      json: { code: "USER_NOT_FOUND", message: "Kullanıcı bulunamadı." },
     }),
   );
 
@@ -88,7 +88,7 @@ test("bilinmeyen_email_engellenemez_hata_gosterir", async ({ page }) => {
   await page.getByLabel("email").fill("yok@koqep.local");
   await page.getByRole("button", { name: "block", exact: true }).click();
 
-  await expect(page.getByText("Kullanıcı bulunamadı.")).toBeVisible();
+  await expect(page.getByText("User not found.")).toBeVisible();
   await expect(page.getByText("you haven't blocked anyone yet")).toBeVisible();
 });
 

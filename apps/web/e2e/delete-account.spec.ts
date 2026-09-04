@@ -47,7 +47,7 @@ test("yanlis_sifre_hata_gosterir", async ({ page }) => {
     .getByRole("button", { name: "permanently delete my account" })
     .click();
 
-  await expect(page.getByText("Incorrect password.")).toBeVisible();
+  await expect(page.getByText("Incorrect email or password.")).toBeVisible();
 });
 
 test("totp_gerekince_alan_belirir", async ({ page }) => {

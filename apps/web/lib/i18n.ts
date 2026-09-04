@@ -22,6 +22,12 @@ export interface Dictionary {
     connectionError: string;
     backToLogin: string;
     invalidLink: string;
+    // M9 Slice D2 (Ayar panelleri): AuthView + TotpSettingsView (×2) +
+    // DeleteAccountView'ın PAYLAŞTIĞI - eskiden authView'a özeldi.
+    authenticatorCodeLabel: string;
+    // M9 Slice D2 (Ayar panelleri): AuthView + BlockedUsersView'ın
+    // PAYLAŞTIĞI - eskiden authView'a özeldi.
+    emailLabel: string;
   };
   authPageShell: {
     tagline: string;
@@ -37,10 +43,8 @@ export interface Dictionary {
     promptLogIn: string;
     inviteCodeLabel: string;
     inviteCodeHelp: string;
-    emailLabel: string;
     usernameLabel: string;
     passwordLabel: string;
-    authenticatorCodeLabel: string;
     termsPrefix: string;
     termsLink: string;
     termsAnd: string;
@@ -120,6 +124,46 @@ export interface Dictionary {
   chatPanel: {
     messageCouldNotBeSent: string;
   };
+  totpSettings: {
+    recoveryCodesWarning: string;
+    savedIt: string;
+    onDescription: string;
+    turnOff: string;
+    qrAlt: string;
+    secretKeyHint: string;
+    enable: string;
+    offDescription: string;
+    startSetup: string;
+  };
+  blockedUsers: {
+    block: string;
+    emptyList: string;
+    unblock: string;
+  };
+  invite: {
+    policyParagraph: string;
+    emptyList: string;
+    used: string;
+    revoked: string;
+    available: string;
+  };
+  deleteAccount: {
+    permanentWarning: string;
+    redactCheckboxLabel: string;
+    currentPasswordLabel: string;
+    submitButton: string;
+    preConfirmParagraph: string;
+    deleteButton: string;
+  };
+  profile: {
+    joined: string;
+    levelXp: string;
+    xpProgressAriaLabel: string;
+  };
+  feedback: {
+    description: string;
+    writeEmail: string;
+  };
 }
 
 export const translations: Record<Locale, Dictionary> = {
@@ -130,6 +174,8 @@ export const translations: Record<Locale, Dictionary> = {
       connectionError: "Connection error. Try again.",
       backToLogin: "back to login",
       invalidLink: "Invalid link.",
+      authenticatorCodeLabel: "authenticator code",
+      emailLabel: "email",
     },
     authPageShell: {
       tagline: "text-based chat · invite-only",
@@ -145,10 +191,8 @@ export const translations: Record<Locale, Dictionary> = {
       promptLogIn: "$ log in",
       inviteCodeLabel: "invite code",
       inviteCodeHelp: "Ask someone already on KOQEP for an invite code.",
-      emailLabel: "email",
       usernameLabel: "username",
       passwordLabel: "password",
-      authenticatorCodeLabel: "authenticator code",
       termsPrefix: "I have read and accept the",
       termsLink: "Terms of Service",
       termsAnd: "and",
@@ -222,6 +266,53 @@ export const translations: Record<Locale, Dictionary> = {
     chatPanel: {
       messageCouldNotBeSent: "Message could not be sent.",
     },
+    totpSettings: {
+      recoveryCodesWarning:
+        "These codes won't be shown again. Save them somewhere now.",
+      savedIt: "saved it",
+      onDescription: "Two-factor authentication is currently on.",
+      turnOff: "turn off authenticator",
+      qrAlt: "authenticator QR code",
+      secretKeyHint:
+        "secret key to enter manually into your authenticator app:",
+      enable: "enable",
+      offDescription: "Two-factor authentication is currently off.",
+      startSetup: "start setup",
+    },
+    blockedUsers: {
+      block: "block",
+      emptyList: "you haven't blocked anyone yet",
+      unblock: "unblock",
+    },
+    invite: {
+      policyParagraph:
+        "if someone you invited gets moderated (muted), one of your unused invites gets revoked; if you have no unused invites left, your next earned invite is deducted instead.",
+      emptyList:
+        "you haven't earned any invites yet — they'll show up here as you send messages and level up.",
+      used: "used",
+      revoked: "revoked",
+      available: "available",
+    },
+    deleteAccount: {
+      permanentWarning: "This is permanent.",
+      redactCheckboxLabel:
+        "also remove my message content (recommended) — unchecked, your messages stay visible to others, only your username is removed",
+      currentPasswordLabel: "current password",
+      submitButton: "permanently delete my account",
+      preConfirmParagraph:
+        "Deleting your account is permanent and cannot be undone. Your email, username, and password are removed entirely. You'll be able to choose whether your message content is also removed.",
+      deleteButton: "delete my account",
+    },
+    profile: {
+      joined: "joined {date}",
+      levelXp: "level {level} — {xp} XP",
+      xpProgressAriaLabel: "xp progress to next level",
+    },
+    feedback: {
+      description:
+        "found a bug, have an idea, or something feels off? we read every message.",
+      writeEmail: "write an email",
+    },
   },
   tr: {
     common: {
@@ -230,6 +321,8 @@ export const translations: Record<Locale, Dictionary> = {
       connectionError: "Bağlantı hatası. Tekrar dene.",
       backToLogin: "girişe dön",
       invalidLink: "Geçersiz bağlantı.",
+      authenticatorCodeLabel: "kimlik doğrulayıcı kodu",
+      emailLabel: "e-posta",
     },
     authPageShell: {
       tagline: "sadece metin · davetle katılım",
@@ -245,10 +338,8 @@ export const translations: Record<Locale, Dictionary> = {
       promptLogIn: "$ giriş yap",
       inviteCodeLabel: "davet kodu",
       inviteCodeHelp: "KOQEP'te zaten olan birinden davet kodu iste.",
-      emailLabel: "e-posta",
       usernameLabel: "kullanıcı adı",
       passwordLabel: "şifre",
-      authenticatorCodeLabel: "kimlik doğrulayıcı kodu",
       termsPrefix: "Şunu okudum ve kabul ediyorum:",
       termsLink: "Kullanım Şartları",
       termsAnd: "ve",
@@ -321,6 +412,53 @@ export const translations: Record<Locale, Dictionary> = {
     },
     chatPanel: {
       messageCouldNotBeSent: "Mesaj gönderilemedi.",
+    },
+    totpSettings: {
+      recoveryCodesWarning:
+        "Bu kodlar bir daha gösterilmeyecek. Şimdi bir yere kaydet.",
+      savedIt: "kaydettim",
+      onDescription: "İki adımlı doğrulama şu an açık.",
+      turnOff: "kimlik doğrulayıcıyı kapat",
+      qrAlt: "kimlik doğrulayıcı QR kodu",
+      secretKeyHint:
+        "kimlik doğrulayıcı uygulamana elle girmek için gizli anahtar:",
+      enable: "etkinleştir",
+      offDescription: "İki adımlı doğrulama şu an kapalı.",
+      startSetup: "kuruluma başla",
+    },
+    blockedUsers: {
+      block: "engelle",
+      emptyList: "henüz kimseyi engellemedin",
+      unblock: "engeli kaldır",
+    },
+    invite: {
+      policyParagraph:
+        "davet ettiğin biri moderasyona uğrarsa (susturulursa) kullanılmamış davetlerinden biri iptal edilir; hiç kullanılmamış daveti kalmadıysa bir sonraki kazanacağın davetten düşülür.",
+      emptyList:
+        "henüz hiç davet kazanmadın — mesaj gönderip seviye atladıkça burada görünecekler.",
+      used: "kullanıldı",
+      revoked: "iptal edildi",
+      available: "kullanılabilir",
+    },
+    deleteAccount: {
+      permanentWarning: "Bu işlem kalıcıdır.",
+      redactCheckboxLabel:
+        "mesaj içeriğimi de kaldır (önerilir) — işaretlemezsen mesajların başkalarına görünmeye devam eder, sadece kullanıcı adın kaldırılır",
+      currentPasswordLabel: "mevcut şifre",
+      submitButton: "hesabımı kalıcı olarak sil",
+      preConfirmParagraph:
+        "Hesabını silmek kalıcıdır ve geri alınamaz. E-postan, kullanıcı adın ve şifren tamamen kaldırılır. Mesaj içeriğinin de kaldırılıp kaldırılmayacağını seçebileceksin.",
+      deleteButton: "hesabımı sil",
+    },
+    profile: {
+      joined: "katılma tarihi {date}",
+      levelXp: "seviye {level} — {xp} XP",
+      xpProgressAriaLabel: "sonraki seviyeye XP ilerlemesi",
+    },
+    feedback: {
+      description:
+        "bir hata mı buldun, bir fikrin mi var, yoksa bir şeyler tuhaf mı geldi? her mesajı okuyoruz.",
+      writeEmail: "e-posta yaz",
     },
   },
 };

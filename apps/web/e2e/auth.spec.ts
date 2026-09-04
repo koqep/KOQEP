@@ -155,6 +155,55 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   expect(loginCallCount).toBe(2);
 });
 
+// Regresyon (2026-09-04): backend hem "kod eksik" hem "kod yanlış"
+// durumunda AYNI TOTP_REQUIRED kodunu/mesajını döndürüyor - frontend bu
+// ikisini state'ten (alan zaten açık mıydı) ayırt edip ikincisinde hata
+// göstermeli, aksi halde kullanıcı yanlış kod girince sessizce takılıyor.
+test("yanlis_totp_kodu_girilince_hata_gosterir_dogru_kodla_devam_edebilir", async ({
+  page,
+}) => {
+  let loginCallCount = 0;
+  await page.route("**/auth/login", (route) => {
+    loginCallCount += 1;
+    if (loginCallCount <= 2) {
+      return route.fulfill({
+        status: 401,
+        json: {
+          code: "TOTP_REQUIRED",
+          message: "Geçerli bir TOTP kodu gerekli.",
+        },
+      });
+    }
+    return route.fulfill({
+      json: {
+        accessToken: "fake-access-token",
+        refreshToken: "fake-refresh-token",
+      },
+    });
+  });
+  await mockRoomEndpoints(page);
+
+  await page.goto("/app");
+  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  const totpField = page.getByLabel("authenticator code");
+  await expect(totpField).toBeVisible();
+  await expect(page.getByText("Invalid authenticator code.")).toHaveCount(0);
+
+  await totpField.fill("000000");
+  await page.getByRole("button", { name: "log in" }).click();
+  await expect(page.getByText("Invalid authenticator code.")).toBeVisible();
+  await expect(totpField).toBeVisible();
+
+  await totpField.fill("123456");
+  await page.getByRole("button", { name: "log in" }).click();
+
+  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  expect(loginCallCount).toBe(3);
+});
+
 // M9 Slice B: giriş anında localStorage'daki tercih login isteğine
 // localeHint olarak ekleniyor.
 test("login_istegi_localstoragedaki_tercihi_localehint_olarak_gonderir", async ({

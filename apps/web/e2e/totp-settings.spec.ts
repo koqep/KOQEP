@@ -150,7 +150,7 @@ test("yanlis_kod_hata_gosterir_kurulum_yeniden_baslamaz", async ({ page }) => {
   await page.route("**/auth/totp/enable", (route) =>
     route.fulfill({
       status: 401,
-      json: { message: "Geçersiz TOTP kodu." },
+      json: { code: "TOTP_INVALID_CODE", message: "Geçersiz TOTP kodu." },
     }),
   );
 
@@ -159,7 +159,7 @@ test("yanlis_kod_hata_gosterir_kurulum_yeniden_baslamaz", async ({ page }) => {
   await page.getByLabel("authenticator code").fill("000000");
   await page.getByRole("button", { name: "enable" }).click();
 
-  await expect(page.getByText("Geçersiz TOTP kodu.")).toBeVisible();
+  await expect(page.getByText("Invalid authenticator code.")).toBeVisible();
   await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "enable" }),

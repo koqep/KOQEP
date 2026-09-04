@@ -168,15 +168,13 @@ test("404_kullanici_bulunamadi_mesaji_gosterir", async ({ page }) => {
   await page.route("**/users/baskasi/profile", (route) =>
     route.fulfill({
       status: 404,
-      json: { message: "Kullanıcı bulunamadı." },
+      json: { code: "USER_NOT_FOUND", message: "Kullanıcı bulunamadı." },
     }),
   );
 
   await page.getByRole("button", { name: /baskasi:/ }).click();
 
-  await expect(
-    page.getByText("This user could not be found."),
-  ).toBeVisible();
+  await expect(page.getByText("User not found.")).toBeVisible();
 });
 
 test("kendi_mesajina_you_etiketine_tiklamak_da_kendi_profilini_acar", async ({

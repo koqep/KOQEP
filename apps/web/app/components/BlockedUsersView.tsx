@@ -9,12 +9,16 @@ import {
   type BlockedUser,
 } from "../../lib/api";
 import { filledInputClassName } from "./formStyles";
+import type { Dictionary, Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 interface Props {
   accessToken: string;
+  dict: Dictionary;
+  locale: Locale;
 }
 
-export default function BlockedUsersView({ accessToken }: Props) {
+export default function BlockedUsersView({ accessToken, dict, locale }: Props) {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[] | null>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +50,9 @@ export default function BlockedUsersView({ accessToken }: Props) {
       setEmail("");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setIsSubmitting(false);
@@ -62,7 +68,9 @@ export default function BlockedUsersView({ accessToken }: Props) {
       );
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     }
   }
@@ -71,7 +79,7 @@ export default function BlockedUsersView({ accessToken }: Props) {
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <form onSubmit={handleBlock} className="mb-6 flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-muted">
-          email
+          {dict.common.emailLabel}
           <input
             type="email"
             value={email}
@@ -86,14 +94,14 @@ export default function BlockedUsersView({ accessToken }: Props) {
           disabled={isSubmitting}
           className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          block
+          {dict.blockedUsers.block}
         </button>
       </form>
 
       {blockedUsers === null ? (
-        <p>loading...</p>
+        <p>{dict.common.loading}</p>
       ) : blockedUsers.length === 0 ? (
-        <p>you haven&apos;t blocked anyone yet</p>
+        <p>{dict.blockedUsers.emptyList}</p>
       ) : (
         <ul className="space-y-2">
           {blockedUsers.map((user) => (
@@ -107,7 +115,7 @@ export default function BlockedUsersView({ accessToken }: Props) {
                 onClick={() => void handleUnblock(user.email)}
                 className="text-muted hover:text-neutral-400"
               >
-                unblock
+                {dict.blockedUsers.unblock}
               </button>
             </li>
           ))}
