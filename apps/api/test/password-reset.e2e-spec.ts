@@ -99,6 +99,7 @@ describe('Password reset request/confirm (e2e)', () => {
     expect(emailServiceMock.sendPasswordResetRequestEmail).toHaveBeenCalledWith(
       email,
       expect.stringContaining('reset-password?token=') as string,
+      'en',
     );
     const token = extractResetToken();
 
@@ -115,7 +116,7 @@ describe('Password reset request/confirm (e2e)', () => {
 
     expect(
       emailServiceMock.sendPasswordChangedNotificationEmail,
-    ).toHaveBeenCalledWith(email);
+    ).toHaveBeenCalledWith(email, 'en');
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
