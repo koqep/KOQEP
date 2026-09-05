@@ -36,6 +36,15 @@ export interface Dictionary {
     // M9 Slice D2 (Sohbet çekirdeği): DiscoverRoomsView + RoomSidebar'ın
     // PAYLAŞTIĞI - eskiden discoverRooms'a özeldi.
     lastActive: string;
+    // M9 Slice D2 (Moderasyon): RoomSidebar'ın mobil kapat butonuyla
+    // AYNI işlev (bir paneli kapatma) - eskiden roomSidebar'a özeldi.
+    close: string;
+    // M9 Slice D2 (Moderasyon): MessageItem'ın "silinmiş yazar"
+    // fallback'iyle AYNI kavram - eskiden messageItem'a özeldi.
+    deletedUser: string;
+    // M9 Slice D2 (Moderasyon): MessageItem'ın satır-içi düzenleme
+    // "save"ıyla AYNI işlev - eskiden messageItem'a özeldi.
+    saveButton: string;
   };
   authPageShell: {
     tagline: string;
@@ -144,9 +153,7 @@ export interface Dictionary {
     composerAriaLabel: string;
   };
   messageItem: {
-    deletedUser: string;
     editAriaLabel: string;
-    saveButton: string;
     editButton: string;
     deleteButton: string;
     historyButton: string;
@@ -164,7 +171,6 @@ export interface Dictionary {
   };
   roomSidebar: {
     heading: string;
-    close: string;
     searchAriaLabel: string;
     searchPlaceholder: string;
     showArchived: string;
@@ -230,6 +236,46 @@ export interface Dictionary {
     cancelButton: string;
     showMoreButton: string;
   };
+  moderationQueue: {
+    noOpenReports: string;
+    flaggedNotice: string;
+    reasonAriaLabel: string;
+    reasonPlaceholder: string;
+    confirmButton: string;
+    muteButton: string;
+    unmuteButton: string;
+    removeContentButton: string;
+    dismissButton: string;
+  };
+  roomModeration: {
+    heading: string;
+    noRooms: string;
+    renameAriaLabel: string;
+    statusActive: string;
+    statusArchived: string;
+    statusDeleted: string;
+    announcementLabel: string;
+    announcementAriaLabel: string;
+    removeAnnouncementButton: string;
+    addAnnouncementButton: string;
+    deleteConfirmWarning: string;
+    confirmDeleteButton: string;
+    renameButton: string;
+    archiveButton: string;
+    deleteButton: string;
+  };
+  assignModerator: {
+    heading: string;
+    assignPrompt: string;
+    yourPasswordLabel: string;
+    assignButton: string;
+    assignSuccessAlreadyModerator: string;
+    assignSuccessAssigned: string;
+    revokePrompt: string;
+    revokeButton: string;
+    revokeSuccessWasNotModerator: string;
+    revokeSuccessRevoked: string;
+  };
 }
 
 export const translations: Record<Locale, Dictionary> = {
@@ -244,6 +290,9 @@ export const translations: Record<Locale, Dictionary> = {
       emailLabel: "email",
       passwordLabel: "password",
       lastActive: "last active: {relative}",
+      close: "close",
+      deletedUser: "deleted user",
+      saveButton: "save",
     },
     authPageShell: {
       tagline: "text-based chat · invite-only",
@@ -347,9 +396,7 @@ export const translations: Record<Locale, Dictionary> = {
       composerAriaLabel: "write a message",
     },
     messageItem: {
-      deletedUser: "deleted user",
       editAriaLabel: "edit message",
-      saveButton: "save",
       editButton: "edit",
       deleteButton: "delete",
       historyButton: "history",
@@ -367,7 +414,6 @@ export const translations: Record<Locale, Dictionary> = {
     },
     roomSidebar: {
       heading: "rooms",
-      close: "close",
       searchAriaLabel: "search rooms",
       searchPlaceholder: "search rooms...",
       showArchived: "show archived",
@@ -440,6 +486,46 @@ export const translations: Record<Locale, Dictionary> = {
       cancelButton: "cancel",
       showMoreButton: "show more",
     },
+    moderationQueue: {
+      noOpenReports: "no open reports",
+      flaggedNotice: "[multiple reports — {count} different users]",
+      reasonAriaLabel: "moderator reason",
+      reasonPlaceholder: "reason...",
+      confirmButton: "confirm",
+      muteButton: "mute ({hours}h)",
+      unmuteButton: "unmute",
+      removeContentButton: "remove content",
+      dismissButton: "dismiss",
+    },
+    roomModeration: {
+      heading: "rooms",
+      noRooms: "no rooms",
+      renameAriaLabel: "edit room name",
+      statusActive: "active",
+      statusArchived: "archived",
+      statusDeleted: "deleted",
+      announcementLabel: "announcement:",
+      announcementAriaLabel: "edit room announcement",
+      removeAnnouncementButton: "remove announcement",
+      addAnnouncementButton: "add announcement",
+      deleteConfirmWarning: "are you sure? this is permanent, messages go too",
+      confirmDeleteButton: "yes, delete",
+      renameButton: "rename",
+      archiveButton: "archive",
+      deleteButton: "delete",
+    },
+    assignModerator: {
+      heading: "moderators",
+      assignPrompt: "assign moderator",
+      yourPasswordLabel: "your password",
+      assignButton: "assign",
+      assignSuccessAlreadyModerator: "already a moderator",
+      assignSuccessAssigned: "moderator assigned",
+      revokePrompt: "revoke moderator",
+      revokeButton: "revoke",
+      revokeSuccessWasNotModerator: "was not a moderator",
+      revokeSuccessRevoked: "moderator role revoked",
+    },
   },
   tr: {
     common: {
@@ -452,6 +538,9 @@ export const translations: Record<Locale, Dictionary> = {
       emailLabel: "e-posta",
       passwordLabel: "şifre",
       lastActive: "son aktivite: {relative}",
+      close: "kapat",
+      deletedUser: "silinmiş kullanıcı",
+      saveButton: "kaydet",
     },
     authPageShell: {
       tagline: "sadece metin · davetle katılım",
@@ -556,9 +645,7 @@ export const translations: Record<Locale, Dictionary> = {
       composerAriaLabel: "mesaj yaz",
     },
     messageItem: {
-      deletedUser: "silinmiş kullanıcı",
       editAriaLabel: "mesajı düzenle",
-      saveButton: "kaydet",
       editButton: "düzenle",
       deleteButton: "sil",
       historyButton: "geçmiş",
@@ -576,7 +663,6 @@ export const translations: Record<Locale, Dictionary> = {
     },
     roomSidebar: {
       heading: "odalar",
-      close: "kapat",
       searchAriaLabel: "odalarda ara",
       searchPlaceholder: "odalarda ara...",
       showArchived: "arşivi göster",
@@ -648,6 +734,46 @@ export const translations: Record<Locale, Dictionary> = {
       joiningButton: "katılıyor...",
       cancelButton: "vazgeç",
       showMoreButton: "daha fazla göster",
+    },
+    moderationQueue: {
+      noOpenReports: "açık rapor yok",
+      flaggedNotice: "[birden fazla rapor — {count} farklı kullanıcı]",
+      reasonAriaLabel: "moderatör sebebi",
+      reasonPlaceholder: "sebep...",
+      confirmButton: "onayla",
+      muteButton: "sustur ({hours}sa)",
+      unmuteButton: "susturmayı kaldır",
+      removeContentButton: "içeriği kaldır",
+      dismissButton: "reddet",
+    },
+    roomModeration: {
+      heading: "odalar",
+      noRooms: "oda yok",
+      renameAriaLabel: "oda adını düzenle",
+      statusActive: "aktif",
+      statusArchived: "arşivlenmiş",
+      statusDeleted: "silinmiş",
+      announcementLabel: "duyuru:",
+      announcementAriaLabel: "oda duyurusunu düzenle",
+      removeAnnouncementButton: "duyuruyu kaldır",
+      addAnnouncementButton: "duyuru ekle",
+      deleteConfirmWarning: "emin misin? bu kalıcı, mesajlar da gidiyor",
+      confirmDeleteButton: "evet, sil",
+      renameButton: "yeniden adlandır",
+      archiveButton: "arşivle",
+      deleteButton: "sil",
+    },
+    assignModerator: {
+      heading: "moderatörler",
+      assignPrompt: "moderatör ata",
+      yourPasswordLabel: "senin şifren",
+      assignButton: "ata",
+      assignSuccessAlreadyModerator: "zaten moderatör",
+      assignSuccessAssigned: "moderatör atandı",
+      revokePrompt: "moderatörlüğü kaldır",
+      revokeButton: "kaldır",
+      revokeSuccessWasNotModerator: "zaten moderatör değildi",
+      revokeSuccessRevoked: "moderatör yetkisi kaldırıldı",
     },
   },
 };

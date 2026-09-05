@@ -150,7 +150,7 @@ export default function MessageItem({
     }
   }
 
-  const authorLabel = message.authorUsername ?? dict.messageItem.deletedUser;
+  const authorLabel = message.authorUsername ?? dict.common.deletedUser;
   // Yerel bir const'a çıkarmak, aşağıdaki nested onClick closure'ında
   // TypeScript'in bunu string olarak DARALTMASINI sağlıyor - message.
   // authorUsername'a doğrudan bir property-access olarak erişmek closure
@@ -186,7 +186,7 @@ export default function MessageItem({
             type="submit"
             className="text-muted hover:text-neutral-400"
           >
-            {dict.messageItem.saveButton}
+            {dict.common.saveButton}
           </button>
           <button
             type="button"
