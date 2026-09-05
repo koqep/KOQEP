@@ -144,6 +144,10 @@ export class AuthService {
             // DTO validasyonu acceptedTerms'in true olduğunu buraya
             // ulaşmadan önce zaten garanti ediyor - koşulsuz damga.
             termsAcceptedAt: new Date(),
+            // M9 Slice E: giriş öncesi AuthPageShell'in TR/EN kutusu -
+            // login'in "sadece null'sa senkronla" ara-adımı GEREKMİYOR,
+            // bu YENİ bir satır, ilk fırsat.
+            locale: dto.localeHint,
           },
         });
 
@@ -205,7 +209,11 @@ export class AuthService {
     const rawToken =
       await this.emailVerificationService.createVerificationToken(userId);
     const verifyLink = `${process.env.WEB_ORIGIN}/verify-email?token=${rawToken}`;
-    await this.emailService.sendEmailVerificationEmail(dto.email, verifyLink);
+    await this.emailService.sendEmailVerificationEmail(
+      dto.email,
+      verifyLink,
+      dto.localeHint ?? DEFAULT_LOCALE,
+    );
   }
 
   async login(dto: LoginDto): Promise<TokenPair> {
@@ -252,7 +260,12 @@ export class AuthService {
           next.lockedUntil &&
           shouldSendLockoutNotification(user.lockoutNotifiedAt, now)
         ) {
-          void this.sendLockoutNotification(user.id, user.email, now);
+          void this.sendLockoutNotification(
+            user.id,
+            user.email,
+            now,
+            isValidLocale(user.locale) ? user.locale : DEFAULT_LOCALE,
+          );
         }
       }
       throw new UnauthorizedException({
@@ -552,6 +565,7 @@ export class AuthService {
       await this.emailService.sendPasswordResetRequestEmail(
         user.email,
         resetLink,
+        isValidLocale(user.locale) ? user.locale : DEFAULT_LOCALE,
       );
     } catch (error) {
       this.logger.error(
@@ -623,7 +637,10 @@ export class AuthService {
     });
 
     try {
-      await this.emailService.sendPasswordChangedNotificationEmail(user.email);
+      await this.emailService.sendPasswordChangedNotificationEmail(
+        user.email,
+        isValidLocale(user.locale) ? user.locale : DEFAULT_LOCALE,
+      );
     } catch (error) {
       this.logger.error(
         `Şifre değişikliği bildirimi gönderilemedi: ${(error as Error).message}`,
@@ -678,9 +695,10 @@ export class AuthService {
     userId: string,
     email: string,
     notifiedAt: Date,
+    locale: Locale,
   ): Promise<void> {
     try {
-      await this.emailService.sendAccountLockedNotificationEmail(email);
+      await this.emailService.sendAccountLockedNotificationEmail(email, locale);
       await this.prisma.user.update({
         where: { id: userId },
         data: { lockoutNotifiedAt: notifiedAt },

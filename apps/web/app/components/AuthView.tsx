@@ -68,7 +68,14 @@ export default function AuthView({
       }
 
       if (mode === "signup") {
-        await signup({ inviteCode, email, username, password, acceptedTerms });
+        await signup({
+          inviteCode,
+          email,
+          username,
+          password,
+          acceptedTerms,
+          localeHint: locale,
+        });
         // Signup artık giriş yapmıyor - hesap e-postayı doğrulayana kadar
         // kullanılamaz (M2.5 Slice B). "şifremi unuttum" ile aynı nötr
         // mesaj deseni.
