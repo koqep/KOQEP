@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-04 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D1+D2 kapsam turu+D2 Dalga A+auth-locale-toggle fix+D3+TOTP login hata fix'i+D4 (Dalga D: oda panelleri) main'de; M9 D5 (Dalga B: sohbet çekirdeği) tamamlandı, push bekliyor)
+**Son güncelleme:** 2026-09-05 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (D1 + D2'nin TÜM 6 dalgası: A/C/D/B/E + 2 fix) main'de — **M9 Slice D TAMAMEN KAPANDI**, M9'un kendisi HENÜZ değil (Slice E/e-posta + Slice F/testid kalıyor); `feat/i18n-moderation` push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D1 + D2 kapsam turu + D2 Dalga A + giriş-öncesi TR/EN dil kutusu fix'i + D3 (ayar panelleri) + TOTP login hata fix'i + D4 (oda panelleri) main'de** (PR #106-125, kullanıcı merge etti) — frontend `dict` altyapısı auth+6 ayar paneli+2 oda paneli+TopBar/AccountMenu/SettingsView/CenteredModal'da tam; kalan D6 (moderasyon) dalgası.
-- **2026-09-04: M9 D5 (Dalga B) — sohbet çekirdeği (ChatPanel/MessageItem/RoomSidebar + RoomView'ın 3 kalıntısı) `dict`'e bağlandı, `feat/i18n-chat-core` dalında (main'den), push bekliyor.** En yüksek regresyon riskli dilim — mock süiti İKİ kez + fullstack süiti İKİ kez (ekstra güvenlik). Aynı bug sınıfı yine bulundu: `RoomView.tsx`'in 2 istemci-tarafı hata kopyası (MESSAGE_TOO_LONG + genel gönderim hatası) artık backend'in çeviri mekanizmasıyla AYNI kaynaktan besleniyor; `ChatPanel`'in mute-bildirimindeki tarih artık locale'e duyarlı. `auth.spec.ts`'in 2 testi composer placeholder'ının artık locale'e bağlı olmasına uyarlandı. Mock 156/156 (×2) + fullstack 11/11 (×2). Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 D6 (moderasyon, M9'un SON dilimi) sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ — D1 + D2'nin 6 dalgası: Dalga A/auth, C/ayar panelleri, D/oda panelleri, B/sohbet çekirdeği, E/moderasyon + giriş-öncesi dil kutusu fix'i + TOTP login hata fix'i) main'de** (PR #106-126, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA (auth, 6 ayar paneli, 2 oda paneli, sohbet çekirdeği, moderasyon, TopBar/AccountMenu/SettingsView/CenteredModal). **M9'un kendisi henüz KAPANMADI** — milestone'un Slice E'si (e-posta şablonları iki dilli, ~8-12sa) ve Slice F'i (787 Türkçe-bağımlı Playwright seçicisinin `data-testid`'e taşınması) hâlâ AÇIK, D2'nin kapsamı DEĞİLDİ.
+- **2026-09-05: M9 Slice D'nin son dalgası (D6/Dalga E) — moderasyon yüzeyleri (ModerationQueueView/RoomModerationSection/AssignModeratorSection) `dict`'e bağlandı, `feat/i18n-moderation` dalında (main'den), push bekliyor.** `AssignModeratorSection` hâlâ D1-öncesi ham-mesaj deseniyken diğer 10 hata yakalayıcı hiç kod kontrolü yapmıyordu — hepsi `translateErrorCode` deseninde birleşti. `room.status` enum'u artık çevriliyor. `dict.common`'a 3 paylaşılan anahtar taşındı (close/deletedUser/saveButton). `PasswordInput`'un `dict` prop'u GERÇEK 6./son çağırana (bu dosyaya) bağlandı — D4'ün STATE.md notundaki "6/6 tamam" iddiası sayım hatasıydı. Mock 156/156 (×2) + fullstack 11/11. Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice E/F sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/i18n-chat-core` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 D6 (Dalga E: moderasyon yüzeyleri, M9'un SON dilimi) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `feat/i18n-moderation` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 Slice E (e-posta) ya da Slice F (testid) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
