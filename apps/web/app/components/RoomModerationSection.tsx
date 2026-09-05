@@ -7,9 +7,12 @@ import {
   archiveRoom,
   deleteRoom,
   setRoomAnnouncement,
+  ApiError,
   type Room,
 } from "../../lib/api";
 import { inputClassName } from "./formStyles";
+import type { Dictionary, Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 // apps/api/src/api/dto/set-room-announcement.dto.ts'teki MAX_ROOM_ANNOUNCEMENT_LENGTH
 // ile AYNI değer - MAX_MESSAGE_LENGTH'in zaten kurduğu "küçük sabiti
@@ -18,9 +21,15 @@ const MAX_ROOM_ANNOUNCEMENT_LENGTH = 280;
 
 interface Props {
   accessToken: string;
+  dict: Dictionary;
+  locale: Locale;
 }
 
-export default function RoomModerationSection({ accessToken }: Props) {
+export default function RoomModerationSection({
+  accessToken,
+  dict,
+  locale,
+}: Props) {
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -68,8 +77,12 @@ export default function RoomModerationSection({ accessToken }: Props) {
       const updated = await renameRoom(accessToken, room.id, name);
       replaceInList(updated);
       setRenamingId(null);
-    } catch {
-      setError("Could not rename room, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -96,8 +109,12 @@ export default function RoomModerationSection({ accessToken }: Props) {
       );
       replaceInList(updated);
       setAnnouncingId(null);
-    } catch {
-      setError("Could not save announcement, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -109,8 +126,12 @@ export default function RoomModerationSection({ accessToken }: Props) {
     try {
       const updated = await setRoomAnnouncement(accessToken, room.id, null);
       replaceInList(updated);
-    } catch {
-      setError("Could not remove announcement, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -122,8 +143,12 @@ export default function RoomModerationSection({ accessToken }: Props) {
     try {
       const updated = await archiveRoom(accessToken, room.id);
       replaceInList(updated);
-    } catch {
-      setError("Could not archive room, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -136,8 +161,12 @@ export default function RoomModerationSection({ accessToken }: Props) {
       await deleteRoom(accessToken, room.id);
       setRooms((prev) => (prev ?? []).filter((r) => r.id !== room.id));
       setConfirmingDeleteId(null);
-    } catch {
-      setError("Could not delete room, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -146,15 +175,15 @@ export default function RoomModerationSection({ accessToken }: Props) {
   return (
     <section className="mt-8 border-t border-neutral-800 pt-4">
       <h3 className="mb-4 text-neutral-400">
-        <span className="text-muted">#</span> rooms
+        <span className="text-muted">#</span> {dict.roomModeration.heading}
       </h3>
 
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {rooms === null ? (
-        <p className="text-neutral-400">loading...</p>
+        <p className="text-neutral-400">{dict.common.loading}</p>
       ) : rooms.length === 0 ? (
-        <p className="text-neutral-400">no rooms</p>
+        <p className="text-neutral-400">{dict.roomModeration.noRooms}</p>
       ) : (
         <ul className="space-y-4">
           {rooms.map((room) => (
@@ -166,7 +195,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                 >
                   <input
                     type="text"
-                    aria-label="edit room name"
+                    aria-label={dict.roomModeration.renameAriaLabel}
                     value={renameDraft}
                     onChange={(event) => setRenameDraft(event.target.value)}
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- "yeniden adlandır"a tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
@@ -178,21 +207,29 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     disabled={pendingId === room.id}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    save
+                    {dict.common.saveButton}
                   </button>
                   <button
                     type="button"
                     onClick={() => setRenamingId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    cancel
+                    {dict.common.cancel}
                   </button>
                 </form>
               ) : (
                 <p className="mb-2 text-neutral-200">
                   <span className="text-muted">#</span>
                   {room.name}{" "}
-                  <span className="text-muted">({room.status})</span>
+                  <span className="text-muted">
+                    (
+                    {room.status === "active"
+                      ? dict.roomModeration.statusActive
+                      : room.status === "archived"
+                        ? dict.roomModeration.statusArchived
+                        : dict.roomModeration.statusDeleted}
+                    )
+                  </span>
                 </p>
               )}
 
@@ -202,7 +239,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                   className="mb-2 flex items-start gap-2"
                 >
                   <textarea
-                    aria-label="edit room announcement"
+                    aria-label={dict.roomModeration.announcementAriaLabel}
                     value={announcementDraft}
                     onChange={(event) =>
                       setAnnouncementDraft(event.target.value)
@@ -220,19 +257,21 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     disabled={pendingId === room.id}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    save
+                    {dict.common.saveButton}
                   </button>
                   <button
                     type="button"
                     onClick={() => setAnnouncingId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    cancel
+                    {dict.common.cancel}
                   </button>
                 </form>
               ) : room.announcement ? (
                 <p className="mb-2 text-neutral-400">
-                  <span className="text-muted">announcement:</span>{" "}
+                  <span className="text-muted">
+                    {dict.roomModeration.announcementLabel}
+                  </span>{" "}
                   {room.announcement}{" "}
                   <button
                     type="button"
@@ -240,7 +279,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     onClick={() => void clearAnnouncement(room)}
                     className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                   >
-                    remove announcement
+                    {dict.roomModeration.removeAnnouncementButton}
                   </button>
                 </p>
               ) : (
@@ -251,7 +290,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     onClick={() => startAnnouncing(room)}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    add announcement
+                    {dict.roomModeration.addAnnouncementButton}
                   </button>
                 </p>
               )}
@@ -259,7 +298,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
               {confirmingDeleteId === room.id ? (
                 <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
                   <span className="text-red-400">
-                    are you sure? this is permanent, messages go too
+                    {dict.roomModeration.deleteConfirmWarning}
                   </span>
                   <button
                     type="button"
@@ -267,14 +306,14 @@ export default function RoomModerationSection({ accessToken }: Props) {
                     onClick={() => void confirmDelete(room)}
                     className="text-red-400 hover:text-red-300 disabled:cursor-not-allowed"
                   >
-                    yes, delete
+                    {dict.roomModeration.confirmDeleteButton}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmingDeleteId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    cancel
+                    {dict.common.cancel}
                   </button>
                 </div>
               ) : (
@@ -286,7 +325,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                       onClick={() => startRenaming(room)}
                       className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                     >
-                      rename
+                      {dict.roomModeration.renameButton}
                     </button>
                     {room.status === "active" && (
                       <button
@@ -295,7 +334,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                         onClick={() => void handleArchive(room)}
                         className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                       >
-                        archive
+                        {dict.roomModeration.archiveButton}
                       </button>
                     )}
                     {room.status === "archived" && (
@@ -305,7 +344,7 @@ export default function RoomModerationSection({ accessToken }: Props) {
                         onClick={() => setConfirmingDeleteId(room.id)}
                         className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                       >
-                        delete
+                        {dict.roomModeration.deleteButton}
                       </button>
                     )}
                   </div>

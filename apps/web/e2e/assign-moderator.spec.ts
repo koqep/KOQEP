@@ -85,7 +85,7 @@ test("yanlis_sifre_atamada_hata_gosterir", async ({ page }) => {
   await page.getByLabel("your password").fill("wrong-password");
   await page.getByRole("button", { name: "assign", exact: true }).click();
 
-  await expect(page.getByText("Şifre hatalı.")).toBeVisible();
+  await expect(page.getByText("Incorrect email or password.")).toBeVisible();
 });
 
 test("totp_gerekince_alan_belirir", async ({ page }) => {

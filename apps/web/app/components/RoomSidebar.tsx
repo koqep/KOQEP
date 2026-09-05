@@ -72,7 +72,7 @@ export default function RoomSidebar({
             onClick={onClose}
             className="text-muted hover:text-neutral-400"
           >
-            {dict.roomSidebar.close}
+            {dict.common.close}
           </button>
         </div>
       )}

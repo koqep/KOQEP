@@ -936,6 +936,8 @@ export default function RoomView({
                 accessToken={accessToken}
                 onClose={requestClosePanel}
                 onQueueCountChange={setOpenReportCount}
+                dict={dict}
+                locale={locale}
               />
             )}
           </SidePanel>

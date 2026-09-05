@@ -4,9 +4,13 @@ import { useState, type FormEvent } from "react";
 import { assignModerator, revokeModerator, ApiError } from "../../lib/api";
 import { inputClassName } from "./formStyles";
 import PasswordInput from "./PasswordInput";
+import type { Dictionary, Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 interface Props {
   accessToken: string;
+  dict: Dictionary;
+  locale: Locale;
 }
 
 // M7a Slice C (ADR gerekmeyen bir uygulama-katmanı özelliği): atama
@@ -14,7 +18,11 @@ interface Props {
 // hatası alınca beliren TOTP alanı) - kalıcı bir yetki değişikliği,
 // deleteAccount'la aynı hassasiyet sınıfı. Kaldırma reauth İSTEMİYOR
 // (yetki azaltan yön kendi kendini iyileştiren bir hata).
-export default function AssignModeratorSection({ accessToken }: Props) {
+export default function AssignModeratorSection({
+  accessToken,
+  dict,
+  locale,
+}: Props) {
   const [assignEmail, setAssignEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
@@ -41,7 +49,9 @@ export default function AssignModeratorSection({ accessToken }: Props) {
         totpRequired ? totpCode : undefined,
       );
       setAssignSuccess(
-        result.alreadyModerator ? "already a moderator" : "moderator assigned",
+        result.alreadyModerator
+          ? dict.assignModerator.assignSuccessAlreadyModerator
+          : dict.assignModerator.assignSuccessAssigned,
       );
       setAssignEmail("");
       setPassword("");
@@ -53,8 +63,8 @@ export default function AssignModeratorSection({ accessToken }: Props) {
       } else {
         setAssignError(
           err instanceof ApiError
-            ? err.message
-            : "Connection error. Try again.",
+            ? (translateErrorCode(err.code, locale) ?? err.message)
+            : dict.common.connectionError,
         );
       }
     } finally {
@@ -71,13 +81,15 @@ export default function AssignModeratorSection({ accessToken }: Props) {
       const result = await revokeModerator(accessToken, revokeEmail);
       setRevokeSuccess(
         result.wasNotModerator
-          ? "was not a moderator"
-          : "moderator role revoked",
+          ? dict.assignModerator.revokeSuccessWasNotModerator
+          : dict.assignModerator.revokeSuccessRevoked,
       );
       setRevokeEmail("");
     } catch (err) {
       setRevokeError(
-        err instanceof ApiError ? err.message : "Connection error. Try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setIsRevoking(false);
@@ -87,13 +99,13 @@ export default function AssignModeratorSection({ accessToken }: Props) {
   return (
     <section className="mt-8 border-t border-neutral-800 pt-4">
       <h3 className="mb-4 text-neutral-400">
-        <span className="text-muted">#</span> moderators
+        <span className="text-muted">#</span> {dict.assignModerator.heading}
       </h3>
 
       <form onSubmit={handleAssign} className="mb-6 flex flex-col gap-3">
-        <p className="text-muted">assign moderator</p>
+        <p className="text-muted">{dict.assignModerator.assignPrompt}</p>
         <label className="flex flex-col gap-1 text-muted">
-          email
+          {dict.common.emailLabel}
           <input
             type="email"
             value={assignEmail}
@@ -103,14 +115,15 @@ export default function AssignModeratorSection({ accessToken }: Props) {
           />
         </label>
         <PasswordInput
-          label="your password"
+          label={dict.assignModerator.yourPasswordLabel}
+          dict={dict}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
         />
         {totpRequired && (
           <label className="flex flex-col gap-1 text-muted">
-            authenticator code
+            {dict.common.authenticatorCodeLabel}
             <input
               type="text"
               value={totpCode}
@@ -129,14 +142,14 @@ export default function AssignModeratorSection({ accessToken }: Props) {
           disabled={isAssigning}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          assign
+          {dict.assignModerator.assignButton}
         </button>
       </form>
 
       <form onSubmit={handleRevoke} className="flex flex-col gap-3">
-        <p className="text-muted">revoke moderator</p>
+        <p className="text-muted">{dict.assignModerator.revokePrompt}</p>
         <label className="flex flex-col gap-1 text-muted">
-          email
+          {dict.common.emailLabel}
           <input
             type="email"
             value={revokeEmail}
@@ -152,7 +165,7 @@ export default function AssignModeratorSection({ accessToken }: Props) {
           disabled={isRevoking}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          revoke
+          {dict.assignModerator.revokeButton}
         </button>
       </form>
     </section>

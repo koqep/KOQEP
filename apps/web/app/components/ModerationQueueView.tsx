@@ -7,6 +7,7 @@ import {
   dismissReport,
   muteUser,
   unmuteUser,
+  ApiError,
   type ReportSummary,
 } from "../../lib/api";
 import MessageContent from "./MessageContent";
@@ -14,6 +15,8 @@ import RoomModerationSection from "./RoomModerationSection";
 import AssignModeratorSection from "./AssignModeratorSection";
 import { useFocusOnMount } from "./useFocusOnMount";
 import { inputClassName } from "./formStyles";
+import { interpolate, type Dictionary, type Locale } from "../../lib/i18n";
+import { translateErrorCode } from "../../lib/error-messages";
 
 const MUTE_DURATION_HOURS = 24;
 
@@ -33,6 +36,8 @@ interface Props {
   // panel kapalıyken rozet en-son-açılıştaki kadar taze kalır (kabul
   // edilebilir sınırlama, RoomView.tsx mount'ta ayrıca bir kez çekiyor).
   onQueueCountChange?: (count: number) => void;
+  dict: Dictionary;
+  locale: Locale;
 }
 
 export default function ModerationQueueView({
@@ -40,6 +45,8 @@ export default function ModerationQueueView({
   onClose,
   titleId,
   onQueueCountChange,
+  dict,
+  locale,
 }: Props) {
   const [reports, setReports] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,11 +109,11 @@ export default function ModerationQueueView({
         removeFromQueue(reportId);
       }
       setPendingReasonAction(null);
-    } catch {
+    } catch (err) {
       setError(
-        kind === "mute"
-          ? "Could not mute user, try again."
-          : "Could not remove content, try again.",
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
       );
     } finally {
       setPendingId(null);
@@ -119,8 +126,12 @@ export default function ModerationQueueView({
     try {
       await dismissReport(accessToken, reportId);
       removeFromQueue(reportId);
-    } catch {
-      setError("Could not dismiss report, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -136,8 +147,12 @@ export default function ModerationQueueView({
     setPendingId(reportId);
     try {
       await unmuteUser(accessToken, reportedUserId);
-    } catch {
-      setError("Could not unmute, try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? (translateErrorCode(err.code, locale) ?? err.message)
+          : dict.common.connectionError,
+      );
     } finally {
       setPendingId(null);
     }
@@ -147,23 +162,23 @@ export default function ModerationQueueView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       <div className="mb-4 flex items-center justify-between">
         <h2 ref={headingRef} id={titleId} tabIndex={-1} className="text-neutral-400 outline-none">
-          <span className="text-muted">#</span> moderation
+          <span className="text-muted">#</span> {dict.topBar.moderation}
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="text-muted hover:text-neutral-400"
         >
-          close
+          {dict.common.close}
         </button>
       </div>
 
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {reports === null ? (
-        <p>loading...</p>
+        <p>{dict.common.loading}</p>
       ) : reports.length === 0 ? (
-        <p>no open reports</p>
+        <p>{dict.moderationQueue.noOpenReports}</p>
       ) : (
         <ul className="space-y-4">
           {reports.map((report) => {
@@ -175,12 +190,13 @@ export default function ModerationQueueView({
             >
               {report.isFlagged && (
                 <p className="mb-1 text-red-400">
-                  [multiple reports — {report.distinctReporterCount} different
-                  users]
+                  {interpolate(dict.moderationQueue.flaggedNotice, {
+                    count: report.distinctReporterCount,
+                  })}
                 </p>
               )}
               <p className="mb-1 text-muted">
-                {report.reportedUsername ?? "deleted user"}
+                {report.reportedUsername ?? dict.common.deletedUser}
                 {report.reason && (
                   <span className="text-muted"> — {report.reason}</span>
                 )}
@@ -195,10 +211,10 @@ export default function ModerationQueueView({
                 >
                   <input
                     type="text"
-                    aria-label="moderator reason"
+                    aria-label={dict.moderationQueue.reasonAriaLabel}
                     value={reasonDraft}
                     onChange={(event) => setReasonDraft(event.target.value)}
-                    placeholder="reason..."
+                    placeholder={dict.moderationQueue.reasonPlaceholder}
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- "sustur"/"içeriği kaldır"a tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
                     autoFocus
                     className={`flex-1 ${inputClassName}`}
@@ -210,14 +226,14 @@ export default function ModerationQueueView({
                     }
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    confirm
+                    {dict.moderationQueue.confirmButton}
                   </button>
                   <button
                     type="button"
                     onClick={() => setPendingReasonAction(null)}
                     className="text-muted hover:text-neutral-400"
                   >
-                    cancel
+                    {dict.common.cancel}
                   </button>
                 </form>
               ) : (
@@ -232,7 +248,9 @@ export default function ModerationQueueView({
                         }
                         className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                       >
-                        mute ({MUTE_DURATION_HOURS}h)
+                        {interpolate(dict.moderationQueue.muteButton, {
+                          hours: MUTE_DURATION_HOURS,
+                        })}
                       </button>
                       <button
                         type="button"
@@ -242,7 +260,7 @@ export default function ModerationQueueView({
                         }
                         className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                       >
-                        unmute
+                        {dict.moderationQueue.unmuteButton}
                       </button>
                     </>
                   )}
@@ -252,7 +270,7 @@ export default function ModerationQueueView({
                     onClick={() => startReasonAction(report.id, "remove")}
                     className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
                   >
-                    remove content
+                    {dict.moderationQueue.removeContentButton}
                   </button>
                   <button
                     type="button"
@@ -260,7 +278,7 @@ export default function ModerationQueueView({
                     onClick={() => void handleDismiss(report.id)}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
-                    dismiss
+                    {dict.moderationQueue.dismissButton}
                   </button>
                 </div>
               )}
@@ -270,8 +288,8 @@ export default function ModerationQueueView({
         </ul>
       )}
 
-      <RoomModerationSection accessToken={accessToken} />
-      <AssignModeratorSection accessToken={accessToken} />
+      <RoomModerationSection accessToken={accessToken} dict={dict} locale={locale} />
+      <AssignModeratorSection accessToken={accessToken} dict={dict} locale={locale} />
     </section>
   );
 }
