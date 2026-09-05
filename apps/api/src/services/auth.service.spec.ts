@@ -134,6 +134,46 @@ describe('AuthService', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         dto.email,
         expect.stringContaining('verify-token') as string,
+        'en',
+      );
+    });
+
+    // M9 Slice E: giriş öncesi AuthPageShell'in TR/EN kutusu artık
+    // signup'a da bağlı - hem yeni User satırına KAYDEDİLİYOR hem
+    // doğrulama e-postası o dilde gönderiliyor.
+    it('localeHint_gonderilince_user_locale_ine_kaydeder_ve_o_dilde_e_posta_gonderir', async () => {
+      const createSpy = jest.fn().mockResolvedValue({});
+      const prismaMock = buildTransactionalPrismaMock({ count: 1 }, createSpy);
+      const invitesMock: Partial<InvitesService> = {
+        findRedeemableInvite: jest.fn().mockResolvedValue(invite),
+      };
+      const emailVerificationMock: Partial<EmailVerificationService> = {
+        createVerificationToken: jest.fn().mockResolvedValue('verify-token'),
+      };
+      const sendSpy = jest.fn().mockResolvedValue(undefined);
+      const emailMock: Partial<EmailService> = {
+        sendEmailVerificationEmail: sendSpy,
+      };
+
+      const service = buildService(
+        prismaMock,
+        invitesMock,
+        undefined,
+        undefined,
+        emailVerificationMock,
+        emailMock,
+      );
+      await service.signup({ ...dto, localeHint: 'tr' });
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ locale: 'tr' }) as unknown,
+        }),
+      );
+      expect(sendSpy).toHaveBeenCalledWith(
+        dto.email,
+        expect.stringContaining('verify-token') as string,
+        'tr',
       );
     });
 
@@ -585,7 +625,7 @@ describe('AuthService', () => {
             lockedUntil: expect.any(Date) as Date,
           },
         });
-        expect(sendLockEmailMock).toHaveBeenCalledWith(user.email);
+        expect(sendLockEmailMock).toHaveBeenCalledWith(user.email, 'en');
         resolveEmail();
       });
 
@@ -729,7 +769,7 @@ describe('AuthService', () => {
           service.login({ email: user.email, password: 'wrong' }),
         ).rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
 
-        expect(sendLockEmailMock).toHaveBeenCalledWith(user.email);
+        expect(sendLockEmailMock).toHaveBeenCalledWith(user.email, 'en');
       });
 
       it('bildirim_gonderimi_basarisiz_olursa_lockoutNotifiedAt_guncellenmez', async () => {
@@ -1469,6 +1509,7 @@ describe('AuthService', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         'a@koqep.local',
         expect.stringContaining('raw-token') as string,
+        'en',
       );
     });
 
