@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-07 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (TÜMÜ)/E main'de, Slice F kapsam turu main'de — Slice F Faz 1 Grup 1 (auth+bağımsız sayfalar+paylaşılan kabuk `data-testid`) tamamlandı, `feat/testid-auth-shell` push bekliyor)
+**Son güncelleme:** 2026-09-07 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (TÜMÜ)/E main'de, Slice F kapsam turu + Faz 1 Grup 1 main'de — Slice F Faz 1 Grup 2 (ayar+oda panelleri `data-testid`) tamamlandı, `feat/testid-settings-rooms` push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ, 6 dalga) + Slice E (e-posta şablonları) + Slice F kapsam turu main'de** (PR #106-129, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA + backend `EmailService`'in 4 şablonu artık `User.locale`'e göre EN/TR gönderiyor. **M9'un SADECE Slice F'in gerçek implementasyonu kalıyor** (860 metin-bağımlı Playwright seçicisinin `data-testid`'e taşınması, D2'nin kapsamı hiç değildi).
-- **2026-09-07: M9 Slice F Faz 1 Grup 1 (auth + bağımsız sayfalar + paylaşılan kabuk, 11 dosya) tamamlandı, `feat/testid-auth-shell` dalında (main'den, tek feat commit), push bekliyor.** `PasswordInput.tsx`'e `dict` ile AYNI opsiyonel-geçiş deseninde `testId` prop'u eklendi. Saf ekleme — hiçbir test dosyası dokunulmadı, mock ×2 (156/156) + fullstack ×1 (11/11) DEĞİŞMEDEN geçti. Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice F (Faz 1 Grup 2/3 + Faz 2) sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ, 6 dalga) + Slice E (e-posta şablonları) + Slice F kapsam turu + Faz 1 Grup 1 main'de** (PR #106-130, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA + backend `EmailService`'in 4 şablonu artık `User.locale`'e göre EN/TR gönderiyor. **M9'un SADECE Slice F'in gerçek implementasyonu kalıyor** (860 metin-bağımlı Playwright seçicisinin `data-testid`'e taşınması, D2'nin kapsamı hiç değildi).
+- **2026-09-07: M9 Slice F Faz 1 Grup 2 (ayar panelleri + oda panelleri, 10 dosya) tamamlandı, `feat/testid-settings-rooms` dalında (main'den, tek feat commit), push bekliyor.** Grup 1'in aksine GERÇEK liste öğeleri var (bloklu kullanıcılar/davetler/keşfedilebilir odalar) — kararlı bir kimlik gömen dinamik testid kullanıldı. `PasswordInput.tsx`'in `testId` prop'unu 3 çağıran daha migrate etti (5/6, kalan tek çağıran `AssignModeratorSection` Grup 3'ün işi). Saf ekleme — hiçbir test dosyası dokunulmadı, mock ×2 (156/156) + fullstack ×1 (11/11) DEĞİŞMEDEN geçti. Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice F (Faz 1 Grup 3 + Faz 2) sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/testid-auth-shell` (main'den, 1 feat commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 Slice F Faz 1 Grup 2'nin (ayar+oda panelleri, ~10 dosya, `data-testid` ekleme) gerçek implementasyonu mu, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `feat/testid-settings-rooms` (main'den, 1 feat commit) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 Slice F Faz 1 Grup 3'ün (sohbet çekirdeği+moderasyon, ~10 dosya, `data-testid` ekleme) gerçek implementasyonu mu, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

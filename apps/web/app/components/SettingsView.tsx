@@ -26,6 +26,7 @@ export default function SettingsView({ onNavigate, dict }: Props) {
     <div className="flex flex-col gap-1">
       <button
         type="button"
+        data-testid="settings-totp-item"
         onClick={() => onNavigate("totp")}
         className={settingsItemClassName}
       >
@@ -33,6 +34,7 @@ export default function SettingsView({ onNavigate, dict }: Props) {
       </button>
       <button
         type="button"
+        data-testid="settings-blocked-item"
         onClick={() => onNavigate("blocked")}
         className={settingsItemClassName}
       >
@@ -40,6 +42,7 @@ export default function SettingsView({ onNavigate, dict }: Props) {
       </button>
       <button
         type="button"
+        data-testid="settings-invites-item"
         onClick={() => onNavigate("invites")}
         className={settingsItemClassName}
       >
@@ -47,6 +50,7 @@ export default function SettingsView({ onNavigate, dict }: Props) {
       </button>
       <button
         type="button"
+        data-testid="settings-language-item"
         onClick={() => onNavigate("language")}
         className={settingsItemClassName}
       >
@@ -54,6 +58,7 @@ export default function SettingsView({ onNavigate, dict }: Props) {
       </button>
       <button
         type="button"
+        data-testid="settings-delete-account-item"
         onClick={() => onNavigate("delete-account")}
         className="px-2 py-1 text-left text-muted hover:text-red-400"
       >

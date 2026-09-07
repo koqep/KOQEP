@@ -114,7 +114,7 @@ export default function TotpSettingsView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       {recoveryCodes ? (
         <div className="flex flex-col gap-3">
-          <p className="text-red-400">
+          <p data-testid="totp-recovery-codes-warning" className="text-red-400">
             {dict.totpSettings.recoveryCodesWarning}
           </p>
           <ul className="space-y-1 font-mono text-neutral-200">
@@ -124,6 +124,7 @@ export default function TotpSettingsView({
           </ul>
           <button
             type="button"
+            data-testid="totp-recovery-codes-ack-button"
             onClick={handleAcknowledgeRecoveryCodes}
             className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100"
           >
@@ -137,15 +138,21 @@ export default function TotpSettingsView({
             {dict.common.authenticatorCodeLabel}
             <input
               type="text"
+              data-testid="totp-code-input"
               value={totpCode}
               onChange={(event) => setTotpCode(event.target.value)}
               required
               className={filledInputClassName}
             />
           </label>
-          {error && <p className="text-red-400">{error}</p>}
+          {error && (
+            <p data-testid="totp-error-message" className="text-red-400">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
+            data-testid="totp-submit-button"
             disabled={isSubmitting}
             className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
@@ -156,14 +163,22 @@ export default function TotpSettingsView({
         <form onSubmit={handleEnable} className="flex flex-col gap-3">
           {qr && (
             // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image optimizasyonuna uygun bir uzak/statik kaynak değil.
-            <img src={qr} alt={dict.totpSettings.qrAlt} className="h-40 w-40" />
+            <img
+              src={qr}
+              alt={dict.totpSettings.qrAlt}
+              data-testid="totp-qr-image"
+              className="h-40 w-40"
+            />
           )}
           <p className="text-muted">{dict.totpSettings.secretKeyHint}</p>
-          <p className="font-mono text-neutral-200 select-all">{setup.secret}</p>
+          <p data-testid="totp-secret-key" className="font-mono text-neutral-200 select-all">
+            {setup.secret}
+          </p>
           <label className="flex flex-col gap-1 text-muted">
             {dict.common.authenticatorCodeLabel}
             <input
               type="text"
+              data-testid="totp-code-input"
               value={totpCode}
               onChange={(event) => setTotpCode(event.target.value)}
               required
@@ -172,9 +187,14 @@ export default function TotpSettingsView({
               className={filledInputClassName}
             />
           </label>
-          {error && <p className="text-red-400">{error}</p>}
+          {error && (
+            <p data-testid="totp-error-message" className="text-red-400">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
+            data-testid="totp-submit-button"
             disabled={isSubmitting}
             className="mt-2 self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
@@ -184,9 +204,14 @@ export default function TotpSettingsView({
       ) : (
         <div className="flex flex-col gap-3">
           <p>{dict.totpSettings.offDescription}</p>
-          {error && <p className="text-red-400">{error}</p>}
+          {error && (
+            <p data-testid="totp-error-message" className="text-red-400">
+              {error}
+            </p>
+          )}
           <button
             type="button"
+            data-testid="totp-start-setup-button"
             onClick={() => void handleStartSetup()}
             disabled={isSubmitting}
             className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"

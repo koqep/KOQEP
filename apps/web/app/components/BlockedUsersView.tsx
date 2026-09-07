@@ -82,15 +82,21 @@ export default function BlockedUsersView({ accessToken, dict, locale }: Props) {
           {dict.common.emailLabel}
           <input
             type="email"
+            data-testid="blocked-users-email-input"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
             className={filledInputClassName}
           />
         </label>
-        {error && <p className="text-red-400">{error}</p>}
+        {error && (
+          <p data-testid="blocked-users-error-message" className="text-red-400">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
+          data-testid="blocked-users-block-button"
           disabled={isSubmitting}
           className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
@@ -99,9 +105,9 @@ export default function BlockedUsersView({ accessToken, dict, locale }: Props) {
       </form>
 
       {blockedUsers === null ? (
-        <p>{dict.common.loading}</p>
+        <p data-testid="blocked-users-loading-message">{dict.common.loading}</p>
       ) : blockedUsers.length === 0 ? (
-        <p>{dict.blockedUsers.emptyList}</p>
+        <p data-testid="blocked-users-empty-message">{dict.blockedUsers.emptyList}</p>
       ) : (
         <ul className="space-y-2">
           {blockedUsers.map((user) => (
@@ -112,6 +118,7 @@ export default function BlockedUsersView({ accessToken, dict, locale }: Props) {
               {user.username}
               <button
                 type="button"
+                data-testid={`blocked-user-${user.email}-unblock-button`}
                 onClick={() => void handleUnblock(user.email)}
                 className="text-muted hover:text-neutral-400"
               >

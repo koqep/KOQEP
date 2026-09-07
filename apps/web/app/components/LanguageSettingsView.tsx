@@ -50,6 +50,7 @@ export default function LanguageSettingsView({
       <div className="flex flex-col gap-1">
         <button
           type="button"
+          data-testid="language-settings-english-button"
           onClick={() => void handleSelect("en")}
           disabled={isSubmitting}
           aria-pressed={locale === "en"}
@@ -63,6 +64,7 @@ export default function LanguageSettingsView({
         </button>
         <button
           type="button"
+          data-testid="language-settings-turkish-button"
           onClick={() => void handleSelect("tr")}
           disabled={isSubmitting}
           aria-pressed={locale === "tr"}
@@ -75,7 +77,11 @@ export default function LanguageSettingsView({
           {dict.languageSettings.turkish}
         </button>
       </div>
-      {error && <p className="text-red-400">{error}</p>}
+      {error && (
+        <p data-testid="language-settings-error-message" className="text-red-400">
+          {error}
+        </p>
+      )}
     </section>
   );
 }

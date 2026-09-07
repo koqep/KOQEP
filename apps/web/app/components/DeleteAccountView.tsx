@@ -62,10 +62,13 @@ export default function DeleteAccountView({
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       {confirming ? (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <p className="text-red-400">{dict.deleteAccount.permanentWarning}</p>
+          <p data-testid="delete-account-warning-message" className="text-red-400">
+            {dict.deleteAccount.permanentWarning}
+          </p>
           <label className="flex items-start gap-2 text-muted">
             <input
               type="checkbox"
+              data-testid="delete-account-redact-checkbox"
               checked={redactMessageContent}
               onChange={(event) =>
                 setRedactMessageContent(event.target.checked)
@@ -77,6 +80,7 @@ export default function DeleteAccountView({
           <PasswordInput
             label={dict.deleteAccount.currentPasswordLabel}
             dict={dict}
+            testId="delete-account-current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -89,6 +93,7 @@ export default function DeleteAccountView({
               {dict.common.authenticatorCodeLabel}
               <input
                 type="text"
+                data-testid="delete-account-totp-code-input"
                 value={totpCode}
                 onChange={(event) => setTotpCode(event.target.value)}
                 required
@@ -96,9 +101,14 @@ export default function DeleteAccountView({
               />
             </label>
           )}
-          {error && <p className="text-red-400">{error}</p>}
+          {error && (
+            <p data-testid="delete-account-error-message" className="text-red-400">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
+            data-testid="delete-account-submit-button"
             disabled={isSubmitting}
             className="mt-2 self-start border border-red-900 px-4 py-1.5 text-red-400 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
@@ -107,9 +117,12 @@ export default function DeleteAccountView({
         </form>
       ) : (
         <div className="flex flex-col gap-3">
-          <p>{dict.deleteAccount.preConfirmParagraph}</p>
+          <p data-testid="delete-account-pre-confirm-message">
+            {dict.deleteAccount.preConfirmParagraph}
+          </p>
           <button
             type="button"
+            data-testid="delete-account-delete-button"
             onClick={() => setConfirming(true)}
             className="self-start border border-red-900 px-4 py-1.5 text-red-400 hover:border-red-700"
           >
