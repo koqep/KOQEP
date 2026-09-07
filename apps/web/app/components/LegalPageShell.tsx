@@ -59,12 +59,14 @@ export default function LegalPageShell({
         <div className="mt-8 flex gap-3 text-xs">
           <Link
             href="/"
+            data-testid="legal-page-home-link"
             className="bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100"
           >
             {homeLabel}
           </Link>
           <Link
             href={switchHref}
+            data-testid="legal-page-switch-link"
             className="border border-neutral-800 px-4 py-1.5 text-neutral-400 hover:border-neutral-600"
           >
             {switchLabel}

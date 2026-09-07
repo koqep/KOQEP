@@ -113,6 +113,7 @@ export default function LandingPage() {
           >
             <button
               type="button"
+              data-testid="landing-locale-tr-button"
               aria-pressed={locale === "tr"}
               onClick={() => setLocale("tr")}
               className={
@@ -125,6 +126,7 @@ export default function LandingPage() {
             </button>
             <button
               type="button"
+              data-testid="landing-locale-en-button"
               aria-pressed={locale === "en"}
               onClick={() => setLocale("en")}
               className={
@@ -145,12 +147,14 @@ export default function LandingPage() {
           <div className="mt-2 flex gap-3">
             <Link
               href="/app"
+              data-testid="landing-login-link"
               className="bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100"
             >
               <span aria-hidden="true">&gt; </span>log in
             </Link>
             <Link
               href="/app?mode=signup"
+              data-testid="landing-signup-link"
               className="border border-neutral-800 px-4 py-1.5 text-neutral-400 hover:border-neutral-600"
             >
               <span aria-hidden="true">+ </span>sign up
@@ -174,14 +178,23 @@ export default function LandingPage() {
         </div>
 
         <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-neutral-800 pt-4 text-xs text-neutral-500">
-          <Link href={copy.privacyHref} className="hover:text-neutral-400">
+          <Link
+            href={copy.privacyHref}
+            data-testid="landing-privacy-link"
+            className="hover:text-neutral-400"
+          >
             privacy policy
           </Link>
-          <Link href={copy.termsHref} className="hover:text-neutral-400">
+          <Link
+            href={copy.termsHref}
+            data-testid="landing-terms-link"
+            className="hover:text-neutral-400"
+          >
             terms of service
           </Link>
           <a
             href={`mailto:${FEEDBACK_EMAIL}?subject=KOQEP%20support`}
+            data-testid="landing-contact-link"
             className="hover:text-neutral-400"
           >
             contact

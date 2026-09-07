@@ -76,6 +76,7 @@ export default function CenteredModal({
           <h2
             ref={headingRef}
             id={CENTERED_MODAL_TITLE_ID}
+            data-testid="centered-modal-title"
             tabIndex={-1}
             className="text-neutral-200 outline-none"
           >
@@ -83,6 +84,7 @@ export default function CenteredModal({
           </h2>
           <button
             type="button"
+            data-testid="centered-modal-close"
             onClick={onRequestClose}
             aria-label={dict.centeredModal.close}
             className="text-muted hover:text-neutral-400"

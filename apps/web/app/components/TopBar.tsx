@@ -38,6 +38,7 @@ export default function TopBar({
         <span className="text-neutral-200">KOQEP</span>
         <button
           type="button"
+          data-testid="topbar-open-sidebar-button"
           onClick={onOpenSidebar}
           aria-label={dict.topBar.openRoomList}
           className="text-muted hover:text-neutral-400 md:hidden"
@@ -46,6 +47,7 @@ export default function TopBar({
         </button>
         <button
           type="button"
+          data-testid="topbar-new-room-button"
           onClick={onCreateRoomClick}
           className="text-muted hover:text-neutral-400"
         >
@@ -53,6 +55,7 @@ export default function TopBar({
         </button>
         <button
           type="button"
+          data-testid="topbar-explore-button"
           onClick={onDiscoverRoomsClick}
           className="text-muted hover:text-neutral-400"
         >
@@ -63,6 +66,7 @@ export default function TopBar({
         {isModerator && (
           <button
             type="button"
+            data-testid="topbar-moderation-button"
             onClick={onOpenModeration}
             className="text-muted hover:text-neutral-400"
           >

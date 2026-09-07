@@ -47,7 +47,9 @@ export default function ResetPasswordView() {
   if (!token) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">{dict.common.invalidLink}</p>
+        <p data-testid="reset-password-invalid-link-message" className="text-neutral-400">
+          {dict.common.invalidLink}
+        </p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
           {dict.common.backToLogin}
         </Link>
@@ -58,7 +60,9 @@ export default function ResetPasswordView() {
   if (success) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">{dict.resetPassword.successMessage}</p>
+        <p data-testid="reset-password-success-message" className="text-neutral-400">
+          {dict.resetPassword.successMessage}
+        </p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
           {dict.common.backToLogin}
         </Link>
@@ -75,15 +79,21 @@ export default function ResetPasswordView() {
         <PasswordInput
           label={dict.resetPassword.passwordLabel}
           dict={dict}
+          testId="reset-password-new-password"
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
           required
         />
 
-        {error && <p className="text-red-400">{error}</p>}
+        {error && (
+          <p data-testid="reset-password-error-message" className="text-red-400">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"
+          data-testid="reset-password-submit-button"
           disabled={isSubmitting}
           className="mt-2 border border-neutral-800 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >

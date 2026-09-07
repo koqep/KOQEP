@@ -85,7 +85,9 @@ export default function AppShell() {
   if (isBootstrapping) {
     return (
       <main className="flex h-dvh items-center justify-center">
-        <p className="text-muted">{dict.common.loading}</p>
+        <p data-testid="app-shell-loading-message" className="text-muted">
+          {dict.common.loading}
+        </p>
       </main>
     );
   }
