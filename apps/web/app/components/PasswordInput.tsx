@@ -26,6 +26,13 @@ interface Props
   // kalan 4 çağıran (D3/D4/D6'nın işi) kendi dict'lerini kazanana kadar
   // davranışları SIFIR değişir.
   dict?: Dictionary;
+  // M9 Slice F Faz 1 Grup 1: AYNI opsiyonel-geçiş deseni - bu bileşen
+  // 6 dosyadan çağrılıyor, bu grup sadece 2'sini (AuthView/
+  // ResetPasswordView) migrate ediyor. Sağlanırsa `<input>`'a
+  // `data-testid={testId}`, göz butonuna `data-testid="{testId}-toggle"`
+  // eklenir; sağlanmazsa HİÇBİR data-testid render edilmez - kalan 4
+  // çağıran (Grup 2/3'ün işi) SIFIR davranış değişikliği görür.
+  testId?: string;
 }
 
 // Avatar.tsx'in konvansiyonlarını izliyor (aria-hidden, açık width/height,

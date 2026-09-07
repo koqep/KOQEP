@@ -55,6 +55,7 @@ export default function AccountMenu({
       <button
         ref={triggerRef}
         type="button"
+        data-testid="account-menu-trigger"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((value) => !value)}
@@ -76,6 +77,7 @@ export default function AccountMenu({
             <button
               role="menuitem"
               type="button"
+              data-testid="account-menu-profile-item"
               onClick={() => select(() => onOpenProfile(username))}
               className={menuItemClassName}
             >
@@ -85,6 +87,7 @@ export default function AccountMenu({
           <button
             role="menuitem"
             type="button"
+            data-testid="account-menu-settings-item"
             onClick={() => select(onOpenSettings)}
             className={menuItemClassName}
           >
@@ -93,6 +96,7 @@ export default function AccountMenu({
           <button
             role="menuitem"
             type="button"
+            data-testid="account-menu-feedback-item"
             onClick={() => select(onOpenFeedback)}
             className={menuItemClassName}
           >
@@ -101,6 +105,7 @@ export default function AccountMenu({
           <button
             role="menuitem"
             type="button"
+            data-testid="account-menu-logout-item"
             onClick={() => select(onLogout)}
             className={menuItemClassName}
           >

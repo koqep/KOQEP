@@ -62,6 +62,7 @@ export default function AuthPageShell({
           >
             <button
               type="button"
+              data-testid="auth-locale-tr-button"
               aria-pressed={locale === "tr"}
               onClick={() => onLocaleChange("tr")}
               className={
@@ -74,6 +75,7 @@ export default function AuthPageShell({
             </button>
             <button
               type="button"
+              data-testid="auth-locale-en-button"
               aria-pressed={locale === "en"}
               onClick={() => onLocaleChange("en")}
               className={
@@ -90,12 +92,17 @@ export default function AuthPageShell({
         {children}
 
         <div className="flex justify-between text-xs">
-          <Link href="/" className="text-muted hover:text-neutral-400">
+          <Link
+            href="/"
+            data-testid="auth-back-to-home-link"
+            className="text-muted hover:text-neutral-400"
+          >
             <span aria-hidden="true">&lt; </span>
             {dict.authPageShell.backToHome}
           </Link>
           <a
             href={`mailto:${FEEDBACK_EMAIL}`}
+            data-testid="auth-help-link"
             className="text-muted hover:text-neutral-400"
           >
             {dict.authPageShell.help}

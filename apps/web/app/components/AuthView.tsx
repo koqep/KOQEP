@@ -144,6 +144,7 @@ export default function AuthView({
             type="button"
             role="tab"
             id="auth-tab-login"
+            data-testid="auth-login-tab"
             aria-selected={mode === "login"}
             aria-controls="auth-panel"
             onClick={() => switchMode("login")}
@@ -160,6 +161,7 @@ export default function AuthView({
             type="button"
             role="tab"
             id="auth-tab-signup"
+            data-testid="auth-signup-tab"
             aria-selected={mode === "signup"}
             aria-controls="auth-panel"
             onClick={() => switchMode("signup")}
@@ -188,11 +190,17 @@ export default function AuthView({
         className="flex flex-col gap-3 p-4"
       >
         {mode === "forgot-password" && resetRequested ? (
-          <p className="text-neutral-400">
+          <p
+            data-testid="auth-reset-requested-message"
+            className="text-neutral-400"
+          >
             {dict.authView.resetRequestedMessage}
           </p>
         ) : mode === "signup" && signupComplete ? (
-          <p className="text-neutral-400">
+          <p
+            data-testid="auth-signup-complete-message"
+            className="text-neutral-400"
+          >
             {dict.authView.signupCompleteMessage}
           </p>
         ) : (
@@ -210,6 +218,7 @@ export default function AuthView({
                 {dict.authView.inviteCodeLabel}
                 <input
                   type="text"
+                  data-testid="auth-invite-code-input"
                   value={inviteCode}
                   onChange={(event) => setInviteCode(event.target.value)}
                   required
@@ -226,6 +235,7 @@ export default function AuthView({
               {dict.common.emailLabel}
               <input
                 type="email"
+                data-testid="auth-email-input"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
@@ -239,6 +249,7 @@ export default function AuthView({
                 {dict.authView.usernameLabel}
                 <input
                   type="text"
+                  data-testid="auth-username-input"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   required
@@ -255,6 +266,7 @@ export default function AuthView({
               <PasswordInput
                 label={dict.common.passwordLabel}
                 dict={dict}
+                testId="auth-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -269,6 +281,7 @@ export default function AuthView({
                 {dict.common.authenticatorCodeLabel}
                 <input
                   type="text"
+                  data-testid="auth-totp-code-input"
                   value={totpCode}
                   onChange={(event) => setTotpCode(event.target.value)}
                   required
@@ -283,6 +296,7 @@ export default function AuthView({
               <label className="flex items-start gap-2 text-muted">
                 <input
                   type="checkbox"
+                  data-testid="auth-accept-terms-checkbox"
                   checked={acceptedTerms}
                   onChange={(event) => setAcceptedTerms(event.target.checked)}
                   required
@@ -293,6 +307,7 @@ export default function AuthView({
                   <Link
                     href="/terms"
                     target="_blank"
+                    data-testid="auth-terms-link"
                     className="text-neutral-400 hover:text-neutral-200"
                   >
                     {dict.authView.termsLink}
@@ -301,6 +316,7 @@ export default function AuthView({
                   <Link
                     href="/privacy"
                     target="_blank"
+                    data-testid="auth-privacy-link"
                     className="text-neutral-400 hover:text-neutral-200"
                   >
                     {dict.authView.privacyLink}
@@ -310,10 +326,15 @@ export default function AuthView({
               </label>
             )}
 
-            {error && <p className="text-red-400">{error}</p>}
+            {error && (
+              <p data-testid="auth-error-message" className="text-red-400">
+                {error}
+              </p>
+            )}
 
             <button
               type="submit"
+              data-testid="auth-submit-button"
               disabled={isSubmitting || (mode === "signup" && !acceptedTerms)}
               className="mt-2 bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
             >
@@ -330,6 +351,7 @@ export default function AuthView({
         {mode === "forgot-password" ? (
           <button
             type="button"
+            data-testid="auth-back-to-login-button"
             onClick={() => switchMode("login")}
             className="text-muted hover:text-neutral-400"
           >
@@ -340,6 +362,7 @@ export default function AuthView({
             {mode === "login" && (
               <button
                 type="button"
+                data-testid="auth-forgot-password-button"
                 onClick={() => switchMode("forgot-password")}
                 className="text-muted hover:text-neutral-400"
               >
@@ -348,6 +371,7 @@ export default function AuthView({
             )}
             <button
               type="button"
+              data-testid="auth-switch-mode-button"
               onClick={() => switchMode(mode === "login" ? "signup" : "login")}
               className="border border-neutral-800 px-4 py-1.5 text-neutral-400 hover:border-neutral-600"
             >

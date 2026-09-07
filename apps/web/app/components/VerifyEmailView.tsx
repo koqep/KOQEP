@@ -42,7 +42,9 @@ export default function VerifyEmailView() {
   if (!token) {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">{dict.common.invalidLink}</p>
+        <p data-testid="verify-email-invalid-link-message" className="text-neutral-400">
+          {dict.common.invalidLink}
+        </p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
           {dict.common.backToLogin}
         </Link>
@@ -53,7 +55,9 @@ export default function VerifyEmailView() {
   if (status === "success") {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-neutral-400">{dict.verifyEmail.successMessage}</p>
+        <p data-testid="verify-email-success-message" className="text-neutral-400">
+          {dict.verifyEmail.successMessage}
+        </p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
           {dict.common.backToLogin}
         </Link>
@@ -64,7 +68,9 @@ export default function VerifyEmailView() {
   if (status === "error") {
     return (
       <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-        <p className="text-red-400">{dict.verifyEmail.errorMessage}</p>
+        <p data-testid="verify-email-error-message" className="text-red-400">
+          {dict.verifyEmail.errorMessage}
+        </p>
         <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
           {dict.common.backToLogin}
         </Link>
@@ -74,7 +80,9 @@ export default function VerifyEmailView() {
 
   return (
     <main className="animate-fade-in mx-auto flex h-dvh max-w-sm flex-col justify-center p-4">
-      <p className="text-neutral-400">{dict.verifyEmail.verifying}</p>
+      <p data-testid="verify-email-verifying-message" className="text-neutral-400">
+        {dict.verifyEmail.verifying}
+      </p>
     </main>
   );
 }
