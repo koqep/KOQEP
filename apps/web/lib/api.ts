@@ -196,6 +196,10 @@ export async function signup(input: {
   username: string;
   password: string;
   acceptedTerms: boolean;
+  // M9 Slice E: login()'in localeHint'iyle AYNI mekanizma - giriş
+  // öncesi AuthPageShell'in TR/EN kutusu, doğrulama e-postasının
+  // hangi dilde gideceğini VE yeni User satırının locale'ini belirler.
+  localeHint?: Locale;
 }): Promise<void> {
   await postJson("/auth/signup", input);
 }

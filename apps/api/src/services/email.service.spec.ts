@@ -31,6 +31,7 @@ describe('EmailService', () => {
       await service.sendPasswordResetRequestEmail(
         'a@koqep.local',
         'https://x/reset?token=abc',
+        'tr',
       );
 
       expect(sendMock).toHaveBeenCalledWith(
@@ -43,11 +44,36 @@ describe('EmailService', () => {
       );
     });
 
+    // M9 Slice E: bilingual şablon haritasının gerçekten locale'e göre
+    // farklı içerik ürettiğinin kanıtı - yukarıdaki test TEK BAŞINA
+    // (sadece 'tr' ile) EN dalının hiç çalışmadığını fark etmezdi.
+    it('en_locale_icin_ingilizce_konu_ve_govde_uretir', async () => {
+      sendMock.mockResolvedValue({ data: { id: 'x' }, error: null });
+      const service = buildService();
+
+      await service.sendPasswordResetRequestEmail(
+        'a@koqep.local',
+        'https://x/reset?token=abc',
+        'en',
+      );
+
+      expect(sendMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: expect.stringContaining('Password reset') as string,
+          html: expect.stringContaining('reset your password') as string,
+        }),
+      );
+    });
+
     it('kullanilan_from_adresi_config_uzerinden_gelir', async () => {
       sendMock.mockResolvedValue({ data: { id: 'x' }, error: null });
       const service = buildService({ EMAIL_FROM_ADDRESS: 'noreply@koqep.com' });
 
-      await service.sendPasswordResetRequestEmail('a@koqep.local', 'link');
+      await service.sendPasswordResetRequestEmail(
+        'a@koqep.local',
+        'link',
+        'tr',
+      );
 
       expect(sendMock).toHaveBeenCalledWith(
         expect.objectContaining({ from: 'noreply@koqep.com' }),
@@ -62,7 +88,7 @@ describe('EmailService', () => {
       const service = buildService();
 
       await expect(
-        service.sendPasswordResetRequestEmail('a@koqep.local', 'link'),
+        service.sendPasswordResetRequestEmail('a@koqep.local', 'link', 'tr'),
       ).rejects.toThrow();
     });
   });
@@ -72,7 +98,7 @@ describe('EmailService', () => {
       sendMock.mockResolvedValue({ data: { id: 'x' }, error: null });
       const service = buildService();
 
-      await service.sendPasswordChangedNotificationEmail('a@koqep.local');
+      await service.sendPasswordChangedNotificationEmail('a@koqep.local', 'tr');
 
       expect(sendMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -87,9 +113,13 @@ describe('EmailService', () => {
     it('gercek_resend_cagrisi_yapmadan_sessizce_doner', async () => {
       const service = buildService({ EMAIL_TRANSPORT: 'fake' });
 
-      await service.sendPasswordResetRequestEmail('a@koqep.local', 'link');
-      await service.sendPasswordChangedNotificationEmail('a@koqep.local');
-      await service.sendEmailVerificationEmail('a@koqep.local', 'link');
+      await service.sendPasswordResetRequestEmail(
+        'a@koqep.local',
+        'link',
+        'tr',
+      );
+      await service.sendPasswordChangedNotificationEmail('a@koqep.local', 'tr');
+      await service.sendEmailVerificationEmail('a@koqep.local', 'link', 'tr');
 
       expect(sendMock).not.toHaveBeenCalled();
     });
@@ -98,7 +128,11 @@ describe('EmailService', () => {
       sendMock.mockResolvedValue({ data: { id: 'x' }, error: null });
       const service = buildService({ EMAIL_TRANSPORT: 'false' });
 
-      await service.sendPasswordResetRequestEmail('a@koqep.local', 'link');
+      await service.sendPasswordResetRequestEmail(
+        'a@koqep.local',
+        'link',
+        'tr',
+      );
 
       expect(sendMock).toHaveBeenCalled();
     });

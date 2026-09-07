@@ -109,7 +109,7 @@ describe('Account lockout (e2e)', () => {
     expect(locked.lockedUntil!.getTime()).toBeGreaterThan(Date.now());
     expect(
       emailServiceMock.sendAccountLockedNotificationEmail,
-    ).toHaveBeenCalledWith(user.email);
+    ).toHaveBeenCalledWith(user.email, 'en');
   });
 
   it('kilitliyken_dogru_sifreyle_bile_reddeder_bildirimi_tekrar_gondermez', async () => {
@@ -194,7 +194,7 @@ describe('Account lockout (e2e)', () => {
     await waitForLockoutNotifiedAt(user.id);
     expect(
       emailServiceMock.sendAccountLockedNotificationEmail,
-    ).toHaveBeenCalledWith(user.email);
+    ).toHaveBeenCalledWith(user.email, 'en');
   });
 
   it('yanlis_totp_kodu_kilit_sayacini_hic_etkilemez', async () => {

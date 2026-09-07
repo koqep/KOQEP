@@ -2,6 +2,8 @@ import {
   Equals,
   IsBoolean,
   IsEmail,
+  IsIn,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -35,4 +37,12 @@ export class SignupDto {
   @IsBoolean()
   @Equals(true)
   acceptedTerms: boolean;
+
+  // M9 Slice E: LoginDto.localeHint'in BİREBİR aynısı - giriş öncesi
+  // AuthPageShell'in TR/EN kutusu zaten bu değeri biliyor. Login'in
+  // "sadece User.locale null'sa senkronla" kısmi mantığı GEREKMİYOR -
+  // bu YENİ bir satır, ilk fırsat (auth.service.ts'in signup()'ı).
+  @IsOptional()
+  @IsIn(['en', 'tr'])
+  localeHint?: 'en' | 'tr';
 }

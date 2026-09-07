@@ -61,6 +61,7 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     const calls = emailServiceMock.sendEmailVerificationEmail.mock.calls as [
       string,
       string,
+      string,
     ][];
     const verifyLink = calls[calls.length - 1][1];
     const token = new URL(verifyLink).searchParams.get('token');
@@ -130,6 +131,7 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     expect(emailServiceMock.sendEmailVerificationEmail).toHaveBeenCalledWith(
       email,
       expect.stringContaining('verify-email?token=') as string,
+      'en',
     );
 
     const createdUser = await prisma.user.findUniqueOrThrow({
@@ -298,6 +300,37 @@ describe('Auth signup/verify-email/login/refresh/logout (e2e)', () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email, password, localeHint: 'tr' })
+      .expect(201);
+    const { accessToken } = loginResponse.body as { accessToken: string };
+
+    const meResponse = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect((meResponse.body as { locale: string }).locale).toBe('tr');
+  });
+
+  // M9 Slice E: signup'ın KENDİ localeHint'i - login'in senkronunu hiç
+  // beklemeden, İLK GİRİŞTEN ÖNCE bile locale doğru.
+  it('signup_localehint_ile_kaydolunca_ilk_giristen_once_bile_locale_dogru', async () => {
+    const { code } = await seedInvite();
+    const email = `user-${randomUUID()}@koqep.local`;
+    const username = `user-${randomUUID()}`;
+    const password = 'a-strong-password';
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({ inviteCode: code, email, username, password, localeHint: 'tr' })
+      .expect(201);
+    const token = extractVerificationToken();
+    await request(app.getHttpServer())
+      .post('/auth/verify-email')
+      .send({ token })
+      .expect(201);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password })
       .expect(201);
     const { accessToken } = loginResponse.body as { accessToken: string };
 
@@ -677,6 +710,7 @@ describe('Auth signup: kanıtlanabilir onay (ValidationPipe) (e2e)', () => {
     const calls = emailServiceMock.sendEmailVerificationEmail.mock.calls as [
       string,
       string,
+      string,
     ][];
     const verifyLink = calls[calls.length - 1][1];
     const token = new URL(verifyLink).searchParams.get('token');
@@ -695,6 +729,25 @@ describe('Auth signup: kanıtlanabilir onay (ValidationPipe) (e2e)', () => {
       .patch('/users/me/locale')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ locale: 'de' })
+      .expect(400);
+  });
+
+  // M9 Slice E: SignupDto.localeHint, LoginDto.localeHint'in BİREBİR
+  // aynı DTO validasyonunu paylaşıyor - AYNI desen (bkz. yukarısındaki
+  // yorum), sadece signup uç noktası için.
+  it('signup_gecersiz_localehint_degerini_reddeder', async () => {
+    const code = await seedInvite();
+
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        inviteCode: code,
+        email: `su-${randomUUID()}@koqep.local`,
+        username: `su-${randomUUID().slice(0, 18)}`,
+        password: 'a-strong-password',
+        acceptedTerms: true,
+        localeHint: 'de',
+      })
       .expect(400);
   });
 });
