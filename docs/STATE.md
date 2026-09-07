@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-05 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (TÜMÜ)/E main'de — **M9'un SADECE Slice F'i (testid migration) kaldı**; `feat/i18n-email-templates` push bekliyor)
+**Son güncelleme:** 2026-09-07 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (TÜMÜ)/E main'de — M9'un SADECE Slice F'i (testid migration) kaldı; Slice F'in kapsam turu (Faz 1: 3 grup + Faz 2: 6 dalga) tamamlandı, `docs/m9-slice-f-scope` push bekliyor)
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ, 6 dalga) + Slice E (e-posta şablonları) main'de** (PR #106-128, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA + backend `EmailService`'in 4 şablonu artık `User.locale`'e göre EN/TR gönderiyor. **M9'un SADECE Slice F'i kalıyor** (787 Türkçe-bağımlı Playwright seçicisinin `data-testid`'e taşınması, D2'nin kapsamı hiç değildi).
-- **2026-09-05: M9 Slice E — e-posta şablonları iki dilli, `feat/i18n-email-templates` dalında (main'den), push bekliyor.** `EmailService`'in 4 gönderim metodu (şifre sıfırlama/değişikliği, hesap kilidi, e-posta doğrulama) hâlâ inline Türkçe HTML'di — artık zorunlu bir `locale` parametresi alıyor. `SignupDto`'ya `LoginDto.localeHint`'in aynısı eklendi — giriş öncesi TR/EN kutusu artık signup'a da bağlı, doğrulama e-postası VE yeni `User.locale` doğru dilde. Birim+e2e testler güncellendi/eklendi. Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice F sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ, 6 dalga) + Slice E (e-posta şablonları) main'de** (PR #106-128, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA + backend `EmailService`'in 4 şablonu artık `User.locale`'e göre EN/TR gönderiyor. **M9'un SADECE Slice F'i kalıyor** (860 metin-bağımlı Playwright seçicisinin `data-testid`'e taşınması, D2'nin kapsamı hiç değildi).
+- **2026-09-07: M9 Slice F kapsam turu — taze sayım (787→860 çağrı, 40→42 dosya) + Faz 1/Faz 2 grup planı, `docs/m9-slice-f-scope` dalında (main'den, docs-only), push bekliyor.** Kilit içgörü: D2'nin AKSİNE `data-testid` eklemek SAF EKLEME (eski metin-tabanlı seçiciler kırılmıyor) — iş, kaynak-dosyalarına-ekleme (Faz 1, 3 grup, sıfır test dosyası) ve spec-dosyalarını-çevirme (Faz 2, 6 dalga, sıfır kaynak dosyası) diye İKİ BAĞIMSIZ faza bölünüyor, D2'nin "sıra bozulursa kırılır" kısıtı YOK. İsimlendirme kuralı kararlaştırıldı (`kebab-case`, liste öğeleri ID gömer). Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice F (Faz 1 Grup 1) sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/i18n-email-templates` (main'den, 2 commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 Slice F (testid migration, M9'un SON parçası) mi, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `docs/m9-slice-f-scope` (main'den, 1 commit, docs-only) doğrulandı, push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 Slice F Faz 1 Grup 1'in (auth+bağımsız sayfalar+paylaşılan kabuk, `data-testid` ekleme) gerçek implementasyonu mu, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.
