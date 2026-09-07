@@ -60,19 +60,23 @@ export default function ProfileView({
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
       {error ? (
-        <p className="text-red-400">{error}</p>
+        <p data-testid="profile-error-message" className="text-red-400">
+          {error}
+        </p>
       ) : profile === null ? (
-        <p>{dict.common.loading}</p>
+        <p data-testid="profile-loading-message">{dict.common.loading}</p>
       ) : (
         <div className="flex flex-col gap-2">
           <LargeAvatar seed={profile.username} className="text-neutral-200" />
-          <p className="text-neutral-200">{profile.username}</p>
-          <p>
+          <p data-testid="profile-username" className="text-neutral-200">
+            {profile.username}
+          </p>
+          <p data-testid="profile-joined-text">
             {interpolate(dict.profile.joined, {
               date: formatJoinDate(profile.createdAt, locale),
             })}
           </p>
-          <p>
+          <p data-testid="profile-level-xp-text">
             {interpolate(dict.profile.levelXp, {
               level: profile.level,
               xp: profile.totalXp,
@@ -82,6 +86,7 @@ export default function ProfileView({
               (XP_PER_LEVEL frontend'e hiç açılmıyor, ADR-0002). */}
           <div
             role="progressbar"
+            data-testid="profile-xp-progressbar"
             aria-valuenow={Math.round(profile.xpProgressPercent)}
             aria-valuemin={0}
             aria-valuemax={100}

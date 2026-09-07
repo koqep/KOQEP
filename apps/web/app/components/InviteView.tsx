@@ -31,9 +31,9 @@ export default function InviteView({ accessToken, dict }: Props) {
       <p className="mb-4 text-muted">{dict.invite.policyParagraph}</p>
 
       {invites === null ? (
-        <p>{dict.common.loading}</p>
+        <p data-testid="invite-loading-message">{dict.common.loading}</p>
       ) : invites.length === 0 ? (
-        <p>{dict.invite.emptyList}</p>
+        <p data-testid="invite-empty-message">{dict.invite.emptyList}</p>
       ) : (
         <ul className="space-y-2">
           {invites.map((invite) => (
@@ -44,7 +44,10 @@ export default function InviteView({ accessToken, dict }: Props) {
               <span className="select-all font-mono text-neutral-200">
                 {invite.code}
               </span>
-              <span className="text-muted">
+              <span
+                data-testid={`invite-${invite.code}-status`}
+                className="text-muted"
+              >
                 {invite.usedAt
                   ? dict.invite.used
                   : invite.revokedAt

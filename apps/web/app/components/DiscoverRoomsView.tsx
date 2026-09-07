@@ -107,12 +107,16 @@ export default function DiscoverRoomsView({
 
   return (
     <section className="flex-1 overflow-y-auto py-4 text-neutral-400">
-      {error && <p className="mb-4 text-red-400">{error}</p>}
+      {error && (
+        <p data-testid="discover-rooms-error-message" className="mb-4 text-red-400">
+          {error}
+        </p>
+      )}
 
       {rooms === null ? (
-        <p>{dict.common.loading}</p>
+        <p data-testid="discover-rooms-loading-message">{dict.common.loading}</p>
       ) : rooms.length === 0 ? (
-        <p>{dict.discoverRooms.emptyList}</p>
+        <p data-testid="discover-rooms-empty-message">{dict.discoverRooms.emptyList}</p>
       ) : (
         <ul className="space-y-2">
           {rooms.map((room) => (
@@ -148,12 +152,14 @@ export default function DiscoverRoomsView({
                   <PasswordInput
                     label={dict.common.passwordLabel}
                     dict={dict}
+                    testId={`discover-room-${room.id}-password`}
                     filled
                     value={passwordDraft}
                     onChange={(event) => setPasswordDraft(event.target.value)}
                   />
                   <button
                     type="submit"
+                    data-testid={`discover-room-${room.id}-join-button`}
                     disabled={joiningId === room.id}
                     className="bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
                   >
@@ -163,6 +169,7 @@ export default function DiscoverRoomsView({
                   </button>
                   <button
                     type="button"
+                    data-testid={`discover-room-${room.id}-cancel-button`}
                     onClick={handleCancelPasswordPrompt}
                     className="text-muted hover:text-neutral-400"
                   >
@@ -172,6 +179,7 @@ export default function DiscoverRoomsView({
               ) : (
                 <button
                   type="button"
+                  data-testid={`discover-room-${room.id}-join-button`}
                   onClick={() => void handleJoin(room)}
                   disabled={joiningId === room.id}
                   className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
@@ -189,6 +197,7 @@ export default function DiscoverRoomsView({
       {nextCursor && (
         <button
           type="button"
+          data-testid="discover-rooms-load-more-button"
           onClick={() => void handleLoadMore()}
           disabled={isLoadingMore}
           className="mt-4 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"

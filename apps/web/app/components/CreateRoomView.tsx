@@ -86,6 +86,7 @@ export default function CreateRoomView({
           {dict.createRoom.roomNameLabel}
           <input
             type="text"
+            data-testid="create-room-name-input"
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={MAX_ROOM_NAME_LENGTH}
@@ -97,6 +98,7 @@ export default function CreateRoomView({
           {dict.createRoom.descriptionLabel}
           <input
             type="text"
+            data-testid="create-room-description-input"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             maxLength={MAX_ROOM_DESCRIPTION_LENGTH}
@@ -106,14 +108,20 @@ export default function CreateRoomView({
         <PasswordInput
           label={dict.createRoom.passwordLabel}
           dict={dict}
+          testId="create-room-password"
           filled
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           maxLength={MAX_ROOM_PASSWORD_LENGTH}
         />
-        {error && <p className="text-red-400">{error}</p>}
+        {error && (
+          <p data-testid="create-room-error-message" className="text-red-400">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
+          data-testid="create-room-submit-button"
           disabled={isSubmitting || name.length === 0}
           className="self-start bg-neutral-200 px-4 py-1.5 text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
