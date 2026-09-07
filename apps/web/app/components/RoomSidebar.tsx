@@ -69,6 +69,7 @@ export default function RoomSidebar({
           </h2>
           <button
             type="button"
+            data-testid="room-sidebar-close-button"
             onClick={onClose}
             className="text-muted hover:text-neutral-400"
           >
@@ -80,6 +81,7 @@ export default function RoomSidebar({
       <input
         type="text"
         aria-label={dict.roomSidebar.searchAriaLabel}
+        data-testid="room-sidebar-search-input"
         placeholder={dict.roomSidebar.searchPlaceholder}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
@@ -87,6 +89,7 @@ export default function RoomSidebar({
       />
       <button
         type="button"
+        data-testid="room-sidebar-toggle-archived-button"
         onClick={onToggleShowArchived}
         className="mb-3 self-start text-muted hover:text-neutral-400"
       >
@@ -105,6 +108,7 @@ export default function RoomSidebar({
             <li key={r.id} className="flex items-center gap-1">
               <button
                 type="button"
+                data-testid={`room-sidebar-${r.id}-switch-button`}
                 onClick={() => onRoomSwitch(r)}
                 title={
                   (r.description ? `${r.description} — ` : "") +
@@ -127,6 +131,7 @@ export default function RoomSidebar({
               {!CORE_ROOM_NAMES.includes(r.name) && (
                 <button
                   type="button"
+                  data-testid={`room-sidebar-${r.id}-leave-button`}
                   onClick={() => onLeaveRoom(r)}
                   title={dict.roomSidebar.leaveRoomTitle}
                   className="text-muted hover:text-red-400"

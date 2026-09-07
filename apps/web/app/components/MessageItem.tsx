@@ -167,7 +167,10 @@ export default function MessageItem({
     (!isMine && reportState !== "sent");
 
   return (
-    <li className={"text-neutral-200" + (className ? ` ${className}` : "")}>
+    <li
+      data-testid={`message-${message.id}`}
+      className={"text-neutral-200" + (className ? ` ${className}` : "")}
+    >
       {isEditing ? (
         <form
           onSubmit={handleEditSubmit}
@@ -176,6 +179,7 @@ export default function MessageItem({
           <input
             type="text"
             aria-label={dict.messageItem.editAriaLabel}
+            data-testid={`message-${message.id}-edit-input`}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             // eslint-disable-next-line jsx-a11y/no-autofocus -- "düzenle"ye tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
@@ -184,12 +188,14 @@ export default function MessageItem({
           />
           <button
             type="submit"
+            data-testid={`message-${message.id}-edit-save-button`}
             className="text-muted hover:text-neutral-400"
           >
             {dict.common.saveButton}
           </button>
           <button
             type="button"
+            data-testid={`message-${message.id}-edit-cancel-button`}
             onClick={() => setIsEditing(false)}
             className="text-muted hover:text-neutral-400"
           >
@@ -224,6 +230,7 @@ export default function MessageItem({
               // tıklanabilirlik SADECE metin etiketinden geliyor.
               <button
                 type="button"
+                data-testid={`message-${message.id}-author`}
                 onClick={() => onViewProfile(clickableAuthorUsername)}
                 className="text-muted hover:text-neutral-400"
               >
@@ -232,9 +239,11 @@ export default function MessageItem({
             ) : (
               // Silinmiş yazarlı mesajlar tıklanamaz - authorId onlar için
               // zaten hiç yok, profile açacak bir hedef yok.
-              <span className="text-muted">{authorLabel}:</span>
+              <span data-testid={`message-${message.id}-author`} className="text-muted">
+                {authorLabel}:
+              </span>
             ))}
-          <span className="flex-1">
+          <span data-testid={`message-${message.id}-content`} className="flex-1">
             <MessageContent content={message.content} />
             {message.editedAt && (
               <span className="text-muted"> {dict.messageItem.editedSuffix}</span>
@@ -245,6 +254,7 @@ export default function MessageItem({
               <button
                 ref={menuTriggerRef}
                 type="button"
+                data-testid={`message-${message.id}-menu-trigger`}
                 aria-haspopup="menu"
                 aria-expanded={isMenuOpen}
                 aria-label={dict.messageItem.messageActionsAriaLabel}
@@ -271,6 +281,7 @@ export default function MessageItem({
                     <button
                       role="menuitem"
                       type="button"
+                      data-testid={`message-${message.id}-menu-edit`}
                       onClick={() => selectAction(startEditing)}
                       className={menuItemClassName}
                     >
@@ -285,6 +296,7 @@ export default function MessageItem({
                     <button
                       role="menuitem"
                       type="button"
+                      data-testid={`message-${message.id}-menu-delete`}
                       onClick={() =>
                         selectAction(() => setIsConfirmingDelete(true))
                       }
@@ -297,6 +309,7 @@ export default function MessageItem({
                     <button
                       role="menuitem"
                       type="button"
+                      data-testid={`message-${message.id}-menu-history`}
                       onClick={() =>
                         selectAction(() => void toggleHistory())
                       }
@@ -311,6 +324,7 @@ export default function MessageItem({
                     <button
                       role="menuitem"
                       type="button"
+                      data-testid={`message-${message.id}-menu-report`}
                       disabled={reportState === "sending"}
                       onClick={() => selectAction(() => void handleReport())}
                       className={
@@ -335,6 +349,7 @@ export default function MessageItem({
               </span>
               <button
                 type="button"
+                data-testid={`message-${message.id}-confirm-delete-yes`}
                 onClick={() => {
                   onSubmitDelete(message.id);
                   setIsConfirmingDelete(false);
@@ -345,6 +360,7 @@ export default function MessageItem({
               </button>
               <button
                 type="button"
+                data-testid={`message-${message.id}-confirm-delete-cancel`}
                 onClick={() => setIsConfirmingDelete(false)}
                 className="text-muted hover:text-neutral-400"
               >
@@ -353,7 +369,9 @@ export default function MessageItem({
             </>
           )}
           {!isMine && reportState === "sent" && (
-            <span className="text-muted">{dict.messageItem.reportedLabel}</span>
+            <span data-testid={`message-${message.id}-reported-label`} className="text-muted">
+              {dict.messageItem.reportedLabel}
+            </span>
           )}
         </div>
       )}
@@ -361,11 +379,17 @@ export default function MessageItem({
       {isHistoryOpen && (
         <div className="ml-4 border-l border-neutral-800 pl-2">
           {historyError ? (
-            <p className="text-red-400">{historyError}</p>
+            <p data-testid={`message-${message.id}-history-error`} className="text-red-400">
+              {historyError}
+            </p>
           ) : historyEntries === null ? (
-            <p className="text-muted">{dict.common.loading}</p>
+            <p data-testid={`message-${message.id}-history-loading`} className="text-muted">
+              {dict.common.loading}
+            </p>
           ) : historyEntries.length === 0 ? (
-            <p className="text-muted">{dict.messageItem.noEditHistory}</p>
+            <p data-testid={`message-${message.id}-history-empty`} className="text-muted">
+              {dict.messageItem.noEditHistory}
+            </p>
           ) : (
             <ul className="space-y-0.5">
               {historyEntries.map((entry, index) => (

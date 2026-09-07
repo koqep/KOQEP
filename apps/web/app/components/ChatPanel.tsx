@@ -99,7 +99,7 @@ export default function ChatPanel({
   return (
     <>
       {activeRoom?.announcement && (
-        <p className="border-b border-neutral-800 pb-2 text-neutral-300">
+        <p data-testid="chat-panel-announcement" className="border-b border-neutral-800 pb-2 text-neutral-300">
           <span className="text-muted">announcement:</span>{" "}
           <MessageContent content={activeRoom.announcement} />
         </p>
@@ -111,6 +111,7 @@ export default function ChatPanel({
         {nextCursor && (
           <button
             type="button"
+            data-testid="chat-panel-load-older-button"
             onClick={onLoadOlder}
             disabled={isLoadingOlder}
             className="mb-2 text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
@@ -119,7 +120,7 @@ export default function ChatPanel({
           </button>
         )}
         {messages.length === 0 ? (
-          <p>
+          <p data-testid="chat-panel-empty-message">
             {activeRoom
               ? interpolate(dict.chatPanel.roomEmptyMessage, {
                   room: activeRoom.name,
@@ -161,9 +162,13 @@ export default function ChatPanel({
         )}
       </section>
 
-      {sendError && <p className="text-red-400">{sendError}</p>}
+      {sendError && (
+        <p data-testid="chat-panel-send-error-message" className="text-red-400">
+          {sendError}
+        </p>
+      )}
       {contentRemovedNotice && (
-        <p className="flex items-center gap-2 text-red-400">
+        <p data-testid="chat-panel-content-removed-notice" className="flex items-center gap-2 text-red-400">
           <span>
             {interpolate(dict.chatPanel.contentRemovedNotice, {
               reason: contentRemovedNotice,
@@ -171,6 +176,7 @@ export default function ChatPanel({
           </span>
           <button
             type="button"
+            data-testid="chat-panel-dismiss-content-removed-button"
             onClick={onDismissContentRemovedNotice}
             className="text-muted hover:text-neutral-400"
           >
@@ -179,11 +185,11 @@ export default function ChatPanel({
         </p>
       )}
       {activeRoom && activeRoom.status !== "active" ? (
-        <p className="border-t border-neutral-800 pt-2 text-muted">
+        <p data-testid="chat-panel-archived-notice" className="border-t border-neutral-800 pt-2 text-muted">
           {dict.chatPanel.archivedNotice}
         </p>
       ) : isMuted ? (
-        <p className="border-t border-neutral-800 pt-2 text-muted">
+        <p data-testid="chat-panel-muted-notice" className="border-t border-neutral-800 pt-2 text-muted">
           {dict.chatPanel.mutedNotice}
           {muteReason && ` — ${muteReason}`}
           {mutedUntil &&
@@ -201,6 +207,7 @@ export default function ChatPanel({
           <span className="text-muted">&gt;</span>
           <input
             type="text"
+            data-testid="chat-panel-composer-input"
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             disabled={!isReady}
@@ -214,6 +221,7 @@ export default function ChatPanel({
           />
           <button
             type="submit"
+            data-testid="chat-panel-send-button"
             disabled={!canSend || isSending}
             className="text-muted disabled:cursor-not-allowed"
           >
