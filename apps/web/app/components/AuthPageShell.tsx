@@ -53,7 +53,9 @@ export default function AuthPageShell({
               <span className="text-lg font-bold">KOQEP</span>{" "}
               <span className="terminal-cursor inline-block h-4 w-2 bg-neutral-400 align-middle" />
             </h1>
-            <p className="text-xs text-muted">{dict.authPageShell.tagline}</p>
+            <p data-testid="auth-tagline" className="text-xs text-muted">
+              {dict.authPageShell.tagline}
+            </p>
           </div>
           <div
             role="group"

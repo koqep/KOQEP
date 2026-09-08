@@ -50,7 +50,11 @@ export default function ResetPasswordView() {
         <p data-testid="reset-password-invalid-link-message" className="text-neutral-400">
           {dict.common.invalidLink}
         </p>
-        <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
+        <Link
+          href="/app"
+          data-testid="reset-password-back-to-login-link"
+          className="mt-4 text-muted hover:text-neutral-400"
+        >
           {dict.common.backToLogin}
         </Link>
       </main>
@@ -63,7 +67,11 @@ export default function ResetPasswordView() {
         <p data-testid="reset-password-success-message" className="text-neutral-400">
           {dict.resetPassword.successMessage}
         </p>
-        <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
+        <Link
+          href="/app"
+          data-testid="reset-password-back-to-login-link"
+          className="mt-4 text-muted hover:text-neutral-400"
+        >
           {dict.common.backToLogin}
         </Link>
       </main>
