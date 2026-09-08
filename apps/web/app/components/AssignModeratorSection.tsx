@@ -108,6 +108,7 @@ export default function AssignModeratorSection({
           {dict.common.emailLabel}
           <input
             type="email"
+            data-testid="assign-moderator-email-input"
             value={assignEmail}
             onChange={(event) => setAssignEmail(event.target.value)}
             required
@@ -117,6 +118,7 @@ export default function AssignModeratorSection({
         <PasswordInput
           label={dict.assignModerator.yourPasswordLabel}
           dict={dict}
+          testId="assign-moderator-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
@@ -126,6 +128,7 @@ export default function AssignModeratorSection({
             {dict.common.authenticatorCodeLabel}
             <input
               type="text"
+              data-testid="assign-moderator-totp-code-input"
               value={totpCode}
               onChange={(event) => setTotpCode(event.target.value)}
               required
@@ -135,10 +138,19 @@ export default function AssignModeratorSection({
             />
           </label>
         )}
-        {assignError && <p className="text-red-400">{assignError}</p>}
-        {assignSuccess && <p className="text-neutral-200">{assignSuccess}</p>}
+        {assignError && (
+          <p data-testid="assign-moderator-assign-error-message" className="text-red-400">
+            {assignError}
+          </p>
+        )}
+        {assignSuccess && (
+          <p data-testid="assign-moderator-assign-success-message" className="text-neutral-200">
+            {assignSuccess}
+          </p>
+        )}
         <button
           type="submit"
+          data-testid="assign-moderator-assign-button"
           disabled={isAssigning}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
@@ -152,16 +164,26 @@ export default function AssignModeratorSection({
           {dict.common.emailLabel}
           <input
             type="email"
+            data-testid="assign-moderator-revoke-email-input"
             value={revokeEmail}
             onChange={(event) => setRevokeEmail(event.target.value)}
             required
             className={inputClassName}
           />
         </label>
-        {revokeError && <p className="text-red-400">{revokeError}</p>}
-        {revokeSuccess && <p className="text-neutral-200">{revokeSuccess}</p>}
+        {revokeError && (
+          <p data-testid="assign-moderator-revoke-error-message" className="text-red-400">
+            {revokeError}
+          </p>
+        )}
+        {revokeSuccess && (
+          <p data-testid="assign-moderator-revoke-success-message" className="text-neutral-200">
+            {revokeSuccess}
+          </p>
+        )}
         <button
           type="submit"
+          data-testid="assign-moderator-revoke-button"
           disabled={isRevoking}
           className="self-start border border-neutral-800 px-3 py-1 text-neutral-400 hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-70"
         >

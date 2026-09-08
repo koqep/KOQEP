@@ -166,6 +166,7 @@ export default function ModerationQueueView({
         </h2>
         <button
           type="button"
+          data-testid="moderation-queue-close-button"
           onClick={onClose}
           className="text-muted hover:text-neutral-400"
         >
@@ -173,12 +174,16 @@ export default function ModerationQueueView({
         </button>
       </div>
 
-      {error && <p className="mb-4 text-red-400">{error}</p>}
+      {error && (
+        <p data-testid="moderation-queue-error-message" className="mb-4 text-red-400">
+          {error}
+        </p>
+      )}
 
       {reports === null ? (
-        <p>{dict.common.loading}</p>
+        <p data-testid="moderation-queue-loading-message">{dict.common.loading}</p>
       ) : reports.length === 0 ? (
-        <p>{dict.moderationQueue.noOpenReports}</p>
+        <p data-testid="moderation-queue-empty-message">{dict.moderationQueue.noOpenReports}</p>
       ) : (
         <ul className="space-y-4">
           {reports.map((report) => {
@@ -189,7 +194,7 @@ export default function ModerationQueueView({
               className="border border-neutral-800 p-2"
             >
               {report.isFlagged && (
-                <p className="mb-1 text-red-400">
+                <p data-testid={`report-${report.id}-flagged-notice`} className="mb-1 text-red-400">
                   {interpolate(dict.moderationQueue.flaggedNotice, {
                     count: report.distinctReporterCount,
                   })}
@@ -201,7 +206,7 @@ export default function ModerationQueueView({
                   <span className="text-muted"> — {report.reason}</span>
                 )}
               </p>
-              <p className="mb-2 text-neutral-200">
+              <p data-testid={`report-${report.id}-content`} className="mb-2 text-neutral-200">
                 <MessageContent content={report.reportedContent} />
               </p>
               {pendingReasonAction?.reportId === report.id ? (
@@ -212,6 +217,7 @@ export default function ModerationQueueView({
                   <input
                     type="text"
                     aria-label={dict.moderationQueue.reasonAriaLabel}
+                    data-testid={`report-${report.id}-reason-input`}
                     value={reasonDraft}
                     onChange={(event) => setReasonDraft(event.target.value)}
                     placeholder={dict.moderationQueue.reasonPlaceholder}
@@ -221,6 +227,7 @@ export default function ModerationQueueView({
                   />
                   <button
                     type="submit"
+                    data-testid={`report-${report.id}-confirm-button`}
                     disabled={
                       pendingId === report.id || reasonDraft.trim().length === 0
                     }
@@ -230,6 +237,7 @@ export default function ModerationQueueView({
                   </button>
                   <button
                     type="button"
+                    data-testid={`report-${report.id}-cancel-button`}
                     onClick={() => setPendingReasonAction(null)}
                     className="text-muted hover:text-neutral-400"
                   >
@@ -242,6 +250,7 @@ export default function ModerationQueueView({
                     <>
                       <button
                         type="button"
+                        data-testid={`report-${report.id}-mute-button`}
                         disabled={pendingId === report.id}
                         onClick={() =>
                           startReasonAction(report.id, "mute", reportedUserId)
@@ -254,6 +263,7 @@ export default function ModerationQueueView({
                       </button>
                       <button
                         type="button"
+                        data-testid={`report-${report.id}-unmute-button`}
                         disabled={pendingId === report.id}
                         onClick={() =>
                           void handleUnmute(report.id, reportedUserId)
@@ -266,6 +276,7 @@ export default function ModerationQueueView({
                   )}
                   <button
                     type="button"
+                    data-testid={`report-${report.id}-remove-content-button`}
                     disabled={pendingId === report.id}
                     onClick={() => startReasonAction(report.id, "remove")}
                     className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
@@ -274,6 +285,7 @@ export default function ModerationQueueView({
                   </button>
                   <button
                     type="button"
+                    data-testid={`report-${report.id}-dismiss-button`}
                     disabled={pendingId === report.id}
                     onClick={() => void handleDismiss(report.id)}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"

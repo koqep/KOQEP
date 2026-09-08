@@ -25,6 +25,7 @@ export function LargeAvatar({ seed, className }: LargeAvatarProps) {
   return (
     <svg
       aria-hidden="true"
+      data-testid="large-avatar"
       width={100}
       height={100}
       viewBox="0 0 5 5"
@@ -63,6 +64,7 @@ export function SmallAvatar({ seed, className }: SmallAvatarProps) {
   return (
     <svg
       aria-hidden="true"
+      data-testid="small-avatar"
       width={72}
       height={12}
       viewBox="0 0 6 1"

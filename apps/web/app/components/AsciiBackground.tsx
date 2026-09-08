@@ -118,6 +118,7 @@ export default function AsciiBackground({ className }: Props) {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
+      data-testid="ascii-background"
       className={className}
     />
   );

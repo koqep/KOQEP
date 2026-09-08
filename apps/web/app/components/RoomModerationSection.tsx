@@ -178,12 +178,20 @@ export default function RoomModerationSection({
         <span className="text-muted">#</span> {dict.roomModeration.heading}
       </h3>
 
-      {error && <p className="mb-4 text-red-400">{error}</p>}
+      {error && (
+        <p data-testid="room-moderation-error-message" className="mb-4 text-red-400">
+          {error}
+        </p>
+      )}
 
       {rooms === null ? (
-        <p className="text-neutral-400">{dict.common.loading}</p>
+        <p data-testid="room-moderation-loading-message" className="text-neutral-400">
+          {dict.common.loading}
+        </p>
       ) : rooms.length === 0 ? (
-        <p className="text-neutral-400">{dict.roomModeration.noRooms}</p>
+        <p data-testid="room-moderation-empty-message" className="text-neutral-400">
+          {dict.roomModeration.noRooms}
+        </p>
       ) : (
         <ul className="space-y-4">
           {rooms.map((room) => (
@@ -196,6 +204,7 @@ export default function RoomModerationSection({
                   <input
                     type="text"
                     aria-label={dict.roomModeration.renameAriaLabel}
+                    data-testid={`room-moderation-${room.id}-rename-input`}
                     value={renameDraft}
                     onChange={(event) => setRenameDraft(event.target.value)}
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- "yeniden adlandır"a tıklandıktan sonra beliren alan, sürpriz odak sıçraması değil.
@@ -204,6 +213,7 @@ export default function RoomModerationSection({
                   />
                   <button
                     type="submit"
+                    data-testid={`room-moderation-${room.id}-rename-save-button`}
                     disabled={pendingId === room.id}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
@@ -211,6 +221,7 @@ export default function RoomModerationSection({
                   </button>
                   <button
                     type="button"
+                    data-testid={`room-moderation-${room.id}-rename-cancel-button`}
                     onClick={() => setRenamingId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
@@ -240,6 +251,7 @@ export default function RoomModerationSection({
                 >
                   <textarea
                     aria-label={dict.roomModeration.announcementAriaLabel}
+                    data-testid={`room-moderation-${room.id}-announcement-input`}
                     value={announcementDraft}
                     onChange={(event) =>
                       setAnnouncementDraft(event.target.value)
@@ -254,6 +266,7 @@ export default function RoomModerationSection({
                   </span>
                   <button
                     type="submit"
+                    data-testid={`room-moderation-${room.id}-announcement-save-button`}
                     disabled={pendingId === room.id}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
                   >
@@ -261,6 +274,7 @@ export default function RoomModerationSection({
                   </button>
                   <button
                     type="button"
+                    data-testid={`room-moderation-${room.id}-announcement-cancel-button`}
                     onClick={() => setAnnouncingId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
@@ -275,6 +289,7 @@ export default function RoomModerationSection({
                   {room.announcement}{" "}
                   <button
                     type="button"
+                    data-testid={`room-moderation-${room.id}-remove-announcement-button`}
                     disabled={pendingId === room.id}
                     onClick={() => void clearAnnouncement(room)}
                     className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
@@ -286,6 +301,7 @@ export default function RoomModerationSection({
                 <p className="mb-2">
                   <button
                     type="button"
+                    data-testid={`room-moderation-${room.id}-add-announcement-button`}
                     disabled={pendingId === room.id}
                     onClick={() => startAnnouncing(room)}
                     className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
@@ -302,6 +318,7 @@ export default function RoomModerationSection({
                   </span>
                   <button
                     type="button"
+                    data-testid={`room-moderation-${room.id}-confirm-delete-button`}
                     disabled={pendingId === room.id}
                     onClick={() => void confirmDelete(room)}
                     className="text-red-400 hover:text-red-300 disabled:cursor-not-allowed"
@@ -310,6 +327,7 @@ export default function RoomModerationSection({
                   </button>
                   <button
                     type="button"
+                    data-testid={`room-moderation-${room.id}-cancel-delete-button`}
                     onClick={() => setConfirmingDeleteId(null)}
                     className="text-muted hover:text-neutral-400"
                   >
@@ -321,6 +339,7 @@ export default function RoomModerationSection({
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
+                      data-testid={`room-moderation-${room.id}-rename-button`}
                       disabled={pendingId === room.id}
                       onClick={() => startRenaming(room)}
                       className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
@@ -330,6 +349,7 @@ export default function RoomModerationSection({
                     {room.status === "active" && (
                       <button
                         type="button"
+                        data-testid={`room-moderation-${room.id}-archive-button`}
                         disabled={pendingId === room.id}
                         onClick={() => void handleArchive(room)}
                         className="text-muted hover:text-neutral-400 disabled:cursor-not-allowed"
@@ -340,6 +360,7 @@ export default function RoomModerationSection({
                     {room.status === "archived" && (
                       <button
                         type="button"
+                        data-testid={`room-moderation-${room.id}-delete-button`}
                         disabled={pendingId === room.id}
                         onClick={() => setConfirmingDeleteId(room.id)}
                         className="text-muted hover:text-red-400 disabled:cursor-not-allowed"
