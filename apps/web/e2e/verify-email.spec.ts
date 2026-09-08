@@ -9,10 +9,10 @@ test("gecerli_tokenle_dogrulama_basarili_mesaji_gosterir", async ({
 
   await page.goto("/verify-email?token=a-valid-token");
 
-  await expect(
-    page.getByText("Your email is verified. You can log in now."),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "back to login" })).toBeVisible();
+  await expect(page.getByTestId("verify-email-success-message")).toHaveText(
+    "Your email is verified. You can log in now.",
+  );
+  await expect(page.getByTestId("verify-email-back-to-login-link")).toBeVisible();
 });
 
 test("gecersiz_tokenle_hata_mesaji_gosterir", async ({ page }) => {
@@ -25,13 +25,15 @@ test("gecersiz_tokenle_hata_mesaji_gosterir", async ({ page }) => {
 
   await page.goto("/verify-email?token=an-expired-token");
 
-  await expect(
-    page.getByText("This link is invalid or has expired."),
-  ).toBeVisible();
+  await expect(page.getByTestId("verify-email-error-message")).toHaveText(
+    "This link is invalid or has expired.",
+  );
 });
 
 test("token_yoksa_gecersiz_baglanti_mesaji_gosterir", async ({ page }) => {
   await page.goto("/verify-email");
 
-  await expect(page.getByText("Invalid link.")).toBeVisible();
+  await expect(page.getByTestId("verify-email-invalid-link-message")).toHaveText(
+    "Invalid link.",
+  );
 });

@@ -19,54 +19,53 @@ test("kayit_basarili_olunca_dogrulama_mesaji_gosterir_giris_ekranina_gecmez", as
   );
 
   await page.goto("/app");
-  await page.getByRole("tab", { name: "sign up" }).click();
+  await page.getByTestId("auth-signup-tab").click();
 
-  await page.getByLabel("invite code").fill("DEV-INVITE-1");
-  await page.getByLabel("email").fill("yeni@koqep.local");
-  await page.getByLabel("username").fill("yenikullanici");
-  await page.getByLabel("password").fill("a-strong-password");
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "sign up" }).click();
+  await page.getByTestId("auth-invite-code-input").fill("DEV-INVITE-1");
+  await page.getByTestId("auth-email-input").fill("yeni@koqep.local");
+  await page.getByTestId("auth-username-input").fill("yenikullanici");
+  await page.getByTestId("auth-password").fill("a-strong-password");
+  await page.getByTestId("auth-accept-terms-checkbox").check();
+  await page.getByTestId("auth-submit-button").click();
 
   // Signup artık giriş yapmıyor (M2.5 Slice B) - e-postayı doğrulaman
   // gerektiğini söyleyen nötr bir mesaj görünür, sohbet ekranına geçmez.
-  await expect(
-    page.getByText(
-      "Click the link sent to your email to complete your signup.",
-    ),
-  ).toBeVisible();
-  await expect(page.getByPlaceholder("write a message...")).toHaveCount(0);
+  await expect(page.getByTestId("auth-signup-complete-message")).toHaveText(
+    "Click the link sent to your email to complete your signup.",
+  );
+  await expect(page.getByTestId("chat-panel-composer-input")).toHaveCount(0);
 });
 
 test("onay_kutusu_isaretlenmeden_kayit_butonu_devre_disi_kalir", async ({
   page,
 }) => {
   await page.goto("/app");
-  await page.getByRole("tab", { name: "sign up" }).click();
+  await page.getByTestId("auth-signup-tab").click();
 
-  await page.getByLabel("invite code").fill("DEV-INVITE-1");
-  await page.getByLabel("email").fill("yeni@koqep.local");
-  await page.getByLabel("username").fill("yenikullanici");
-  await page.getByLabel("password").fill("a-strong-password");
+  await page.getByTestId("auth-invite-code-input").fill("DEV-INVITE-1");
+  await page.getByTestId("auth-email-input").fill("yeni@koqep.local");
+  await page.getByTestId("auth-username-input").fill("yenikullanici");
+  await page.getByTestId("auth-password").fill("a-strong-password");
 
-  await expect(page.getByRole("button", { name: "sign up" })).toBeDisabled();
-  await page.getByRole("checkbox").check();
-  await expect(page.getByRole("button", { name: "sign up" })).toBeEnabled();
+  await expect(page.getByTestId("auth-submit-button")).toBeDisabled();
+  await page.getByTestId("auth-accept-terms-checkbox").check();
+  await expect(page.getByTestId("auth-submit-button")).toBeEnabled();
 });
 
 test("kayit_ekraninda_kullanim_sartlari_ve_gizlilik_linkleri_dogru_hedefe_gider", async ({
   page,
 }) => {
   await page.goto("/app");
-  await page.getByRole("tab", { name: "sign up" }).click();
+  await page.getByTestId("auth-signup-tab").click();
 
-  await expect(page.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
+  await expect(page.getByTestId("auth-terms-link")).toHaveAttribute(
     "href",
     "/terms",
   );
-  await expect(
-    page.getByRole("link", { name: "Privacy Policy" }),
-  ).toHaveAttribute("href", "/privacy");
+  await expect(page.getByTestId("auth-privacy-link")).toHaveAttribute(
+    "href",
+    "/privacy",
+  );
 });
 
 test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {
@@ -81,15 +80,13 @@ test("dogrulanmamis_e_posta_ile_giris_hatasi_gosterir", async ({ page }) => {
   );
 
   await page.goto("/app");
-  await page.getByLabel("email").fill("dogrulanmamis@koqep.local");
-  await page.getByLabel("password").fill("a-strong-password");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-email-input").fill("dogrulanmamis@koqep.local");
+  await page.getByTestId("auth-password").fill("a-strong-password");
+  await page.getByTestId("auth-submit-button").click();
 
-  await expect(
-    page.getByText(
-      "Check your inbox — you need to verify your email before signing in.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("auth-error-message")).toHaveText(
+    "Check your inbox — you need to verify your email before signing in.",
+  );
 });
 
 test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({
@@ -106,15 +103,17 @@ test("yanlis_bilgiler_hata_gosterir_totp_alani_gorunmez", async ({
   );
 
   await page.goto("/app");
-  await page.getByLabel("email").fill("test@koqep.local");
-  await page.getByLabel("password").fill("yanlis-sifre");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-password").fill("yanlis-sifre");
+  await page.getByTestId("auth-submit-button").click();
 
   // M9 Slice D2: AuthView artık `translateErrorCode`'a bağlı - varsayılan
   // (İngilizce) locale'de backend'in HAM Türkçe mesajı yerine doğru
   // çevrilmiş metin gösteriliyor (bu TAM DA M9'un düzelttiği bug'dı).
-  await expect(page.getByText("Incorrect email or password.")).toBeVisible();
-  await expect(page.getByLabel("authenticator code")).toHaveCount(0);
+  await expect(page.getByTestId("auth-error-message")).toHaveText(
+    "Incorrect email or password.",
+  );
+  await expect(page.getByTestId("auth-totp-code-input")).toHaveCount(0);
 });
 
 test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
@@ -142,16 +141,16 @@ test("totp_gerekince_alan_belirir_dogru_kodla_giris_tamamlanir", async ({
   await mockRoomEndpoints(page);
 
   await page.goto("/app");
-  await page.getByLabel("email").fill("test@koqep.local");
-  await page.getByLabel("password").fill("a-strong-password");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-password").fill("a-strong-password");
+  await page.getByTestId("auth-submit-button").click();
 
-  const totpField = page.getByLabel("authenticator code");
+  const totpField = page.getByTestId("auth-totp-code-input");
   await expect(totpField).toBeVisible();
   await totpField.fill("123456");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-submit-button").click();
 
-  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  await expect(page.getByTestId("chat-panel-composer-input")).toBeVisible();
   expect(loginCallCount).toBe(2);
 });
 
@@ -184,23 +183,25 @@ test("yanlis_totp_kodu_girilince_hata_gosterir_dogru_kodla_devam_edebilir", asyn
   await mockRoomEndpoints(page);
 
   await page.goto("/app");
-  await page.getByLabel("email").fill("test@koqep.local");
-  await page.getByLabel("password").fill("a-strong-password");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-password").fill("a-strong-password");
+  await page.getByTestId("auth-submit-button").click();
 
-  const totpField = page.getByLabel("authenticator code");
+  const totpField = page.getByTestId("auth-totp-code-input");
   await expect(totpField).toBeVisible();
-  await expect(page.getByText("Invalid authenticator code.")).toHaveCount(0);
+  await expect(page.getByTestId("auth-error-message")).toHaveCount(0);
 
   await totpField.fill("000000");
-  await page.getByRole("button", { name: "log in" }).click();
-  await expect(page.getByText("Invalid authenticator code.")).toBeVisible();
+  await page.getByTestId("auth-submit-button").click();
+  await expect(page.getByTestId("auth-error-message")).toHaveText(
+    "Invalid authenticator code.",
+  );
   await expect(totpField).toBeVisible();
 
   await totpField.fill("123456");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-submit-button").click();
 
-  await expect(page.getByPlaceholder("write a message...")).toBeVisible();
+  await expect(page.getByTestId("chat-panel-composer-input")).toBeVisible();
   expect(loginCallCount).toBe(3);
 });
 
@@ -239,14 +240,14 @@ test("login_istegi_localstoragedaki_tercihi_localehint_olarak_gonderir", async (
   await page.goto("/app");
   // M9 Slice D2: AuthView artık locale='tr' iken GERÇEKTEN Türkçe
   // label'lar render ediyor (AppShell'in tek-noktalı locale çözümlemesi,
-  // giriş ÖNCESİ) - "email"/"password" yerine "e-posta"/"şifre".
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("a-strong-password");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  // giriş ÖNCESİ) - testid'ler locale'den BAĞIMSIZ aynı kalıyor.
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-password").fill("a-strong-password");
+  await page.getByTestId("auth-submit-button").click();
 
   // M9 Slice D5: composer artık `dict`'e bağlı - giriş sonrası User.locale
   // "tr" olduğu için placeholder da GERÇEKTEN Türkçe render ediyor.
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await expect(page.getByTestId("chat-panel-composer-input")).toBeVisible();
   expect(postedBody?.localeHint).toBe("tr");
 });
 
@@ -281,15 +282,15 @@ test("giris_sonrasi_localstorage_backendin_donduru_locale_ile_senkronlanir", asy
   });
 
   await page.goto("/app");
-  await page.getByLabel("email").fill("test@koqep.local");
-  await page.getByLabel("password").fill("a-strong-password");
-  await page.getByRole("button", { name: "log in" }).click();
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-password").fill("a-strong-password");
+  await page.getByTestId("auth-submit-button").click();
 
   // M9 Slice D5: composer artık `dict`'e bağlı - backend'in döndürdüğü
   // User.locale "tr" olduğu için placeholder da GERÇEKTEN Türkçe render
   // ediyor (bu testin kendi amacına - locale senkronunu doğrulamaya -
   // AYRICA bir kanıt).
-  await expect(page.getByPlaceholder("mesaj yaz...")).toBeVisible();
+  await expect(page.getByTestId("chat-panel-composer-input")).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("koqep:locale")))
     .toBe("tr");
@@ -301,18 +302,18 @@ test("sifremi_unuttum_gonderince_notr_mesaj_gosterir", async ({ page }) => {
   );
 
   await page.goto("/app");
-  await page.getByRole("button", { name: "forgot your password?" }).click();
+  await page.getByTestId("auth-forgot-password-button").click();
 
-  await expect(page.getByLabel("password")).toHaveCount(0);
-  await page.getByLabel("email").fill("test@koqep.local");
-  await page.getByRole("button", { name: "send" }).click();
+  await expect(page.getByTestId("auth-password")).toHaveCount(0);
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-submit-button").click();
 
-  await expect(
-    page.getByText("If this email is registered, a reset link has been sent."),
-  ).toBeVisible();
+  await expect(page.getByTestId("auth-reset-requested-message")).toHaveText(
+    "If this email is registered, a reset link has been sent.",
+  );
 
-  await page.getByRole("button", { name: "back to login" }).click();
-  await expect(page.getByRole("button", { name: "log in" })).toBeVisible();
+  await page.getByTestId("auth-back-to-login-button").click();
+  await expect(page.getByTestId("auth-submit-button")).toBeVisible();
 });
 
 // M11b Slice E: giriş/kayıt artık sekmeli bir kart - aktif sekme
@@ -322,22 +323,22 @@ test("sekme_secili_durumu_dogru_yansitir_ve_tiklaninca_form_degisir", async ({
 }) => {
   await page.goto("/app");
 
-  const loginTab = page.getByRole("tab", { name: "log in" });
-  const signupTab = page.getByRole("tab", { name: "sign up" });
+  const loginTab = page.getByTestId("auth-login-tab");
+  const signupTab = page.getByTestId("auth-signup-tab");
   await expect(loginTab).toHaveAttribute("aria-selected", "true");
   await expect(signupTab).toHaveAttribute("aria-selected", "false");
-  await expect(page.getByLabel("invite code")).toHaveCount(0);
+  await expect(page.getByTestId("auth-invite-code-input")).toHaveCount(0);
 
   await signupTab.click();
   await expect(loginTab).toHaveAttribute("aria-selected", "false");
   await expect(signupTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByLabel("invite code")).toBeVisible();
+  await expect(page.getByTestId("auth-invite-code-input")).toBeVisible();
 });
 
 test("sifremi_unuttum_modunda_sekme_cubugu_gizlenir", async ({ page }) => {
   await page.goto("/app");
 
-  await page.getByRole("button", { name: "forgot your password?" }).click();
+  await page.getByTestId("auth-forgot-password-button").click();
   await expect(page.getByRole("tablist")).toHaveCount(0);
 });
 
@@ -348,8 +349,10 @@ test("dekoratif_canvas_arka_plani_ekran_okuyucudan_gizli", async ({
 }) => {
   await page.goto("/app");
 
-  const canvas = page.locator("canvas");
-  await expect(canvas).toHaveAttribute("aria-hidden", "true");
+  await expect(page.getByTestId("ascii-background")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
 });
 
 // Fix (2026-09-03): henüz hesabı olmayan bir ziyaretçi için dil
@@ -361,33 +364,42 @@ test("giris_ekranindaki_tr_en_kutusu_dili_degistirir_ve_form_state_korunur", asy
 }) => {
   await page.goto("/app");
 
-  await expect(page.getByRole("tab", { name: "log in" })).toBeVisible();
+  await expect(page.getByTestId("auth-login-tab")).toBeVisible();
 
   // Form state - toggle sonrası KAYBOLMAMALI (AuthView unmount OLMUYOR,
   // sadece dict/locale prop'ları değişiyor).
-  await page.getByLabel("email").fill("test@koqep.local");
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
 
-  const languageGroup = page.getByRole("group", { name: "language" });
-  await expect(languageGroup.getByRole("button", { name: "TR" })).toHaveAttribute(
+  // "language" grubu artık gerekmiyor - testid'ler sayfa genelinde zaten
+  // benzersiz, ayrı bir sarmalayıcıya scope'lamaya gerek yok.
+  await expect(page.getByTestId("auth-locale-tr-button")).toHaveAttribute(
     "aria-pressed",
     "false",
   );
-  await languageGroup.getByRole("button", { name: "TR" }).click();
+  await page.getByTestId("auth-locale-tr-button").click();
 
-  await expect(page.getByRole("tab", { name: "giriş yap" })).toBeVisible();
-  await expect(languageGroup.getByRole("button", { name: "TR" })).toHaveAttribute(
+  // Sekmenin GERÇEKTEN Türkçe metne geçtiğini kanıtlar (testid sabit
+  // kalır, içerik değişir).
+  await expect(page.getByTestId("auth-login-tab")).toHaveAccessibleName(
+    "giriş yap",
+  );
+  await expect(page.getByTestId("auth-locale-tr-button")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(page.getByLabel("e-posta")).toHaveValue("test@koqep.local");
+  await expect(page.getByTestId("auth-email-input")).toHaveValue(
+    "test@koqep.local",
+  );
 
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("koqep:locale")))
     .toBe("tr");
 
   // Geri EN'e dönmek de çalışmalı (tek yönlü bir geçiş değil).
-  await languageGroup.getByRole("button", { name: "EN" }).click();
-  await expect(page.getByRole("tab", { name: "log in" })).toBeVisible();
+  await page.getByTestId("auth-locale-en-button").click();
+  await expect(page.getByTestId("auth-login-tab")).toHaveAccessibleName(
+    "log in",
+  );
 });
 
 // M9 Slice D2 (Dalga A): AppShell'in TEK-noktalı locale çözümlemesi -
@@ -402,20 +414,41 @@ test("localstoragede_tr_varken_giris_ekrani_turkce_render_eder", async ({
 
   await page.goto("/app");
 
-  await expect(page.getByRole("tab", { name: "giriş yap" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "kayıt ol" })).toBeVisible();
-  await expect(page.getByLabel("e-posta")).toBeVisible();
-  await expect(page.getByLabel("şifre")).toBeVisible();
+  // `.toHaveAccessibleName()` - getByRole(...,{name:})/getByLabel'ın
+  // örtük olarak yaptığı "erişilebilir adı TAM OLARAK bu" kontrolünü
+  // korur (dekoratif aria-hidden ikon/önekleri, ör. "< " ok işareti,
+  // erişilebilir isim hesabına GİRMEZ - `.toHaveText()` bunları DAHİL
+  // ederdi, ham metin ile erişilebilir isim burada FARKLI şeyler).
+  await expect(page.getByTestId("auth-login-tab")).toHaveAccessibleName(
+    "giriş yap",
+  );
+  await expect(page.getByTestId("auth-signup-tab")).toHaveAccessibleName(
+    "kayıt ol",
+  );
+  await expect(page.getByTestId("auth-email-input")).toHaveAccessibleName(
+    "e-posta",
+  );
+  await expect(page.getByTestId("auth-password")).toHaveAccessibleName(
+    "şifre",
+  );
   await expect(
-    page.getByRole("button", { name: "şifreni mi unuttun?" }),
-  ).toBeVisible();
+    page.getByTestId("auth-forgot-password-button"),
+  ).toHaveAccessibleName("şifreni mi unuttun?");
   // AuthPageShell'in KENDİ metinleri - AuthView'dan AYRI bir prop yolu
   // (RoomView'ın dict zincirine hiç girmiyor), ayrıca doğrulanmalı.
-  await expect(page.getByText("sadece metin · davetle katılım")).toBeVisible();
+  // `auth-tagline` orijinalde `getByText` idi (saf metin, ikon yok) -
+  // `.toHaveText()` doğru; linkler `getByRole(link,{name:})` idi -
+  // `.toHaveAccessibleName()` gerekiyor (`auth-back-to-home-link`
+  // dekoratif "< " ön eki taşıyor, gerçek bir koşumda YAKALANDI).
+  await expect(page.getByTestId("auth-tagline")).toHaveText(
+    "sadece metin · davetle katılım",
+  );
   await expect(
-    page.getByRole("link", { name: "ana sayfaya dön" }),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "yardım" })).toBeVisible();
+    page.getByTestId("auth-back-to-home-link"),
+  ).toHaveAccessibleName("ana sayfaya dön");
+  await expect(page.getByTestId("auth-help-link")).toHaveAccessibleName(
+    "yardım",
+  );
 });
 
 // M9 Slice D2: `translateErrorCode`'un GERÇEK bilingual kanıtı - sadece
@@ -442,11 +475,16 @@ test("tr_localede_yanlis_bilgiler_hatasi_turkce_gosterilir", async ({
   );
 
   await page.goto("/app");
-  await page.getByLabel("e-posta").fill("test@koqep.local");
-  await page.getByLabel("şifre").fill("yanlis-sifre");
-  await page.getByRole("button", { name: "giriş yap" }).click();
+  await page.getByTestId("auth-email-input").fill("test@koqep.local");
+  await page.getByTestId("auth-password").fill("yanlis-sifre");
+  await page.getByTestId("auth-submit-button").click();
 
-  await expect(page.getByText("E-posta veya şifre hatalı.")).toBeVisible();
+  await expect(page.getByTestId("auth-error-message")).toHaveText(
+    "E-posta veya şifre hatalı.",
+  );
+  // Sayfa-geneli negatif kontrol - tek bir hedef elemana bağlı DEĞİL
+  // (ham backend metninin SAYFANIN HİÇBİR YERİNDE sızmadığını kanıtlıyor),
+  // testid'e taşınmıyor.
   await expect(
     page.getByText("kimlik doğrulama başarısız (ham backend metni)"),
   ).toHaveCount(0);

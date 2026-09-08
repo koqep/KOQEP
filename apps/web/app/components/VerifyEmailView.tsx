@@ -45,7 +45,11 @@ export default function VerifyEmailView() {
         <p data-testid="verify-email-invalid-link-message" className="text-neutral-400">
           {dict.common.invalidLink}
         </p>
-        <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
+        <Link
+          href="/app"
+          data-testid="verify-email-back-to-login-link"
+          className="mt-4 text-muted hover:text-neutral-400"
+        >
           {dict.common.backToLogin}
         </Link>
       </main>
@@ -58,7 +62,11 @@ export default function VerifyEmailView() {
         <p data-testid="verify-email-success-message" className="text-neutral-400">
           {dict.verifyEmail.successMessage}
         </p>
-        <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
+        <Link
+          href="/app"
+          data-testid="verify-email-back-to-login-link"
+          className="mt-4 text-muted hover:text-neutral-400"
+        >
           {dict.common.backToLogin}
         </Link>
       </main>
@@ -71,7 +79,11 @@ export default function VerifyEmailView() {
         <p data-testid="verify-email-error-message" className="text-red-400">
           {dict.verifyEmail.errorMessage}
         </p>
-        <Link href="/app" className="mt-4 text-muted hover:text-neutral-400">
+        <Link
+          href="/app"
+          data-testid="verify-email-back-to-login-link"
+          className="mt-4 text-muted hover:text-neutral-400"
+        >
           {dict.common.backToLogin}
         </Link>
       </main>

@@ -142,8 +142,12 @@ export default function LandingPage() {
 
         <div className="flex flex-1 flex-col justify-center gap-4">
           <p className="text-muted">{copy.terminalLine}</p>
-          <h2 className="text-2xl text-neutral-200">{copy.heading}</h2>
-          <p className="text-muted">{copy.description}</p>
+          <h2 data-testid="landing-heading" className="text-2xl text-neutral-200">
+            {copy.heading}
+          </h2>
+          <p data-testid="landing-description" className="text-muted">
+            {copy.description}
+          </p>
           <div className="mt-2 flex gap-3">
             <Link
               href="/app"

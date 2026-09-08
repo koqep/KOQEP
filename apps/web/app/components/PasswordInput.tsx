@@ -75,6 +75,7 @@ export default function PasswordInput({
   label,
   filled,
   dict,
+  testId,
   ...inputProps
 }: Props) {
   const [isVisible, setIsVisible] = useState(false);
@@ -142,11 +143,13 @@ export default function PasswordInput({
         <input
           {...inputProps}
           id={id}
+          data-testid={testId}
           type={isVisible ? "text" : "password"}
           className={(filled ? filledInputClassName : inputClassName) + " w-full pr-8"}
         />
         <button
           type="button"
+          data-testid={testId ? `${testId}-toggle` : undefined}
           // "password" kelimesi BİLEREK YOK - "show password"/"hide
           // password" aria-label'ı getByLabel("password") sorgularıyla
           // (bu test süitinde HER YERDE kullanılıyor) substring çakışırdı,

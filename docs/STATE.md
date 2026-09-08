@@ -3,18 +3,18 @@
 <!-- Bu proje boyunca en kritik dosya. Her session sonunda güncellenir.
      60 satırı geçmesin; geçmiş bilgi docs/decisions/ veya milestone dosyalarına taşınır. -->
 
-**Son güncelleme:** 2026-09-07 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (TÜMÜ)/E main'de, Slice F kapsam turu + Faz 1 Grup 1/2 main'de — **Slice F Faz 1'in TAMAMI (3 grup) tamamlandı**, `feat/testid-chat-moderation` push bekliyor, sırada Faz 2 (spec dosyaları))
+**Son güncelleme:** 2026-09-08 (M11a+M11b (A/D/E)+M13 (TÜMÜ)+M11c (TÜMÜ)+M9 Slice A/B/C/D (TÜMÜ)/E main'de, Slice F Faz 1'in TAMAMI (3 grup) main'de — **Faz 2 Dalga 1 (auth+bağımsız sayfalar spec dönüşümü) tamamlandı**, `test/testid-selectors-auth` push bekliyor, sırada Dalga 2 (ayar panelleri))
 **M0-M10 hepsi main'de** (M7a/M7b'nin küçük kalıntıları hariç, aşağıda). Detaylar kendi milestone dosyalarında; socket.io `"io server disconnect"` reconnect bug'ı (2026-08-27, kritik production regresyonu) çözüldü — Tuzaklar.
 
 ## Şu an ne çalışıyor
-- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ, 6 dalga) + Slice E (e-posta şablonları) + Slice F kapsam turu + Faz 1 Grup 1/2 main'de** (PR #106-131, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA + backend `EmailService`'in 4 şablonu artık `User.locale`'e göre EN/TR gönderiyor. **M9'un SADECE Slice F'in Faz 2'si kalıyor** (860 metin-bağımlı Playwright seçicisinin `getByTestId`'e taşınması, Faz 1 kaynak tarafını bitirdi).
-- **2026-09-07: M9 Slice F Faz 1 Grup 3 (sohbet çekirdeği + moderasyon, 8 dosya) tamamlandı, `feat/testid-chat-moderation` dalında (main'den, tek feat commit), push bekliyor — Faz 1'in TAMAMI (3 grup, 32 dosya) bitti.** `RoomView.tsx`/`MessageContent.tsx` bilerek dokunulmadı (saf kompozisyon/biçimlendirme). Liste öğeleri (mesajlar/raporlar/odalar) kararlı bir kimlik gömen dinamik testid aldı. `PasswordInput.tsx`'in `testId` prop'unu SON çağıranı (`AssignModeratorSection`) migrate etti — 6/6 TAMAMLANDI. Saf ekleme — hiçbir test dosyası dokunulmadı, mock ×2 (156/156) + fullstack ×1 (11/11) DEĞİŞMEDEN geçti. Detay `docs/milestones/M9-i18n.md`.
-- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice F (Faz 2, 6 dalga) sırada.
+- **M11a main'de** (PR #102-105) + **M11b Slice A/D/E + M13 (TÜM dilimler) + M11c (TÜM dilimler) + M9 Slice A/B/C/D (TÜMÜ, 6 dalga) + Slice E (e-posta şablonları) + Slice F Faz 1 TAMAMI (3 grup) main'de** (PR #106-132, kullanıcı merge etti) — frontend `dict` altyapısı UYGULAMANIN TAMAMINDA + backend `EmailService`'in 4 şablonu artık `User.locale`'e göre EN/TR gönderiyor. **M9'un SADECE Slice F'in Faz 2'si kalıyor** (kalan dalgalar spec dosyalarını `getByTestId`'e taşıyor).
+- **2026-09-08: M9 Slice F Faz 2 Dalga 1 (auth+bağımsız sayfalar, 6 spec dosyası) tamamlandı, `test/testid-selectors-auth` dalında (main'den, 3 commit: fix+feat+test), push bekliyor.** **Gerçek bir Faz 1 hatası bulundu/düzeltildi:** `PasswordInput.tsx`'in `testId` prop'u HİÇ destructure edilmemişti, `data-testid` 6 çağıranın HİÇBİRİNDE DOM'a yazılmıyordu (Faz 1'in mock ×2 DEĞİŞMEDEN doğrulaması bunu yakalayamadı çünkü hiçbir test o testid'leri henüz sorgulamıyordu). İçerik-doğrulama assertion'ları için kilit kural kondu: `getByText` kökenli → `.toHaveText()`; `getByRole(name:)`/`getByLabel` kökenli → `.toHaveAccessibleName()` (ikisini karıştırmak `auth-back-to-home-link`'in dekoratif "< " ön ekiyle gerçek bir koşumda yakalandı). Mock ×2 156/156 DEĞİŞMEDEN. Fullstack ×1 (Docker sonradan başlatıldı) 11/11 DEĞİŞMEDEN — `PasswordInput` fix'i `delete-account.spec.ts` dahil hiçbir fullstack akışını bozmadı. Detay `docs/milestones/M9-i18n.md`.
+- Host-header allowlist `M7a-scale-gate.md`'de founder-bloklu. M7b'nin kalıntısı: D1 (rate limit). M11b Slice B/C, M12, M9 Slice F (Faz 2 Dalga 2-6) sırada.
 - Stack: NestJS (API+WS, Render) + Next.js (Vercel) + Postgres (Render Postgres) + Prisma + Resend + Sentry.
 
 ## Şu an üzerinde çalışılan
-- **Görev:** `feat/testid-chat-moderation` (main'den, 1 feat commit) doğrulandı, push kullanıcı onayında.
-- **Sonraki adım:** push sonrası M9 Slice F Faz 2 Dalga 1'in (auth+bağımsız sayfalar spec dosyalarının `getByTestId`'e çevrilmesi, 6 dosya) gerçek implementasyonu mu, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
+- **Görev:** `test/testid-selectors-auth` (main'den, 3 commit) TAM doğrulandı (mock ×2 + fullstack ×1), push kullanıcı onayında.
+- **Sonraki adım:** push sonrası M9 Slice F Faz 2 Dalga 2'nin (ayar panelleri spec dosyalarının `getByTestId`'e çevrilmesi, 8 dosya) gerçek implementasyonu mu, yoksa M11b Slice B/C ya da M12 mi — kullanıcı karar verecek.
 
 ## Bilinen sorunlar / teknik borç
 - `npm audit`: 32 high severity uyarı var, henüz değerlendirilmedi.

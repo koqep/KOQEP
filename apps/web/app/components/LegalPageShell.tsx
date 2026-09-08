@@ -47,7 +47,11 @@ export default function LegalPageShell({
         className="animate-fade-in relative z-10 mx-auto max-w-2xl p-4 text-neutral-400"
       >
         <div className="mb-8">
-          <div className="text-neutral-200" style={{ letterSpacing: "0.05em" }}>
+          <div
+            data-testid="legal-page-brand"
+            className="text-neutral-200"
+            style={{ letterSpacing: "0.05em" }}
+          >
             <span className="text-lg font-bold">KOQEP</span>{" "}
             <span className="terminal-cursor inline-block h-4 w-2 bg-neutral-400 align-middle" />
           </div>
