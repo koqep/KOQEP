@@ -11,14 +11,16 @@ test("varsayilan_dilde_ingilizce_baslik_ve_aciklama_gorunur", async ({
 }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", {
-      name: "A text-based community platform that grows by invitation.",
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("no feeds, no algorithms", { exact: false }),
-  ).toBeVisible();
+  // `landing-heading` orijinalde `getByRole("heading",{name:})` idi -
+  // `.toHaveAccessibleName()` doğru eşdeğeri (ikon/önek taşımasa da,
+  // auth.spec.ts'teki AYNI dosyalarda tutarlılık için). `landing-
+  // description` orijinalde `getByText` idi - `.toContainText()` KALIYOR.
+  await expect(page.getByTestId("landing-heading")).toHaveAccessibleName(
+    "A text-based community platform that grows by invitation.",
+  );
+  await expect(page.getByTestId("landing-description")).toContainText(
+    "no feeds, no algorithms",
+  );
 });
 
 test("tr_butonuna_basinca_metin_turkceye_gecer_en_geri_doner", async ({
@@ -26,29 +28,25 @@ test("tr_butonuna_basinca_metin_turkceye_gecer_en_geri_doner", async ({
 }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "TR" }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: "Davetle büyüyen, metin tabanlı bir topluluk platformu.",
-    }),
-  ).toBeVisible();
+  await page.getByTestId("landing-locale-tr-button").click();
+  await expect(page.getByTestId("landing-heading")).toHaveAccessibleName(
+    "Davetle büyüyen, metin tabanlı bir topluluk platformu.",
+  );
 
-  await page.getByRole("button", { name: "EN" }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: "A text-based community platform that grows by invitation.",
-    }),
-  ).toBeVisible();
+  await page.getByTestId("landing-locale-en-button").click();
+  await expect(page.getByTestId("landing-heading")).toHaveAccessibleName(
+    "A text-based community platform that grows by invitation.",
+  );
 });
 
 test("log_in_ve_sign_up_dogru_app_hedeflerine_gider", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("link", { name: "log in" })).toHaveAttribute(
+  await expect(page.getByTestId("landing-login-link")).toHaveAttribute(
     "href",
     "/app",
   );
-  await expect(page.getByRole("link", { name: "sign up" })).toHaveAttribute(
+  await expect(page.getByTestId("landing-signup-link")).toHaveAttribute(
     "href",
     "/app?mode=signup",
   );
@@ -60,20 +58,24 @@ test("footer_hukuki_linkleri_dile_gore_dogru_sayfaya_gider", async ({
   await page.goto("/");
 
   // Varsayılan EN.
-  await expect(
-    page.getByRole("link", { name: "terms of service" }),
-  ).toHaveAttribute("href", "/terms/en");
-  await expect(
-    page.getByRole("link", { name: "privacy policy" }),
-  ).toHaveAttribute("href", "/privacy/en");
+  await expect(page.getByTestId("landing-terms-link")).toHaveAttribute(
+    "href",
+    "/terms/en",
+  );
+  await expect(page.getByTestId("landing-privacy-link")).toHaveAttribute(
+    "href",
+    "/privacy/en",
+  );
 
-  await page.getByRole("button", { name: "TR" }).click();
-  await expect(
-    page.getByRole("link", { name: "terms of service" }),
-  ).toHaveAttribute("href", "/terms");
-  await expect(
-    page.getByRole("link", { name: "privacy policy" }),
-  ).toHaveAttribute("href", "/privacy");
+  await page.getByTestId("landing-locale-tr-button").click();
+  await expect(page.getByTestId("landing-terms-link")).toHaveAttribute(
+    "href",
+    "/terms",
+  );
+  await expect(page.getByTestId("landing-privacy-link")).toHaveAttribute(
+    "href",
+    "/privacy",
+  );
 });
 
 test("footer_iletisim_linki_geri_bildirim_adresine_gider", async ({
@@ -81,7 +83,7 @@ test("footer_iletisim_linki_geri_bildirim_adresine_gider", async ({
 }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("link", { name: "contact" })).toHaveAttribute(
+  await expect(page.getByTestId("landing-contact-link")).toHaveAttribute(
     "href",
     "mailto:ussasa155@gmail.com?subject=KOQEP%20support",
   );
@@ -92,6 +94,8 @@ test("dekoratif_canvas_arka_plani_ekran_okuyucudan_gizli", async ({
 }) => {
   await page.goto("/");
 
-  const canvas = page.locator("canvas");
-  await expect(canvas).toHaveAttribute("aria-hidden", "true");
+  await expect(page.getByTestId("ascii-background")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
 });
